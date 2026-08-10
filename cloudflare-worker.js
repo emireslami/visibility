@@ -19,23 +19,29 @@ const HTML = `<!doctype html>
     .filters { display:grid; grid-template-columns: 1fr 170px 170px 170px 170px 110px; gap:10px; margin-bottom:14px; }
     input, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
-    table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:ltr; }
-    th, td { padding: 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 13px; }
+    table { width: 100%; table-layout: fixed; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:ltr; }
+    th, td { padding: 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     th { background: #eef3f4; color: #24343b; position: sticky; top: 0; }
-    td.body { min-width: 260px; max-width: 360px; direction:rtl; text-align:right; }
-    .clip { display:block; max-width: 320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    td.body { direction:rtl; text-align:right; }
+    .clip { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .more { height: 28px; margin-top: 6px; padding: 0 9px; font-size: 12px; }
-    td.json { min-width: 260px; max-width: 360px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    .details-button { height: 30px; padding: 0 10px; font-size: 12px; }
+    td.json { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     td.json .clip { direction:ltr; text-align:left; }
     .meta { color: var(--muted); font-size: 12px; }
     .modal-backdrop { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(23,32,38,.42); z-index:20; }
     .modal-backdrop.open { display:flex; }
-    .modal { width:min(760px, 100%); max-height:min(78vh, 720px); display:flex; flex-direction:column; background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:0 20px 70px rgba(23,32,38,.24); direction:rtl; }
+    .modal { width:min(900px, 100%); max-height:min(82vh, 760px); display:flex; flex-direction:column; background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:0 20px 70px rgba(23,32,38,.24); direction:rtl; }
     .modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-bottom:1px solid var(--line); }
     .modal-head h2 { margin:0; font-size:16px; }
     .modal-close { width:34px; height:34px; padding:0; font-size:20px; line-height:1; }
     .modal-body { padding:16px; overflow:auto; white-space:pre-wrap; line-height:1.8; text-align:right; }
-    @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } table { display:block; overflow:auto; } }
+    .details-grid { display:grid; gap:10px; white-space:normal; }
+    .detail-row { display:grid; grid-template-columns: 190px minmax(0, 1fr); gap:10px; padding:10px; border:1px solid var(--line); border-radius:6px; direction:ltr; text-align:left; }
+    .detail-label { color:var(--muted); font-size:12px; font-weight:700; }
+    .detail-value { min-width:0; overflow-wrap:anywhere; white-space:pre-wrap; }
+    .detail-pre { direction:ltr; text-align:left; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px; line-height:1.55; }
+    @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
@@ -66,7 +72,6 @@ const HTML = `<!doctype html>
             <th>Message ID</th>
             <th>Group ID</th>
             <th>Group Name</th>
-            <th>Group Username</th>
             <th>Group Type</th>
             <th>Topic</th>
             <th>Topic ID</th>
@@ -76,20 +81,13 @@ const HTML = `<!doctype html>
             <th>Sender First Name</th>
             <th>Sender Last Name</th>
             <th>Sender Is Bot</th>
-            <th>Sender Chat ID</th>
-            <th>Sender Chat Title</th>
             <th>Message</th>
-            <th>Caption</th>
             <th>Date (Tehran)</th>
             <th>Time (Tehran)</th>
             <th>Type</th>
             <th>Edited At</th>
             <th>Reply To Message ID</th>
-            <th>Media File ID</th>
-            <th>Media Group ID</th>
-            <th>Forward Origin</th>
-            <th>Entities</th>
-            <th>Raw Telegram Payload</th>
+            <th>Details</th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -140,9 +138,11 @@ const HTML = `<!doctype html>
     const senderEl = document.getElementById("sender");
     const refreshEl = document.getElementById("refresh");
     const modalBackdropEl = document.getElementById("modalBackdrop");
+    const modalTitleEl = document.getElementById("modalTitle");
     const modalBodyEl = document.getElementById("modalBody");
     const modalCloseEl = document.getElementById("modalClose");
     const fullTextByKey = new Map();
+    const detailByKey = new Map();
     let currentPage = "messages";
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
@@ -168,13 +168,59 @@ const HTML = `<!doctype html>
       const button = shouldCollapse(text) ? \`<button class="more" type="button" data-full-key="\${esc(key)}">مشاهده بیشتر</button>\` : "";
       return \`<span class="clip">\${esc(shortText(text))}</span>\${button}\`;
     }
+    function detailValue(value) {
+      const text = typeof value === "object" && value !== null ? jsonText(value) : String(value ?? "");
+      return \`<span class="\${text.includes("{") || text.includes("[") ? "detail-value detail-pre" : "detail-value"}">\${esc(text)}</span>\`;
+    }
+    function detailRow(label, value) {
+      return \`<div class="detail-row"><div class="detail-label">\${esc(label)}</div>\${detailValue(value)}</div>\`;
+    }
+    function detailHtml(row) {
+      return \`<div class="details-grid">\${[
+        ["Update ID", row.update_id],
+        ["Message ID", row.message_id],
+        ["Group ID", row.chat_id],
+        ["Group Name", row.chat_title],
+        ["Group Username", row.chat_username],
+        ["Group Type", row.chat_type],
+        ["Topic", row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : "")],
+        ["Topic ID", row.message_thread_id],
+        ["Is Topic", row.is_topic_message],
+        ["Username", row.sender_username],
+        ["Sender ID", row.sender_id],
+        ["Sender First Name", row.sender_first_name],
+        ["Sender Last Name", row.sender_last_name],
+        ["Sender Is Bot", row.sender_is_bot],
+        ["Sender Chat ID", row.sender_chat_id],
+        ["Sender Chat Title", row.sender_chat_title],
+        ["Message", row.body],
+        ["Caption", row.caption],
+        ["Date (Tehran)", row.sent_date],
+        ["Time (Tehran)", row.sent_time],
+        ["Type", row.message_type],
+        ["Edited At", row.edited_at_utc],
+        ["Reply To Message ID", row.reply_to_message_id],
+        ["Media File ID", row.media_file_id],
+        ["Media Group ID", row.media_group_id],
+        ["Forward Origin", row.forward_origin_json],
+        ["Entities", row.entities_json],
+        ["Raw Telegram Payload", row.raw_payload_json],
+      ].map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
+    }
     function openModal(text) {
+      modalTitleEl.textContent = "متن کامل پیام";
       modalBodyEl.textContent = text;
+      modalBackdropEl.classList.add("open");
+    }
+    function openDetails(html) {
+      modalTitleEl.textContent = "جزئیات پیام";
+      modalBodyEl.innerHTML = html;
       modalBackdropEl.classList.add("open");
     }
     function closeModal() {
       modalBackdropEl.classList.remove("open");
       modalBodyEl.textContent = "";
+      modalBodyEl.innerHTML = "";
     }
     async function load() {
       const params = new URLSearchParams();
@@ -191,13 +237,13 @@ const HTML = `<!doctype html>
         return;
       }
       fullTextByKey.clear();
+      detailByKey.clear();
       rowsEl.innerHTML = data.messages.map((row, index) => \`
         <tr>
           <td>\${esc(row.update_id)}</td>
           <td>\${esc(row.message_id)}</td>
           <td>\${esc(row.chat_id)}</td>
           <td>\${esc(row.chat_title)}</td>
-          <td>\${esc(row.chat_username)}</td>
           <td>\${esc(row.chat_type)}</td>
           <td>\${esc(row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : ""))}</td>
           <td>\${esc(row.message_thread_id)}</td>
@@ -207,21 +253,15 @@ const HTML = `<!doctype html>
           <td>\${esc(row.sender_first_name)}</td>
           <td>\${esc(row.sender_last_name)}</td>
           <td>\${esc(row.sender_is_bot)}</td>
-          <td>\${esc(row.sender_chat_id)}</td>
-          <td>\${esc(row.sender_chat_title)}</td>
           <td class="body">\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index)}</td>
-          <td class="body">\${textCell(row.caption, "caption-" + index)}</td>
           <td>\${esc(row.sent_date)}</td>
           <td>\${esc(row.sent_time)}</td>
           <td>\${esc(row.message_type)}</td>
           <td>\${esc(row.edited_at_utc)}</td>
           <td>\${esc(row.reply_to_message_id)}</td>
-          <td>\${esc(row.media_file_id)}</td>
-          <td>\${esc(row.media_group_id)}</td>
-          <td class="json">\${textCell(jsonText(row.forward_origin_json), "forward-" + index)}</td>
-          <td class="json">\${textCell(jsonText(row.entities_json), "entities-" + index)}</td>
-          <td class="json">\${textCell(jsonText(row.raw_payload_json), "raw-" + index)}</td>
+          <td><button class="details-button" type="button" data-detail-key="detail-\${index}">Details</button></td>
         </tr>\`).join("");
+      data.messages.forEach((row, index) => detailByKey.set("detail-" + index, detailHtml(row)));
       statusEl.textContent = data.messages.length + " پیام";
     }
     async function loadGroups() {
@@ -260,8 +300,12 @@ const HTML = `<!doctype html>
     }
     rowsEl.addEventListener("click", event => {
       const button = event.target.closest("[data-full-key]");
-      if (!button) return;
-      openModal(fullTextByKey.get(button.dataset.fullKey) || "");
+      if (button) {
+        openModal(fullTextByKey.get(button.dataset.fullKey) || "");
+        return;
+      }
+      const detailsButton = event.target.closest("[data-detail-key]");
+      if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "");
     });
     modalCloseEl.addEventListener("click", closeModal);
     modalBackdropEl.addEventListener("click", event => { if (event.target === modalBackdropEl) closeModal(); });
