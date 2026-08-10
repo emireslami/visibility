@@ -222,9 +222,8 @@ const HTML = `<!doctype html>
           <col style="width:7%" />
           <col style="width:7%" />
           <col style="width:7%" />
-          <col style="width:31%" />
-          <col style="width:8%" />
-          <col style="width:7%" />
+          <col style="width:35%" />
+          <col style="width:11%" />
           <col style="width:10%" />
           <col style="width:4%" />
         </colgroup>
@@ -236,8 +235,7 @@ const HTML = `<!doctype html>
             <th>Sender Last Name</th>
             <th>Username</th>
             <th>Message</th>
-            <th>Date (Jalali)</th>
-            <th>Time (Tehran)</th>
+            <th>Sent At</th>
             <th>Registered At</th>
             <th>Details</th>
           </tr>
@@ -1116,9 +1114,8 @@ const HTML = `<!doctype html>
             <td class="full-cell">\${esc(row.sender_last_name)}</td>
             <td class="full-cell">\${esc(row.sender_username)}</td>
             <td class="body message-cell"><div class="message-inner">\${editedBadge(row)}\${mediaBadge(row)}\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 115)}</div></td>
-            <td>\${esc(row.sent_jalali_date)}</td>
-            <td class="full-cell">\${esc(row.sent_time)}</td>
-            <td class="full-cell">\${esc(row.registered_tehran_datetime)}</td>
+            <td class="full-cell">\${esc([row.sent_jalali_date, row.sent_time].filter(Boolean).join(" "))}</td>
+            <td class="full-cell">\${esc(row.registered_jalali_datetime)}</td>
             <td><button class="details-button" type="button" data-detail-key="detail-\${index}">Details</button></td>
           </tr>\`).join("");
         data.messages.forEach((row, index) => detailByKey.set("detail-" + index, detailHtml(row)));
