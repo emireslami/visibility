@@ -943,7 +943,7 @@ const HTML = `<!doctype html>
           const parentKey = parentKeyFor(current);
           if (!parentKey) return currentKey;
           const parent = latestByMessage.get(parentKey);
-          if (!parent) return parentKey;
+          if (!parent) return currentKey;
           current = parent;
         }
         return row.chat_id + ":" + row.message_id;
