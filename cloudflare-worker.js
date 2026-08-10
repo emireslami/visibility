@@ -19,8 +19,8 @@ const HTML = `<!doctype html>
     .filters { display:grid; grid-template-columns: 1fr 170px 170px 170px 170px 110px; gap:10px; margin-bottom:14px; }
     input, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
-    table { width: 100%; table-layout: fixed; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:ltr; }
-    th, td { padding: 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    table { width: 100%; table-layout: fixed; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:rtl; }
+    th, td { padding: 8px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; font-size: 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     th { background: #eef3f4; color: #24343b; position: sticky; top: 0; }
     td.body { direction:rtl; text-align:right; }
     .clip { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -68,24 +68,24 @@ const HTML = `<!doctype html>
       <table>
         <thead>
           <tr>
-            <th>Update ID</th>
-            <th>Message ID</th>
-            <th>Group ID</th>
             <th>Group Name</th>
+            <th>Sender First Name</th>
+            <th>Sender Last Name</th>
+            <th>Username</th>
+            <th>Message</th>
+            <th>Date (Tehran)</th>
+            <th>Time (Tehran)</th>
+            <th>Edited At</th>
             <th>Group Type</th>
             <th>Topic</th>
             <th>Topic ID</th>
             <th>Is Topic</th>
-            <th>Username</th>
             <th>Sender ID</th>
-            <th>Sender First Name</th>
-            <th>Sender Last Name</th>
             <th>Sender Is Bot</th>
-            <th>Message</th>
-            <th>Date (Tehran)</th>
-            <th>Time (Tehran)</th>
+            <th>Update ID</th>
+            <th>Message ID</th>
+            <th>Group ID</th>
             <th>Type</th>
-            <th>Edited At</th>
             <th>Reply To Message ID</th>
             <th>Details</th>
           </tr>
@@ -240,24 +240,24 @@ const HTML = `<!doctype html>
       detailByKey.clear();
       rowsEl.innerHTML = data.messages.map((row, index) => \`
         <tr>
-          <td>\${esc(row.update_id)}</td>
-          <td>\${esc(row.message_id)}</td>
-          <td>\${esc(row.chat_id)}</td>
           <td>\${esc(row.chat_title)}</td>
+          <td>\${esc(row.sender_first_name)}</td>
+          <td>\${esc(row.sender_last_name)}</td>
+          <td>\${esc(row.sender_username)}</td>
+          <td class="body">\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index)}</td>
+          <td>\${esc(row.sent_date)}</td>
+          <td>\${esc(row.sent_time)}</td>
+          <td>\${esc(row.edited_at_utc)}</td>
           <td>\${esc(row.chat_type)}</td>
           <td>\${esc(row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : ""))}</td>
           <td>\${esc(row.message_thread_id)}</td>
           <td>\${esc(row.is_topic_message)}</td>
-          <td>\${esc(row.sender_username)}</td>
           <td>\${esc(row.sender_id)}</td>
-          <td>\${esc(row.sender_first_name)}</td>
-          <td>\${esc(row.sender_last_name)}</td>
           <td>\${esc(row.sender_is_bot)}</td>
-          <td class="body">\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index)}</td>
-          <td>\${esc(row.sent_date)}</td>
-          <td>\${esc(row.sent_time)}</td>
+          <td>\${esc(row.update_id)}</td>
+          <td>\${esc(row.message_id)}</td>
+          <td>\${esc(row.chat_id)}</td>
           <td>\${esc(row.message_type)}</td>
-          <td>\${esc(row.edited_at_utc)}</td>
           <td>\${esc(row.reply_to_message_id)}</td>
           <td><button class="details-button" type="button" data-detail-key="detail-\${index}">Details</button></td>
         </tr>\`).join("");
