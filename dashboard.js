@@ -253,7 +253,10 @@ function sendHtml(res) {
     .modal-image { max-width:100%; max-height:70vh; object-fit:contain; border:1px solid var(--line); border-radius:8px; background:#f7f8fa; }
     td.json { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     td.json .clip { direction:ltr; text-align:left; }
-    .meta { color: var(--muted); font-size: 12px; }
+    .meta { min-height:24px; display:flex; align-items:center; gap:8px; color: var(--muted); font-size: 12px; }
+    .loading-indicator { display:inline-flex; align-items:center; gap:8px; }
+    .spinner { width:18px; height:18px; border-radius:50%; border:2px solid #c9d3d8; border-top-color:var(--accent); animation:spin .75s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
     .modal-backdrop { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(23,32,38,.42); z-index:20; }
     .modal-backdrop.open { display:flex; }
     .modal { width:min(900px, 100%); max-height:min(82vh, 760px); display:flex; flex-direction:column; background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:0 20px 70px rgba(23,32,38,.24); direction:rtl; }
@@ -394,8 +397,18 @@ function sendHtml(res) {
     const detailByKey = new Map();
     let threadFilterOptions = null;
     let currentPage = "messages";
+    let loadingToken = 0;
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
+    }
+    function showLoading(label = "در حال دریافت داده...") {
+      loadingToken += 1;
+      statusEl.innerHTML = \`<span class="loading-indicator"><span class="spinner" aria-hidden="true"></span><span>\${esc(label)}</span></span>\`;
+      return loadingToken;
+    }
+    function setStatus(token, text) {
+      if (token !== loadingToken) return;
+      statusEl.textContent = text;
     }
     function optionHtml(value, label) {
       return \`<option value="\${esc(value)}">\${esc(label ?? value)}</option>\`;
@@ -769,82 +782,107 @@ function sendHtml(res) {
       modalBodyEl.innerHTML = "";
     }
     async function load() {
-      await loadThreadFilterOptions();
-      const params = new URLSearchParams();
-      if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
-      appendFilterValues(params, "group", messageGroupFilter.values());
-      appendFilterValues(params, "topic", messageTopicFilter.values());
-      if (chatEl.value.trim()) params.set("chat_id", chatEl.value.trim());
-      if (senderEl.value.trim()) params.set("sender_id", senderEl.value.trim());
-      const res = await fetch("/api/messages?" + params);
-      const data = await res.json();
-      fullTextByKey.clear();
-      detailByKey.clear();
-      rowsEl.innerHTML = data.messages.map((row, index) => \`
-        <tr>
-          <td class="full-cell">\${esc(row.chat_title)}</td>
-          <td class="full-cell">\${esc(topicLabel(row))}</td>
-          <td class="full-cell">\${esc(row.sender_first_name)}</td>
-          <td class="full-cell">\${esc(row.sender_last_name)}</td>
-          <td class="full-cell">\${esc(row.sender_username)}</td>
-          <td class="body message-cell"><div class="message-inner">\${editedBadge(row)}\${mediaBadge(row)}\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 115)}</div></td>
-          <td>\${esc(row.sent_jalali_date)}</td>
-          <td class="full-cell">\${esc(row.sent_time)}</td>
-          <td>\${esc(row.message_id)}</td>
-          <td><button class="details-button" type="button" data-detail-key="detail-\${index}">Details</button></td>
-        </tr>\`).join("");
-      data.messages.forEach((row, index) => detailByKey.set("detail-" + index, detailHtml(row)));
-      statusEl.textContent = data.messages.length + " پیام";
+      const token = showLoading("در حال دریافت پیام‌ها...");
+      try {
+        await loadThreadFilterOptions();
+        const params = new URLSearchParams();
+        if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
+        appendFilterValues(params, "group", messageGroupFilter.values());
+        appendFilterValues(params, "topic", messageTopicFilter.values());
+        if (chatEl.value.trim()) params.set("chat_id", chatEl.value.trim());
+        if (senderEl.value.trim()) params.set("sender_id", senderEl.value.trim());
+        const res = await fetch("/api/messages?" + params);
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.messages)) {
+          rowsEl.innerHTML = "";
+          setStatus(token, data.detail || data.error || "خطا در دریافت داده");
+          return;
+        }
+        fullTextByKey.clear();
+        detailByKey.clear();
+        rowsEl.innerHTML = data.messages.map((row, index) => \`
+          <tr>
+            <td class="full-cell">\${esc(row.chat_title)}</td>
+            <td class="full-cell">\${esc(topicLabel(row))}</td>
+            <td class="full-cell">\${esc(row.sender_first_name)}</td>
+            <td class="full-cell">\${esc(row.sender_last_name)}</td>
+            <td class="full-cell">\${esc(row.sender_username)}</td>
+            <td class="body message-cell"><div class="message-inner">\${editedBadge(row)}\${mediaBadge(row)}\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 115)}</div></td>
+            <td>\${esc(row.sent_jalali_date)}</td>
+            <td class="full-cell">\${esc(row.sent_time)}</td>
+            <td>\${esc(row.message_id)}</td>
+            <td><button class="details-button" type="button" data-detail-key="detail-\${index}">Details</button></td>
+          </tr>\`).join("");
+        data.messages.forEach((row, index) => detailByKey.set("detail-" + index, detailHtml(row)));
+        setStatus(token, data.messages.length + " پیام");
+      } catch (error) {
+        setStatus(token, "خطا در دریافت داده");
+      }
     }
     async function loadGroups() {
-      const res = await fetch("/api/groups");
-      const data = await res.json();
-      groupRowsEl.innerHTML = data.groups.map(row => \`
-        <tr>
-          <td>\${esc(row.chat_id)}</td>
-          <td>\${esc(row.chat_title)}</td>
-          <td class="full-cell">\${esc(row.topic_names)}</td>
-          <td>\${esc(row.chat_username)}</td>
-          <td>\${esc(row.chat_type)}</td>
-          <td>\${esc(row.message_count)}</td>
-          <td>\${esc(row.joined_date)}</td>
-          <td>\${esc(row.joined_time)}</td>
-          <td>\${esc(row.last_seen_date)}</td>
-          <td>\${esc(row.last_seen_time)}</td>
-          <td>\${esc(row.last_message_date)}</td>
-          <td>\${esc(row.last_message_time)}</td>
-        </tr>\`).join("");
-      statusEl.textContent = data.groups.length + " گروه";
+      const token = showLoading("در حال دریافت گروه‌ها...");
+      try {
+        const res = await fetch("/api/groups");
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.groups)) {
+          groupRowsEl.innerHTML = "";
+          setStatus(token, data.detail || data.error || "خطا در دریافت گروه‌ها");
+          return;
+        }
+        groupRowsEl.innerHTML = data.groups.map(row => \`
+          <tr>
+            <td>\${esc(row.chat_id)}</td>
+            <td>\${esc(row.chat_title)}</td>
+            <td class="full-cell">\${esc(row.topic_names)}</td>
+            <td>\${esc(row.chat_username)}</td>
+            <td>\${esc(row.chat_type)}</td>
+            <td>\${esc(row.message_count)}</td>
+            <td>\${esc(row.joined_date)}</td>
+            <td>\${esc(row.joined_time)}</td>
+            <td>\${esc(row.last_seen_date)}</td>
+            <td>\${esc(row.last_seen_time)}</td>
+            <td>\${esc(row.last_message_date)}</td>
+            <td>\${esc(row.last_message_time)}</td>
+          </tr>\`).join("");
+        setStatus(token, data.groups.length + " گروه");
+      } catch (error) {
+        setStatus(token, "خطا در دریافت گروه‌ها");
+      }
     }
     async function loadThreads() {
-      await loadThreadFilterOptions();
-      const params = new URLSearchParams();
-      appendFilterValues(params, "group", threadGroupFilter.values());
-      appendFilterValues(params, "topic", threadTopicFilter.values());
-      const jalaliDate = selectedThreadJalaliDate();
-      if (jalaliDate) params.set("jalali_date", jalaliDate);
-      const res = await fetch("/api/messages?" + params);
-      const data = await res.json();
-      if (!res.ok || !Array.isArray(data.messages)) {
-        threadRowsEl.innerHTML = "";
-        statusEl.textContent = data.detail || data.error || "خطا در دریافت تردها";
-        return;
+      const token = showLoading("در حال دریافت تردها...");
+      try {
+        await loadThreadFilterOptions();
+        const params = new URLSearchParams();
+        appendFilterValues(params, "group", threadGroupFilter.values());
+        appendFilterValues(params, "topic", threadTopicFilter.values());
+        const jalaliDate = selectedThreadJalaliDate();
+        if (jalaliDate) params.set("jalali_date", jalaliDate);
+        const res = await fetch("/api/messages?" + params);
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.messages)) {
+          threadRowsEl.innerHTML = "";
+          setStatus(token, data.detail || data.error || "خطا در دریافت تردها");
+          return;
+        }
+        fullTextByKey.clear();
+        detailByKey.clear();
+        data.messages.forEach((row, index) => detailByKey.set("thread-detail-" + index, detailHtml(row)));
+        const indexByRow = new Map(data.messages.map((row, index) => [row, index]));
+        const threads = buildThreads(data.messages);
+        threadRowsEl.innerHTML = threads.map((thread) => {
+          const rootIndex = indexByRow.get(thread.root) ?? "missing-" + thread.root.message_id;
+          return \`<section class="thread-card">
+            \${threadNode(thread.root, "thread-root", rootIndex)}
+            <div class="thread-replies">
+              \${thread.replies.map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply))).join("")}
+            </div>
+          </section>\`;
+        }).join("");
+        setStatus(token, threads.length + " ترد");
+      } catch (error) {
+        setStatus(token, "خطا در دریافت تردها");
       }
-      fullTextByKey.clear();
-      detailByKey.clear();
-      data.messages.forEach((row, index) => detailByKey.set("thread-detail-" + index, detailHtml(row)));
-      const indexByRow = new Map(data.messages.map((row, index) => [row, index]));
-      const threads = buildThreads(data.messages);
-      threadRowsEl.innerHTML = threads.map((thread) => {
-        const rootIndex = indexByRow.get(thread.root) ?? "missing-" + thread.root.message_id;
-        return \`<section class="thread-card">
-          \${threadNode(thread.root, "thread-root", rootIndex)}
-          <div class="thread-replies">
-            \${thread.replies.map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply))).join("")}
-          </div>
-        </section>\`;
-      }).join("");
-      statusEl.textContent = threads.length + " ترد";
     }
     function showPage(page) {
       currentPage = page;
