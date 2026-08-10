@@ -38,9 +38,9 @@ const HTML = `<!doctype html>
     .details-button { height: 28px; padding: 0 8px; font-size: 12px; }
     .thread-list { display:grid; gap:14px; max-width:980px; margin:0 auto; direction:rtl; }
     .thread-card { background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
-    .thread-root, .thread-reply, .thread-missing { padding:14px 16px; }
+    .thread-root, .thread-reply, .thread-missing { padding:16px; }
     .thread-replies { border-top:1px solid var(--line); }
-    .thread-reply { position:relative; margin-right:28px; border-right:2px solid var(--line); }
+    .thread-reply { position:relative; margin-right:28px; border-right:2px solid var(--line); background:#fff; }
     .thread-reply + .thread-reply { border-top:1px solid var(--line); }
     .thread-missing { color:var(--muted); background:#fbfcfd; }
     .thread-item { display:grid; grid-template-columns:42px minmax(0, 1fr); gap:10px; align-items:start; }
@@ -55,12 +55,12 @@ const HTML = `<!doctype html>
     .reaction-chip { display:inline-flex; align-items:center; gap:4px; min-height:24px; padding:2px 6px; border:1px solid var(--line); border-radius:999px; background:#f7f8fa; }
     .reaction-emoji { font-size:15px; line-height:1; }
     .reaction-avatar { width:18px; height:18px; border-radius:50%; border:1px solid var(--line); background:#eef3f4; color:#36505a; display:grid; place-items:center; font-size:10px; font-weight:800; object-fit:cover; direction:ltr; }
-    .thread-media { margin-top:10px; display:flex; justify-content:flex-end; }
-    .thread-photo { max-width:min(280px, 100%); max-height:220px; border:1px solid var(--line); border-radius:8px; object-fit:cover; display:block; }
+    .thread-media { clear:both; width:100%; margin-top:12px; margin-bottom:4px; display:flex; justify-content:flex-end; }
+    .thread-photo { width:min(280px, 100%); aspect-ratio:16/9; max-height:220px; border:1px solid var(--line); border-radius:8px; object-fit:cover; display:block; background:#f7f8fa; }
     .thread-file { display:inline-flex; align-items:center; gap:8px; min-height:34px; padding:0 10px; border:1px solid var(--line); border-radius:8px; background:#f7f8fa; color:var(--ink); text-decoration:none; direction:rtl; }
     .media-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
     .media-preview { max-width:260px; max-height:220px; border:1px solid var(--line); border-radius:8px; object-fit:contain; display:block; background:#f7f8fa; }
-    .media-open { padding:0; border:0; background:transparent; cursor:zoom-in; display:block; }
+    .media-open { flex:0 0 auto; padding:0; border:0; background:transparent; cursor:zoom-in; display:block; line-height:0; }
     .modal-media { display:grid; gap:14px; justify-items:center; white-space:normal; }
     .modal-image { max-width:100%; max-height:70vh; object-fit:contain; border:1px solid var(--line); border-radius:8px; background:#f7f8fa; }
     td.json { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
@@ -379,7 +379,7 @@ const HTML = `<!doctype html>
     }
     function threadMedia(row) {
       if (isPhoto(row)) {
-        return \`<div class="thread-media"><button class="media-open" type="button" data-media-src="\${fileUrl(row)}" data-media-download="\${fileUrl(row, true)}" aria-label="مشاهده عکس"><img class="thread-photo" src="\${fileUrl(row)}" alt="" loading="lazy" /></button></div>\`;
+        return \`<div class="thread-media"><button class="media-open" type="button" data-media-src="\${fileUrl(row)}" data-media-download="\${fileUrl(row, true)}" aria-label="مشاهده عکس"><img class="thread-photo" src="\${fileUrl(row)}" width="280" height="158" alt="" loading="lazy" /></button></div>\`;
       }
       if (isDownloadableFile(row)) {
         return \`<div class="thread-media"><a class="thread-file" href="\${fileUrl(row, true)}" download><span>فایل</span><strong>\${esc(mediaFileName(row))}</strong></a></div>\`;
