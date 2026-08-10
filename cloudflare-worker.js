@@ -185,6 +185,14 @@ const HTML = `<!doctype html>
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
     }
+    function linkify(value) {
+      const escaped = esc(value);
+      return escaped.replace(/(https?:\\/\\/[^\\s<]+)/g, (url) => {
+        const cleanUrl = url.replace(/[),.;:!?]+$/g, "");
+        const suffix = url.slice(cleanUrl.length);
+        return \`<a href="\${cleanUrl}" target="_blank" rel="noopener noreferrer">\${cleanUrl}</a>\${suffix}\`;
+      });
+    }
     function jsonText(value) {
       if (value == null) return "";
       if (typeof value === "string") {
@@ -202,13 +210,13 @@ const HTML = `<!doctype html>
     function textCell(value, key, limit = 90) {
       const text = String(value ?? "");
       if (!text) return "";
-      fullTextByKey.set(key, text);
+      fullTextByKey.set(key, linkify(text));
       const button = shouldCollapse(text, limit) ? \`<button class="more" type="button" data-full-key="\${esc(key)}">مشاهده بیشتر</button>\` : "";
-      return \`<span class="clip">\${esc(shortText(text, limit))}</span>\${button}\`;
+      return \`<span class="clip">\${linkify(shortText(text, limit))}</span>\${button}\`;
     }
     function detailValue(value) {
       const text = typeof value === "object" && value !== null ? jsonText(value) : String(value ?? "");
-      return \`<span class="\${text.includes("{") || text.includes("[") ? "detail-value detail-pre" : "detail-value"}">\${esc(text)}</span>\`;
+      return \`<span class="\${text.includes("{") || text.includes("[") ? "detail-value detail-pre" : "detail-value"}">\${linkify(text)}</span>\`;
     }
     function detailRow(label, value) {
       return \`<div class="detail-row"><div class="detail-label">\${esc(label)}</div>\${detailValue(value)}</div>\`;
@@ -258,7 +266,7 @@ const HTML = `<!doctype html>
     }
     function compactMessage(row) {
       const text = messageContent(row);
-      return text ? esc(text) : '<span class="thread-muted">بدون متن</span>';
+      return text ? linkify(text) : '<span class="thread-muted">بدون متن</span>';
     }
     function initials(row) {
       const source = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "?";
@@ -336,7 +344,7 @@ const HTML = `<!doctype html>
     }
     function openModal(text) {
       modalTitleEl.textContent = "متن کامل پیام";
-      modalBodyEl.textContent = text;
+      modalBodyEl.innerHTML = text;
       modalBackdropEl.classList.add("open");
     }
     function openDetails(html) {
