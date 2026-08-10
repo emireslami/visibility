@@ -2831,6 +2831,49 @@ async function upsertTopic(env, message, update) {
   if (!response.ok) throw new Error(await response.text());
 }
 
+const TELEGRAM_ALLOWED_UPDATES = ["message", "edited_message", "channel_post", "edited_channel_post", "message_reaction", "message_reaction_count", "my_chat_member"];
+
+async function telegramApi(env, method, payload = null) {
+  if (!env.TELEGRAM_BOT_TOKEN) throw new Error("Telegram token is not configured");
+  const init = payload ? {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  } : {};
+  const response = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`, init);
+  const body = await readSupabaseJson(response);
+  if (!response.ok || body?.ok === false) {
+    throw new Error(body?.description || body?.message || `Telegram ${method} failed`);
+  }
+  return body;
+}
+
+async function fetchTelegramWebhookInfo(env) {
+  try {
+    const body = await telegramApi(env, "getWebhookInfo");
+    return json({ webhook: body.result || body });
+  } catch (error) {
+    return json({ error: error.message || "دریافت وضعیت webhook انجام نشد" }, 500);
+  }
+}
+
+async function resetTelegramWebhook(request, env) {
+  try {
+    const origin = new URL(request.url).origin;
+    const payload = {
+      url: `${origin}/telegram-webhook`,
+      allowed_updates: TELEGRAM_ALLOWED_UPDATES,
+      drop_pending_updates: false,
+    };
+    if (env.TELEGRAM_WEBHOOK_SECRET) payload.secret_token = env.TELEGRAM_WEBHOOK_SECRET;
+    const body = await telegramApi(env, "setWebhook", payload);
+    const info = await telegramApi(env, "getWebhookInfo");
+    return json({ ok: true, result: body.result, webhook: info.result || info });
+  } catch (error) {
+    return json({ error: error.message || "Reset webhook انجام نشد" }, 500);
+  }
+}
+
 async function handleTelegramWebhook(request, env) {
   if (request.method !== "POST") return text("ok");
   if (env.TELEGRAM_WEBHOOK_SECRET && request.headers.get("x-telegram-bot-api-secret-token") !== env.TELEGRAM_WEBHOOK_SECRET) {
@@ -3231,6 +3274,10 @@ export default {
     if (url.pathname === "/api/debug") return text("Not found", 404);
     if (url.pathname === "/api/me" && request.method === "GET") return fetchCurrentUser(authUser);
     if (url.pathname === "/api/me" && request.method === "PATCH") return updateCurrentUserProfile(request, env, authUser);
+    if (url.pathname === "/api/telegram-webhook-info" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
+    if (url.pathname === "/api/telegram-webhook-reset" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
+    if (url.pathname === "/api/telegram-webhook-info" && request.method === "GET") return fetchTelegramWebhookInfo(env);
+    if (url.pathname === "/api/telegram-webhook-reset" && request.method === "POST") return resetTelegramWebhook(request, env);
     if (url.pathname === "/api/access-users" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname.startsWith("/api/access-users/") && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname === "/api/access-logs" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
