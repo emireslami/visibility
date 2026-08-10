@@ -1079,7 +1079,8 @@ const HTML = `<!doctype html>
 </body>
 </html>`;
 
-const LOGIN_HTML = `<!doctype html>
+function loginHtml(error = "", email = "") {
+  return `<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="utf-8" />
@@ -1099,19 +1100,22 @@ const LOGIN_HTML = `<!doctype html>
     input, button { width:100%; height:40px; border-radius:6px; font:inherit; }
     input { border:1px solid var(--line); padding:0 10px; }
     button { margin-top:12px; border:0; background:var(--accent); color:#fff; cursor:pointer; }
+    .error { min-height:22px; margin-bottom:10px; color:#b42318; font-size:12px; line-height:1.7; }
   </style>
 </head>
 <body>
   <form method="post" action="/login">
     <h1>Visibility</h1>
+    <div class="error">${htmlEscape(error)}</div>
     <label for="email">ایمیل</label>
-    <input id="email" name="email" type="email" autocomplete="username" placeholder="anything@toman.ir" autofocus />
+    <input id="email" name="email" type="email" autocomplete="username" placeholder="anything@toman.ir" value="${htmlEscape(email)}" autofocus />
     <label for="password">پسورد</label>
     <input id="password" name="password" type="password" autocomplete="current-password" />
     <button type="submit">ورود</button>
   </form>
 </body>
 </html>`;
+}
 
 function passwordPageHtml(error = "") {
   return `<!doctype html>
@@ -1170,6 +1174,16 @@ function text(value, status = 200, contentType = "text/plain; charset=utf-8") {
       "cache-control": "no-store",
     },
   });
+}
+
+function htmlEscape(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[char]));
 }
 
 function redirect(location) {
@@ -1265,18 +1279,24 @@ async function dashboardAuthorized(request, env) {
 }
 
 async function handleLogin(request, env) {
-  if (request.method !== "POST") return text(LOGIN_HTML, 200, "text/html; charset=utf-8");
+  if (request.method !== "POST") return text(loginHtml(), 200, "text/html; charset=utf-8");
   const form = await request.formData();
   const email = normalizeEmail(form.get("email"));
   const password = String(form.get("password") || "");
-  if (!validAccessEmail(email)) return text(LOGIN_HTML, 401, "text/html; charset=utf-8");
+  if (!validAccessEmail(email)) return text(loginHtml("ایمیل باید به شکل anything@toman.ir باشد.", email), 400, "text/html; charset=utf-8");
   let user = await getAccessUserByEmail(env, email);
   const userCount = await countAccessUsers(env);
   if (!user && userCount === 0 && password === "changeme") {
     user = await createAccessUser(env, email);
   }
-  if (!user || !user.is_active || await hashPassword(password, user.password_salt) !== user.password_hash) {
-    return text(LOGIN_HTML, 401, "text/html; charset=utf-8");
+  if (!user) {
+    return text(loginHtml("این ایمیل مجوز دسترسی ندارد.", email), 401, "text/html; charset=utf-8");
+  }
+  if (!user.is_active) {
+    return text(loginHtml("دسترسی این ایمیل revoke شده است.", email), 403, "text/html; charset=utf-8");
+  }
+  if (await hashPassword(password, user.password_salt) !== user.password_hash) {
+    return text(loginHtml("پسورد وارد شده درست نیست.", email), 401, "text/html; charset=utf-8");
   }
   await patchAccessUser(env, email, { last_login_at_utc: new Date().toISOString(), updated_at_utc: new Date().toISOString() });
   const cookieValue = await makeSessionCookie(user, env);
@@ -2276,7 +2296,7 @@ export default {
     const apiPath = url.pathname.startsWith("/api/");
     if (!authUser) {
       if (apiPath) return json({ error: "Unauthorized" }, 401);
-      return text(LOGIN_HTML, 200, "text/html; charset=utf-8");
+      return text(loginHtml("برای مشاهده داشبورد ابتدا وارد شوید."), 200, "text/html; charset=utf-8");
     }
     if (authUser.must_change_password) {
       if (apiPath) return json({ error: "Password change required" }, 403);
