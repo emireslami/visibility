@@ -867,7 +867,7 @@ async function handle(req, res) {
       limit 10000
     `);
     const topics = await query(`
-      select t.chat_id, c.chat_title, coalesce(t.topic_name, '#' || t.message_thread_id::text) as topic_name, t.message_thread_id
+      select t.chat_id, c.chat_title, t.topic_name
       from public.telegram_topics t
       join public.telegram_chats c on c.chat_id = t.chat_id
       where c.chat_title is not null and t.topic_name is not null and t.topic_name <> '' and t.topic_name !~ '^#[0-9]+$'

@@ -1513,7 +1513,6 @@ async function fetchThreadFilterOptions(request, env) {
       chat_id: topic.chat_id,
       chat_title: chatTitle,
       topic_name: topicName,
-      message_thread_id: topic.message_thread_id,
     });
   }
   const topics = [...topicsByKey.values()].sort((a, b) => a.chat_title.localeCompare(b.chat_title) || a.topic_name.localeCompare(b.topic_name));
