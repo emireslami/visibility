@@ -79,6 +79,8 @@ const HTML = `<!doctype html>
             <th>Date (Jalali)</th>
             <th>Time (Tehran)</th>
             <th>Edited At</th>
+            <th>Message ID</th>
+            <th>Reply To Message ID</th>
             <th>Details</th>
           </tr>
         </thead>
@@ -242,6 +244,8 @@ const HTML = `<!doctype html>
           <td>\${esc(row.sent_jalali_date)}</td>
           <td class="full-cell">\${esc(row.sent_time)}</td>
           <td class="full-cell">\${esc(row.edited_at_utc)}</td>
+          <td>\${esc(row.message_id)}</td>
+          <td>\${esc(row.reply_to_message_id)}</td>
           <td><button class="details-button" type="button" data-detail-key="detail-\${index}">Details</button></td>
         </tr>\`).join("");
       data.messages.forEach((row, index) => detailByKey.set("detail-" + index, detailHtml(row)));
