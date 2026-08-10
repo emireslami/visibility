@@ -44,8 +44,8 @@ const HTML = `<!doctype html>
           <th>Username</th>
           <th>Sender ID</th>
           <th>Message</th>
-          <th>Date</th>
-          <th>Time</th>
+          <th>Date (Tehran)</th>
+          <th>Time (Tehran)</th>
           <th>Type</th>
         </tr>
       </thead>
@@ -170,6 +170,29 @@ function mediaFileId(message) {
 
 function isoFromUnix(value) {
   return value ? new Date(value * 1000).toISOString() : null;
+}
+
+function tehranParts(date) {
+  const dateParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tehran",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const timeParts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Tehran",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const dateMap = Object.fromEntries(dateParts.map((part) => [part.type, part.value]));
+  const timeMap = Object.fromEntries(timeParts.map((part) => [part.type, part.value]));
+  return {
+    sent_date: `${dateMap.year}-${dateMap.month}-${dateMap.day}`,
+    sent_time: `${timeMap.hour}:${timeMap.minute}:${timeMap.second}`,
+    display_timezone: "Asia/Tehran",
+  };
 }
 
 function topicData(message) {
@@ -318,8 +341,7 @@ async function fetchMessages(request, env) {
     return {
       ...row,
       topic_name: row.topic_name || mappedTopicName || null,
-      sent_date: date ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tehran" }).format(date) : null,
-      sent_time: date ? new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Tehran", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(date) : null,
+      ...(date ? tehranParts(date) : { sent_date: null, sent_time: null, display_timezone: "Asia/Tehran" }),
     };
   });
   return json({ messages });

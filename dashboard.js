@@ -84,8 +84,8 @@ function sendHtml(res) {
           <th>Username</th>
           <th>Sender ID</th>
           <th>Message</th>
-          <th>Date</th>
-          <th>Time</th>
+          <th>Date (Tehran)</th>
+          <th>Time (Tehran)</th>
           <th>Type</th>
         </tr>
       </thead>
