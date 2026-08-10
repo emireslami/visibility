@@ -91,6 +91,22 @@ const HTML = `<!doctype html>
     .detail-label { color:var(--muted); font-size:12px; font-weight:700; }
     .detail-value { min-width:0; overflow-wrap:anywhere; white-space:pre-wrap; }
     .detail-pre { direction:ltr; text-align:left; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px; line-height:1.55; }
+    .chart-panel { max-width:1180px; margin:0 auto; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+    .chart-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .chart-head h2 { margin:0; font-size:18px; }
+    .chart-head p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+    .chart-wrap { min-height:380px; overflow-x:auto; overflow-y:hidden; padding:8px 0 2px; }
+    .stacked-chart { min-width:720px; height:350px; display:flex; align-items:end; gap:14px; direction:ltr; border-bottom:1px solid var(--line); padding:28px 4px 0; }
+    .day-bar { flex:1 0 58px; min-width:58px; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:6px; }
+    .bar-total { height:18px; font-size:12px; font-weight:800; color:var(--ink); direction:ltr; }
+    .bar-stack { width:100%; min-height:2px; display:flex; flex-direction:column-reverse; border:1px solid var(--line); border-radius:6px 6px 0 0; overflow:hidden; background:#f1f4f6; }
+    .bar-segment { width:100%; min-height:2px; cursor:help; }
+    .bar-segment:hover { filter:brightness(.92); }
+    .bar-label { min-height:34px; color:var(--muted); font-size:11px; text-align:center; line-height:1.35; direction:ltr; }
+    .chart-legend { display:flex; flex-wrap:wrap; gap:8px 12px; margin-top:16px; direction:rtl; }
+    .legend-item { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; }
+    .legend-swatch { width:10px; height:10px; border-radius:2px; flex:0 0 auto; }
+    .empty-chart { min-height:240px; display:grid; place-items:center; color:var(--muted); border:1px dashed var(--line); border-radius:8px; }
     @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } }
   </style>
 </head>
@@ -99,6 +115,7 @@ const HTML = `<!doctype html>
     <div class="brand">
       <h1>Visibility</h1>
       <nav aria-label="Dashboard pages">
+        <button class="nav-button" id="dashboardNav" type="button">Dashboard</button>
         <button class="nav-button active" id="messagesNav" type="button">Messages</button>
         <button class="nav-button" id="groupsNav" type="button">Groups</button>
         <button class="nav-button" id="threadsNav" type="button">Threads</button>
@@ -107,6 +124,18 @@ const HTML = `<!doctype html>
     <div class="meta" id="status">در حال دریافت...</div>
   </header>
   <main>
+    <section class="page" id="dashboardPage" hidden>
+      <section class="chart-panel">
+        <div class="chart-head">
+          <div>
+            <h2>Dashboard</h2>
+            <p>تعداد کل پیام‌ها بر اساس روز، با تفکیک رنگی گروه‌ها</p>
+          </div>
+        </div>
+        <div class="chart-wrap" id="dailyChart"></div>
+        <div class="chart-legend" id="chartLegend"></div>
+      </section>
+    </section>
     <section class="page" id="messagesPage">
       <section class="filters">
         <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
@@ -192,10 +221,14 @@ const HTML = `<!doctype html>
     const rowsEl = document.getElementById("rows");
     const groupRowsEl = document.getElementById("groupRows");
     const threadRowsEl = document.getElementById("threadRows");
+    const dailyChartEl = document.getElementById("dailyChart");
+    const chartLegendEl = document.getElementById("chartLegend");
     const statusEl = document.getElementById("status");
+    const dashboardNavEl = document.getElementById("dashboardNav");
     const messagesNavEl = document.getElementById("messagesNav");
     const groupsNavEl = document.getElementById("groupsNav");
     const threadsNavEl = document.getElementById("threadsNav");
+    const dashboardPageEl = document.getElementById("dashboardPage");
     const messagesPageEl = document.getElementById("messagesPage");
     const groupsPageEl = document.getElementById("groupsPage");
     const threadsPageEl = document.getElementById("threadsPage");
@@ -217,6 +250,7 @@ const HTML = `<!doctype html>
     const modalCloseEl = document.getElementById("modalClose");
     const fullTextByKey = new Map();
     const detailByKey = new Map();
+    const chartColors = ["#087f8c", "#f25f5c", "#3b82f6", "#f59e0b", "#7c3aed", "#10b981", "#ef476f", "#6b7280", "#06b6d4", "#84cc16"];
     let threadFilterOptions = null;
     let currentPage = "messages";
     let loadingToken = 0;
@@ -603,6 +637,48 @@ const HTML = `<!doctype html>
       modalBodyEl.textContent = "";
       modalBodyEl.innerHTML = "";
     }
+    function renderDailyChart(days, groups) {
+      if (!Array.isArray(days) || !days.length) {
+        dailyChartEl.innerHTML = '<div class="empty-chart">داده‌ای برای نمایش نمودار وجود ندارد</div>';
+        chartLegendEl.innerHTML = "";
+        return;
+      }
+      const colorByGroup = new Map(groups.map((group, index) => [group, chartColors[index % chartColors.length]]));
+      const maxTotal = Math.max(...days.map((day) => Number(day.total || 0)), 1);
+      dailyChartEl.innerHTML = \`<div class="stacked-chart">\${days.map((day) => {
+        const total = Number(day.total || 0);
+        const height = Math.max(2, Math.round((total / maxTotal) * 275));
+        const segments = groups.map((group) => {
+          const count = Number(day.groups?.[group] || 0);
+          if (!count) return "";
+          const segmentHeight = Math.max(2, (count / total) * height);
+          return \`<div class="bar-segment" style="height:\${segmentHeight}px;background:\${colorByGroup.get(group)}" title="\${esc(group)}: \${count} پیام در \${esc(day.date)}"></div>\`;
+        }).join("");
+        return \`<div class="day-bar">
+          <div class="bar-total">\${total}</div>
+          <div class="bar-stack" style="height:\${height}px">\${segments}</div>
+          <div class="bar-label">\${esc(day.jalali_date || day.date)}<br />\${esc(day.date)}</div>
+        </div>\`;
+      }).join("")}</div>\`;
+      chartLegendEl.innerHTML = groups.map((group) => \`<span class="legend-item"><span class="legend-swatch" style="background:\${colorByGroup.get(group)}"></span>\${esc(group)}</span>\`).join("");
+    }
+    async function loadDashboard() {
+      const token = showLoading("در حال دریافت نمودار...");
+      try {
+        const res = await fetch("/api/dashboard");
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.days)) {
+          dailyChartEl.innerHTML = "";
+          chartLegendEl.innerHTML = "";
+          setStatus(token, data.detail || data.error || "خطا در دریافت نمودار");
+          return;
+        }
+        renderDailyChart(data.days, data.groups || []);
+        setStatus(token, data.total_messages + " پیام در " + data.days.length + " روز");
+      } catch (error) {
+        setStatus(token, "خطا در دریافت نمودار");
+      }
+    }
     async function load() {
       const token = showLoading("در حال دریافت پیام‌ها...");
       try {
@@ -708,15 +784,19 @@ const HTML = `<!doctype html>
     }
     function showPage(page) {
       currentPage = page;
+      const isDashboard = page === "dashboard";
       const isGroups = page === "groups";
       const isThreads = page === "threads";
-      messagesPageEl.hidden = isGroups || isThreads;
+      dashboardPageEl.hidden = !isDashboard;
+      messagesPageEl.hidden = isDashboard || isGroups || isThreads;
       groupsPageEl.hidden = !isGroups;
       threadsPageEl.hidden = !isThreads;
-      messagesNavEl.classList.toggle("active", !isGroups && !isThreads);
+      dashboardNavEl.classList.toggle("active", isDashboard);
+      messagesNavEl.classList.toggle("active", !isDashboard && !isGroups && !isThreads);
       groupsNavEl.classList.toggle("active", isGroups);
       threadsNavEl.classList.toggle("active", isThreads);
-      if (isGroups) loadGroups();
+      if (isDashboard) loadDashboard();
+      else if (isGroups) loadGroups();
       else if (isThreads) loadThreadFilterOptions().then(loadThreads);
       else loadThreadFilterOptions().then(load);
     }
@@ -743,6 +823,7 @@ const HTML = `<!doctype html>
     document.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
     refreshEl.addEventListener("click", load);
     threadRefreshEl.addEventListener("click", loadThreads);
+    dashboardNavEl.addEventListener("click", () => showPage("dashboard"));
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
@@ -756,7 +837,7 @@ const HTML = `<!doctype html>
       }
     });
     loadThreadFilterOptions().then(load);
-    setInterval(() => { if (currentPage === "groups") loadGroups(); else if (currentPage === "threads") loadThreads(); else load(); }, 5000);
+    setInterval(() => { if (currentPage === "dashboard") loadDashboard(); else if (currentPage === "groups") loadGroups(); else if (currentPage === "threads") loadThreads(); else load(); }, 5000);
   </script>
 </body>
 </html>`;
@@ -1585,6 +1666,37 @@ async function fetchGroups(request, env) {
   return json({ groups });
 }
 
+async function fetchDashboard(request, env) {
+  const params = new URLSearchParams();
+  params.set("select", "sent_at_utc,chat_title");
+  params.set("sent_at_utc", "not.is.null");
+  params.set("order", "sent_at_utc.asc");
+  params.set("limit", "10000");
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, {
+    headers: supabaseHeaders(env),
+  });
+  if (!response.ok) {
+    return json({ error: "Supabase dashboard request failed", detail: await response.text() }, 500);
+  }
+  const byDate = new Map();
+  const groupTotals = new Map();
+  let totalMessages = 0;
+  for (const row of await response.json()) {
+    if (!row.sent_at_utc) continue;
+    const parts = tehranParts(new Date(row.sent_at_utc));
+    const group = row.chat_title || "بدون نام";
+    const day = byDate.get(parts.sent_date) || { date: parts.sent_date, jalali_date: parts.sent_jalali_date, total: 0, groups: {} };
+    day.total += 1;
+    day.groups[group] = (day.groups[group] || 0) + 1;
+    byDate.set(parts.sent_date, day);
+    groupTotals.set(group, (groupTotals.get(group) || 0) + 1);
+    totalMessages += 1;
+  }
+  const days = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  const groups = [...groupTotals.entries()].sort((a, b) => b[1] - a[1]).map(([group]) => group);
+  return json({ days, groups, total_messages: totalMessages, display_timezone: "Asia/Tehran" });
+}
+
 async function fetchThreadFilterOptions(request, env) {
   const headers = supabaseHeaders(env);
   const groupParams = new URLSearchParams();
@@ -1649,13 +1761,14 @@ export default {
       });
     }
     if (!dashboardAuthorized(request, env)) {
-      if (url.pathname === "/api/messages" || url.pathname === "/api/groups" || url.pathname === "/api/thread-filter-options" || url.pathname === "/api/profile-photo" || url.pathname === "/api/telegram-file") return json({ error: "Unauthorized" }, 401);
+      if (url.pathname === "/api/messages" || url.pathname === "/api/groups" || url.pathname === "/api/dashboard" || url.pathname === "/api/thread-filter-options" || url.pathname === "/api/profile-photo" || url.pathname === "/api/telegram-file") return json({ error: "Unauthorized" }, 401);
       return text(LOGIN_HTML, 200, "text/html; charset=utf-8");
     }
     if (url.pathname === "/") return text(HTML, 200, "text/html; charset=utf-8");
     if (url.pathname === "/api/debug") return text("Not found", 404);
     if (url.pathname === "/api/messages") return fetchMessages(request, env);
     if (url.pathname === "/api/groups") return fetchGroups(request, env);
+    if (url.pathname === "/api/dashboard") return fetchDashboard(request, env);
     if (url.pathname === "/api/thread-filter-options") return fetchThreadFilterOptions(request, env);
     if (url.pathname === "/api/profile-photo") return fetchTelegramProfilePhoto(request, env);
     if (url.pathname === "/api/telegram-file") return fetchTelegramFile(request, env);

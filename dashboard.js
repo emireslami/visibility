@@ -269,6 +269,22 @@ function sendHtml(res) {
     .detail-label { color:var(--muted); font-size:12px; font-weight:700; }
     .detail-value { min-width:0; overflow-wrap:anywhere; white-space:pre-wrap; }
     .detail-pre { direction:ltr; text-align:left; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px; line-height:1.55; }
+    .chart-panel { max-width:1180px; margin:0 auto; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+    .chart-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .chart-head h2 { margin:0; font-size:18px; }
+    .chart-head p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+    .chart-wrap { min-height:380px; overflow-x:auto; overflow-y:hidden; padding:8px 0 2px; }
+    .stacked-chart { min-width:720px; height:350px; display:flex; align-items:end; gap:14px; direction:ltr; border-bottom:1px solid var(--line); padding:28px 4px 0; }
+    .day-bar { flex:1 0 58px; min-width:58px; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:6px; }
+    .bar-total { height:18px; font-size:12px; font-weight:800; color:var(--ink); direction:ltr; }
+    .bar-stack { width:100%; min-height:2px; display:flex; flex-direction:column-reverse; border:1px solid var(--line); border-radius:6px 6px 0 0; overflow:hidden; background:#f1f4f6; }
+    .bar-segment { width:100%; min-height:2px; cursor:help; }
+    .bar-segment:hover { filter:brightness(.92); }
+    .bar-label { min-height:34px; color:var(--muted); font-size:11px; text-align:center; line-height:1.35; direction:ltr; }
+    .chart-legend { display:flex; flex-wrap:wrap; gap:8px 12px; margin-top:16px; direction:rtl; }
+    .legend-item { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; }
+    .legend-swatch { width:10px; height:10px; border-radius:2px; flex:0 0 auto; }
+    .empty-chart { min-height:240px; display:grid; place-items:center; color:var(--muted); border:1px dashed var(--line); border-radius:8px; }
     @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } }
   </style>
 </head>
@@ -277,6 +293,7 @@ function sendHtml(res) {
     <div class="brand">
       <h1>Telegram Visibility</h1>
       <nav aria-label="Dashboard pages">
+        <button class="nav-button" id="dashboardNav" type="button">Dashboard</button>
         <button class="nav-button active" id="messagesNav" type="button">Messages</button>
         <button class="nav-button" id="groupsNav" type="button">Groups</button>
         <button class="nav-button" id="threadsNav" type="button">Threads</button>
@@ -285,6 +302,18 @@ function sendHtml(res) {
     <div class="meta" id="status">در حال دریافت...</div>
   </header>
   <main>
+    <section class="page" id="dashboardPage" hidden>
+      <section class="chart-panel">
+        <div class="chart-head">
+          <div>
+            <h2>Dashboard</h2>
+            <p>تعداد کل پیام‌ها بر اساس روز، با تفکیک رنگی گروه‌ها</p>
+          </div>
+        </div>
+        <div class="chart-wrap" id="dailyChart"></div>
+        <div class="chart-legend" id="chartLegend"></div>
+      </section>
+    </section>
     <section class="page" id="messagesPage">
       <section class="filters">
         <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
@@ -370,10 +399,14 @@ function sendHtml(res) {
     const rowsEl = document.getElementById("rows");
     const groupRowsEl = document.getElementById("groupRows");
     const threadRowsEl = document.getElementById("threadRows");
+    const dailyChartEl = document.getElementById("dailyChart");
+    const chartLegendEl = document.getElementById("chartLegend");
     const statusEl = document.getElementById("status");
+    const dashboardNavEl = document.getElementById("dashboardNav");
     const messagesNavEl = document.getElementById("messagesNav");
     const groupsNavEl = document.getElementById("groupsNav");
     const threadsNavEl = document.getElementById("threadsNav");
+    const dashboardPageEl = document.getElementById("dashboardPage");
     const messagesPageEl = document.getElementById("messagesPage");
     const groupsPageEl = document.getElementById("groupsPage");
     const threadsPageEl = document.getElementById("threadsPage");
@@ -395,6 +428,7 @@ function sendHtml(res) {
     const modalCloseEl = document.getElementById("modalClose");
     const fullTextByKey = new Map();
     const detailByKey = new Map();
+    const chartColors = ["#087f8c", "#f25f5c", "#3b82f6", "#f59e0b", "#7c3aed", "#10b981", "#ef476f", "#6b7280", "#06b6d4", "#84cc16"];
     let threadFilterOptions = null;
     let currentPage = "messages";
     let loadingToken = 0;
@@ -781,6 +815,48 @@ function sendHtml(res) {
       modalBodyEl.textContent = "";
       modalBodyEl.innerHTML = "";
     }
+    function renderDailyChart(days, groups) {
+      if (!Array.isArray(days) || !days.length) {
+        dailyChartEl.innerHTML = '<div class="empty-chart">داده‌ای برای نمایش نمودار وجود ندارد</div>';
+        chartLegendEl.innerHTML = "";
+        return;
+      }
+      const colorByGroup = new Map(groups.map((group, index) => [group, chartColors[index % chartColors.length]]));
+      const maxTotal = Math.max(...days.map((day) => Number(day.total || 0)), 1);
+      dailyChartEl.innerHTML = \`<div class="stacked-chart">\${days.map((day) => {
+        const total = Number(day.total || 0);
+        const height = Math.max(2, Math.round((total / maxTotal) * 275));
+        const segments = groups.map((group) => {
+          const count = Number(day.groups?.[group] || 0);
+          if (!count) return "";
+          const segmentHeight = Math.max(2, (count / total) * height);
+          return \`<div class="bar-segment" style="height:\${segmentHeight}px;background:\${colorByGroup.get(group)}" title="\${esc(group)}: \${count} پیام در \${esc(day.date)}"></div>\`;
+        }).join("");
+        return \`<div class="day-bar">
+          <div class="bar-total">\${total}</div>
+          <div class="bar-stack" style="height:\${height}px">\${segments}</div>
+          <div class="bar-label">\${esc(day.jalali_date || day.date)}<br />\${esc(day.date)}</div>
+        </div>\`;
+      }).join("")}</div>\`;
+      chartLegendEl.innerHTML = groups.map((group) => \`<span class="legend-item"><span class="legend-swatch" style="background:\${colorByGroup.get(group)}"></span>\${esc(group)}</span>\`).join("");
+    }
+    async function loadDashboard() {
+      const token = showLoading("در حال دریافت نمودار...");
+      try {
+        const res = await fetch("/api/dashboard");
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.days)) {
+          dailyChartEl.innerHTML = "";
+          chartLegendEl.innerHTML = "";
+          setStatus(token, data.detail || data.error || "خطا در دریافت نمودار");
+          return;
+        }
+        renderDailyChart(data.days, data.groups || []);
+        setStatus(token, data.total_messages + " پیام در " + data.days.length + " روز");
+      } catch (error) {
+        setStatus(token, "خطا در دریافت نمودار");
+      }
+    }
     async function load() {
       const token = showLoading("در حال دریافت پیام‌ها...");
       try {
@@ -886,15 +962,19 @@ function sendHtml(res) {
     }
     function showPage(page) {
       currentPage = page;
+      const isDashboard = page === "dashboard";
       const isGroups = page === "groups";
       const isThreads = page === "threads";
-      messagesPageEl.hidden = isGroups || isThreads;
+      dashboardPageEl.hidden = !isDashboard;
+      messagesPageEl.hidden = isDashboard || isGroups || isThreads;
       groupsPageEl.hidden = !isGroups;
       threadsPageEl.hidden = !isThreads;
-      messagesNavEl.classList.toggle("active", !isGroups && !isThreads);
+      dashboardNavEl.classList.toggle("active", isDashboard);
+      messagesNavEl.classList.toggle("active", !isDashboard && !isGroups && !isThreads);
       groupsNavEl.classList.toggle("active", isGroups);
       threadsNavEl.classList.toggle("active", isThreads);
-      if (isGroups) loadGroups();
+      if (isDashboard) loadDashboard();
+      else if (isGroups) loadGroups();
       else if (isThreads) loadThreadFilterOptions().then(loadThreads);
       else loadThreadFilterOptions().then(load);
     }
@@ -921,6 +1001,7 @@ function sendHtml(res) {
     document.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
     refreshEl.addEventListener("click", load);
     threadRefreshEl.addEventListener("click", loadThreads);
+    dashboardNavEl.addEventListener("click", () => showPage("dashboard"));
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
@@ -934,7 +1015,7 @@ function sendHtml(res) {
       }
     });
     loadThreadFilterOptions().then(load);
-    setInterval(() => { if (currentPage === "groups") loadGroups(); else if (currentPage === "threads") loadThreads(); else load(); }, 5000);
+    setInterval(() => { if (currentPage === "dashboard") loadDashboard(); else if (currentPage === "groups") loadGroups(); else if (currentPage === "threads") loadThreads(); else load(); }, 5000);
   </script>
 </body>
 </html>`);
@@ -945,6 +1026,37 @@ async function handle(req, res) {
   if (url.pathname === "/api/profile-photo") return sendTelegramProfilePhoto(res, url.searchParams.get("file_id"));
   if (url.pathname === "/api/telegram-file") return sendTelegramFile(res, req.url);
   if (url.pathname === "/") return sendHtml(res);
+  if (url.pathname === "/api/dashboard") {
+    const rows = await query(`
+      select sent_at_utc, chat_title
+      from public.telegram_messages
+      where sent_at_utc is not null
+      order by sent_at_utc asc
+      limit 10000
+    `);
+    const byDate = new Map();
+    const groupTotals = new Map();
+    let totalMessages = 0;
+    for (const row of rows) {
+      const date = new Date(row.sent_at_utc);
+      const tehranDate = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Tehran",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(date);
+      const group = row.chat_title || "بدون نام";
+      const day = byDate.get(tehranDate) || { date: tehranDate, jalali_date: jalaliDate(row.sent_at_utc), total: 0, groups: {} };
+      day.total += 1;
+      day.groups[group] = (day.groups[group] || 0) + 1;
+      byDate.set(tehranDate, day);
+      groupTotals.set(group, (groupTotals.get(group) || 0) + 1);
+      totalMessages += 1;
+    }
+    const days = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+    const groups = [...groupTotals.entries()].sort((a, b) => b[1] - a[1]).map(([group]) => group);
+    return sendJson(res, { days, groups, total_messages: totalMessages, display_timezone: "Asia/Tehran" });
+  }
   if (url.pathname === "/api/groups") {
     const groups = await query(`
       select
