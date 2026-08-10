@@ -108,6 +108,7 @@ function sendHtml(res) {
     .full-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.45; }
     .message-cell .clip { max-width:100%; }
     .clip { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .badge { display:inline-flex; align-items:center; height:22px; margin-top:6px; padding:0 8px; border-radius:999px; background:#fff4d6; color:#7a4a00; border:1px solid #f1cf75; font-size:11px; font-weight:700; direction:ltr; }
     .more { height: 28px; margin-top: 6px; padding: 0 9px; font-size: 12px; }
     .details-button { height: 30px; padding: 0 10px; font-size: 12px; }
     td.json { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
@@ -159,7 +160,6 @@ function sendHtml(res) {
             <th>Message</th>
             <th>Date (Jalali)</th>
             <th>Time (Tehran)</th>
-            <th>Edited At</th>
             <th>Message ID</th>
             <th>Reply To Message ID</th>
             <th>Details</th>
@@ -320,10 +320,9 @@ function sendHtml(res) {
           <td class="full-cell">\${esc(row.sender_first_name)}</td>
           <td class="full-cell">\${esc(row.sender_last_name)}</td>
           <td class="full-cell">\${esc(row.sender_username)}</td>
-          <td class="body message-cell">\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 55)}</td>
+          <td class="body message-cell">\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 55)}\${row.edited_at_utc ? '<span class="badge">Edited</span>' : ''}</td>
           <td>\${esc(row.sent_jalali_date)}</td>
           <td class="full-cell">\${esc(row.sent_time)}</td>
-          <td class="full-cell">\${esc(row.edited_at_utc)}</td>
           <td>\${esc(row.message_id)}</td>
           <td>\${esc(row.reply_to_message_id)}</td>
           <td><button class="details-button" type="button" data-detail-key="detail-\${index}">Details</button></td>
