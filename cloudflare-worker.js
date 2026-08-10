@@ -222,10 +222,10 @@ const HTML = `<!doctype html>
           <col style="width:7%" />
           <col style="width:7%" />
           <col style="width:7%" />
-          <col style="width:35%" />
+          <col style="width:32%" />
           <col style="width:11%" />
           <col style="width:10%" />
-          <col style="width:4%" />
+          <col style="width:7%" />
         </colgroup>
         <thead>
           <tr>
