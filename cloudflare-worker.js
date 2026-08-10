@@ -169,7 +169,7 @@ const HTML = `<!doctype html>
       return \`<div class="detail-row"><div class="detail-label">\${esc(label)}</div>\${detailValue(value)}</div>\`;
     }
     function detailHtml(row) {
-      return \`<div class="details-grid">\${[
+      const details = [
         ["Update ID", row.update_id],
         ["Message ID", row.message_id],
         ["Group ID", row.chat_id],
@@ -188,6 +188,10 @@ const HTML = `<!doctype html>
         ["Sender Chat Title", row.sender_chat_title],
         ["Message", row.body],
         ["Caption", row.caption],
+        ...(row.edited_at_utc ? [
+          ["Original Message Content", row.original_message_content],
+          ["Latest Edited Message Content", row.latest_edited_message_content],
+        ] : []),
         ["Date (Tehran)", row.sent_date],
         ["Date (Jalali)", row.sent_jalali_date],
         ["Time (Tehran)", row.sent_time],
@@ -199,7 +203,8 @@ const HTML = `<!doctype html>
         ["Forward Origin", row.forward_origin_json],
         ["Entities", row.entities_json],
         ["Raw Telegram Payload", row.raw_payload_json],
-      ].map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
+      ];
+      return \`<div class="details-grid">\${details.map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
     }
     function openModal(text) {
       modalTitleEl.textContent = "متن کامل پیام";
@@ -465,6 +470,36 @@ function tehranParts(date) {
     sent_time: `${timeMap.hour}:${timeMap.minute}:${timeMap.second}`,
     display_timezone: "Asia/Tehran",
   };
+}
+
+function rowContent(row) {
+  return row.body || row.caption || (row.message_type ? `[${row.message_type}]` : "");
+}
+
+function withEditHistory(messages, historyRows = messages) {
+  const byMessage = new Map();
+  for (const row of historyRows) {
+    if (!row.chat_id || !row.message_id) continue;
+    const key = `${row.chat_id}:${row.message_id}`;
+    const list = byMessage.get(key) || [];
+    list.push(row);
+    byMessage.set(key, list);
+  }
+  for (const list of byMessage.values()) {
+    list.sort((a, b) => {
+      const aEdited = a.edited_at_utc ? Date.parse(a.edited_at_utc) : 0;
+      const bEdited = b.edited_at_utc ? Date.parse(b.edited_at_utc) : 0;
+      if (aEdited !== bEdited) return aEdited - bEdited;
+      return Number(a.update_id || 0) - Number(b.update_id || 0);
+    });
+    const original = list.find((row) => !row.edited_at_utc) || list[0];
+    const latestEdited = [...list].reverse().find((row) => row.edited_at_utc) || null;
+    for (const row of messages.filter((message) => `${message.chat_id}:${message.message_id}` === `${original.chat_id}:${original.message_id}`)) {
+      row.original_message_content = rowContent(original);
+      row.latest_edited_message_content = latestEdited ? rowContent(latestEdited) : null;
+    }
+  }
+  return messages;
 }
 
 function topicData(message) {
@@ -785,6 +820,27 @@ async function fetchMessages(request, env) {
     const normalizedTopic = topic.toLowerCase();
     messages = messages.filter((row) => String(row.topic_name || "").toLowerCase().includes(normalizedTopic));
   }
+  let historyRows = messages;
+  const editedKeys = [...new Set(
+    messages
+      .filter((row) => row.edited_at_utc && row.chat_id && row.message_id)
+      .map((row) => `${row.chat_id}:${row.message_id}`)
+  )];
+  if (editedKeys.length) {
+    const historyParams = new URLSearchParams();
+    historyParams.set("select", "update_id,message_id,chat_id,body,caption,message_type,edited_at_utc");
+    historyParams.set("order", "edited_at_utc.asc.nullsfirst,update_id.asc");
+    historyParams.set("limit", "10000");
+    historyParams.set("or", `(${editedKeys.map((key) => {
+      const [chatIdValue, messageIdValue] = key.split(":");
+      return `and(chat_id.eq.${chatIdValue},message_id.eq.${messageIdValue})`;
+    }).join(",")})`);
+    const historyResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${historyParams}`, {
+      headers,
+    });
+    if (historyResponse.ok) historyRows = await historyResponse.json();
+  }
+  messages = withEditHistory(messages, historyRows);
   return json({ messages });
 }
 

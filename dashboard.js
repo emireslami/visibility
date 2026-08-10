@@ -39,6 +39,36 @@ function jalaliDate(value) {
   return `${map.year}-${map.month}-${map.day}`;
 }
 
+function rowContent(row) {
+  return row.body || row.caption || (row.message_type ? `[${row.message_type}]` : "");
+}
+
+function withEditHistory(messages, historyRows = messages) {
+  const byMessage = new Map();
+  for (const row of historyRows) {
+    if (!row.chat_id || !row.message_id) continue;
+    const key = `${row.chat_id}:${row.message_id}`;
+    const list = byMessage.get(key) || [];
+    list.push(row);
+    byMessage.set(key, list);
+  }
+  for (const list of byMessage.values()) {
+    list.sort((a, b) => {
+      const aEdited = a.edited_at_utc ? Date.parse(a.edited_at_utc) : 0;
+      const bEdited = b.edited_at_utc ? Date.parse(b.edited_at_utc) : 0;
+      if (aEdited !== bEdited) return aEdited - bEdited;
+      return Number(a.update_id || 0) - Number(b.update_id || 0);
+    });
+    const original = list.find((row) => !row.edited_at_utc) || list[0];
+    const latestEdited = [...list].reverse().find((row) => row.edited_at_utc) || null;
+    for (const row of messages.filter((message) => `${message.chat_id}:${message.message_id}` === `${original.chat_id}:${original.message_id}`)) {
+      row.original_message_content = rowContent(original);
+      row.latest_edited_message_content = latestEdited ? rowContent(latestEdited) : null;
+    }
+  }
+  return messages;
+}
+
 function sendJson(res, value) {
   const body = JSON.stringify(value);
   res.writeHead(200, {
@@ -221,7 +251,7 @@ function sendHtml(res) {
       return \`<div class="detail-row"><div class="detail-label">\${esc(label)}</div>\${detailValue(value)}</div>\`;
     }
     function detailHtml(row) {
-      return \`<div class="details-grid">\${[
+      const details = [
         ["Update ID", row.update_id],
         ["Message ID", row.message_id],
         ["Group ID", row.chat_id],
@@ -240,6 +270,10 @@ function sendHtml(res) {
         ["Sender Chat Title", row.sender_chat_title],
         ["Message", row.body],
         ["Caption", row.caption],
+        ...(row.edited_at_utc ? [
+          ["Original Message Content", row.original_message_content],
+          ["Latest Edited Message Content", row.latest_edited_message_content],
+        ] : []),
         ["Date (Tehran)", row.sent_date],
         ["Date (Jalali)", row.sent_jalali_date],
         ["Time (Tehran)", row.sent_time],
@@ -251,7 +285,8 @@ function sendHtml(res) {
         ["Forward Origin", row.forward_origin_json],
         ["Entities", row.entities_json],
         ["Raw Telegram Payload", row.raw_payload_json],
-      ].map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
+      ];
+      return \`<div class="details-grid">\${details.map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
     }
     function openModal(text) {
       modalTitleEl.textContent = "متن کامل پیام";
@@ -419,7 +454,29 @@ async function handle(req, res) {
       order by m.sent_at_utc desc nulls last, m.id desc
       limit 500
     `, params);
-    return sendJson(res, { messages: messages.map((row) => ({ ...row, sent_jalali_date: jalaliDate(row.sent_at_utc) })) });
+    const enrichedMessages = messages.map((row) => ({ ...row, sent_jalali_date: jalaliDate(row.sent_at_utc) }));
+    const editedKeys = [...new Set(
+      enrichedMessages
+        .filter((row) => row.edited_at_utc && row.chat_id && row.message_id)
+        .map((row) => `${row.chat_id}:${row.message_id}`)
+    )];
+    let historyRows = enrichedMessages;
+    if (editedKeys.length) {
+      const historyParams = [];
+      const historyClauses = editedKeys.map((key) => {
+        const [chatIdValue, messageIdValue] = key.split(":");
+        historyParams.push(chatIdValue, messageIdValue);
+        return `(chat_id = $${historyParams.length - 1} and message_id = $${historyParams.length})`;
+      });
+      historyRows = await query(`
+        select update_id, message_id, chat_id, body, caption, message_type, edited_at_utc
+        from public.telegram_messages
+        where ${historyClauses.join(" or ")}
+        order by edited_at_utc asc nulls first, update_id asc
+        limit 10000
+      `, historyParams);
+    }
+    return sendJson(res, { messages: withEditHistory(enrichedMessages, historyRows) });
   }
   res.writeHead(404);
   res.end("Not found");
