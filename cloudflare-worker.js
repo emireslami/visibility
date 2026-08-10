@@ -157,6 +157,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === "/") return text(HTML, 200, "text/html; charset=utf-8");
+    if (url.pathname === "/api/debug") return text("Not found", 404);
     if (url.pathname === "/api/messages") return fetchMessages(request, env);
     return text("Not found", 404);
   },
