@@ -24,6 +24,16 @@ const HTML = `<!doctype html>
     .thread-filters { grid-template-columns: minmax(200px, 1fr) minmax(170px, .8fr) 105px 105px 105px 110px; max-width:980px; margin:0 auto 14px; }
     input, select, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
+    .multi-filter { position:relative; min-width:0; }
+    .multi-button { width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; background:#fff; color:var(--ink); border-color:var(--line); text-align:right; }
+    .multi-button::before { content:"⌄"; color:var(--muted); font-size:14px; }
+    .multi-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .multi-panel { position:absolute; inset-inline:0; top:calc(100% + 4px); z-index:12; display:none; max-height:260px; overflow:auto; padding:6px; border:1px solid var(--line); border-radius:8px; background:#fff; box-shadow:0 12px 36px rgba(23,32,38,.16); }
+    .multi-filter.open .multi-panel { display:grid; gap:2px; }
+    .multi-option { min-height:32px; display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
+    .multi-option:hover { background:#f2f6f7; }
+    .multi-option input { width:16px; height:16px; flex:0 0 auto; }
+    .multi-empty { padding:8px; color:var(--muted); font-size:12px; }
     table { width: 100%; table-layout: fixed; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:rtl; }
     th, td { padding: 6px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: middle; font-size: 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     th { background: #eef3f4; color: #24343b; position: sticky; top: 0; }
@@ -97,8 +107,8 @@ const HTML = `<!doctype html>
     <section class="page" id="messagesPage">
       <section class="filters">
         <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
-        <select id="group"><option value="">همه گروه‌ها</option></select>
-        <select id="topic"><option value="">همه تاپیک‌ها</option></select>
+        <div id="group" class="multi-filter"></div>
+        <div id="topic" class="multi-filter"></div>
         <input id="chat" placeholder="Chat ID" />
         <input id="sender" placeholder="Sender ID" />
         <button id="refresh">به‌روزرسانی</button>
@@ -156,8 +166,8 @@ const HTML = `<!doctype html>
     </section>
     <section class="page" id="threadsPage" hidden>
       <section class="filters thread-filters">
-        <select id="threadGroup"><option value="">همه گروه‌ها</option></select>
-        <select id="threadTopic"><option value="">همه تاپیک‌ها</option></select>
+        <div id="threadGroup" class="multi-filter"></div>
+        <div id="threadTopic" class="multi-filter"></div>
         <select id="threadYear"><option value="">سال</option></select>
         <select id="threadMonth"><option value="">ماه</option></select>
         <select id="threadDay"><option value="">روز</option></select>
@@ -217,6 +227,54 @@ const HTML = `<!doctype html>
       select.innerHTML = optionHtml("", placeholder) + values.map((value) => optionHtml(value, value)).join("");
       select.value = values.includes(current) ? current : "";
     }
+    function createMultiFilter(root, placeholder, onChange) {
+      const state = { options: [], selected: new Set() };
+      root.innerHTML = \`<button class="multi-button" type="button"><span class="multi-label">\${esc(placeholder)}</span></button><div class="multi-panel"></div>\`;
+      const button = root.querySelector(".multi-button");
+      const label = root.querySelector(".multi-label");
+      const panel = root.querySelector(".multi-panel");
+      function syncLabel() {
+        const values = [...state.selected];
+        label.textContent = values.length === 0 ? placeholder : (values.length === 1 ? values[0] : values.length + " انتخاب");
+      }
+      function render() {
+        if (!state.options.length) {
+          panel.innerHTML = \`<div class="multi-empty">موردی نیست</div>\`;
+          return;
+        }
+        panel.innerHTML = state.options.map((value) => \`<label class="multi-option"><input type="checkbox" value="\${esc(value)}" \${state.selected.has(value) ? "checked" : ""} /><span>\${esc(value)}</span></label>\`).join("");
+      }
+      button.addEventListener("click", () => root.classList.toggle("open"));
+      panel.addEventListener("change", (event) => {
+        const checkbox = event.target.closest("input[type='checkbox']");
+        if (!checkbox) return;
+        if (checkbox.checked) state.selected.add(checkbox.value);
+        else state.selected.delete(checkbox.value);
+        syncLabel();
+        onChange?.();
+      });
+      return {
+        setOptions(values) {
+          state.options = [...new Set(values.filter(Boolean))].sort();
+          state.selected = new Set([...state.selected].filter((value) => state.options.includes(value)));
+          render();
+          syncLabel();
+        },
+        values() {
+          return [...state.selected];
+        },
+        close() {
+          root.classList.remove("open");
+        },
+      };
+    }
+    const messageGroupFilter = createMultiFilter(groupEl, "همه گروه‌ها", () => { updateMessageTopicOptions(); load(); });
+    const messageTopicFilter = createMultiFilter(topicEl, "همه تاپیک‌ها", load);
+    const threadGroupFilter = createMultiFilter(threadGroupEl, "همه گروه‌ها", () => { updateThreadTopicOptions(); loadThreads(); });
+    const threadTopicFilter = createMultiFilter(threadTopicEl, "همه تاپیک‌ها", loadThreads);
+    function appendFilterValues(params, key, values) {
+      values.forEach((value) => params.append(key, value));
+    }
     function updateThreadDateOptions() {
       const dates = threadFilterOptions?.jalali_dates || [];
       const years = [...new Set(dates.map((date) => date.split("-")[0]))].sort().reverse();
@@ -232,17 +290,17 @@ const HTML = `<!doctype html>
     }
     function updateThreadTopicOptions() {
       const topics = (threadFilterOptions?.topics || [])
-        .filter((topic) => !threadGroupEl.value || topic.chat_title === threadGroupEl.value)
+        .filter((topic) => !threadGroupFilter.values().length || threadGroupFilter.values().includes(topic.chat_title))
         .map((topic) => topic.topic_name)
         .filter(Boolean);
-      setSelectOptions(threadTopicEl, [...new Set(topics)].sort(), "همه تاپیک‌ها");
+      threadTopicFilter.setOptions(topics);
     }
     function updateMessageTopicOptions() {
       const topics = (threadFilterOptions?.topics || [])
-        .filter((topic) => !groupEl.value || topic.chat_title === groupEl.value)
+        .filter((topic) => !messageGroupFilter.values().length || messageGroupFilter.values().includes(topic.chat_title))
         .map((topic) => topic.topic_name)
         .filter(Boolean);
-      setSelectOptions(topicEl, [...new Set(topics)].sort(), "همه تاپیک‌ها");
+      messageTopicFilter.setOptions(topics);
     }
     function selectedThreadJalaliDate() {
       if (!threadYearEl.value || !threadMonthEl.value || !threadDayEl.value) return "";
@@ -255,8 +313,8 @@ const HTML = `<!doctype html>
       if (!res.ok) return;
       threadFilterOptions = data;
       const groups = (data.groups || []).map((group) => group.chat_title).filter(Boolean);
-      setSelectOptions(threadGroupEl, groups, "همه گروه‌ها");
-      setSelectOptions(groupEl, groups, "همه گروه‌ها");
+      threadGroupFilter.setOptions(groups);
+      messageGroupFilter.setOptions(groups);
       updateThreadTopicOptions();
       updateMessageTopicOptions();
       updateThreadDateOptions();
@@ -536,8 +594,8 @@ const HTML = `<!doctype html>
       await loadThreadFilterOptions();
       const params = new URLSearchParams();
       if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
-      if (groupEl.value.trim()) params.set("group", groupEl.value.trim());
-      if (topicEl.value.trim()) params.set("topic", topicEl.value.trim());
+      appendFilterValues(params, "group", messageGroupFilter.values());
+      appendFilterValues(params, "topic", messageTopicFilter.values());
       if (chatEl.value.trim()) params.set("chat_id", chatEl.value.trim());
       if (senderEl.value.trim()) params.set("sender_id", senderEl.value.trim());
       const res = await fetch("/api/messages?" + params);
@@ -593,8 +651,8 @@ const HTML = `<!doctype html>
     async function loadThreads() {
       await loadThreadFilterOptions();
       const params = new URLSearchParams();
-      if (threadGroupEl.value.trim()) params.set("group", threadGroupEl.value.trim());
-      if (threadTopicEl.value.trim()) params.set("topic", threadTopicEl.value.trim());
+      appendFilterValues(params, "group", threadGroupFilter.values());
+      appendFilterValues(params, "topic", threadTopicFilter.values());
       const jalaliDate = selectedThreadJalaliDate();
       if (jalaliDate) params.set("jalali_date", jalaliDate);
       const res = await fetch("/api/messages?" + params);
@@ -661,13 +719,14 @@ const HTML = `<!doctype html>
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
     [searchEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
-    groupEl.addEventListener("change", () => { updateMessageTopicOptions(); load(); });
-    topicEl.addEventListener("change", load);
-    threadGroupEl.addEventListener("change", () => { updateThreadTopicOptions(); loadThreads(); });
-    threadTopicEl.addEventListener("change", loadThreads);
     threadYearEl.addEventListener("change", () => { updateThreadDateOptions(); loadThreads(); });
     threadMonthEl.addEventListener("change", () => { updateThreadDateOptions(); loadThreads(); });
     threadDayEl.addEventListener("change", loadThreads);
+    document.addEventListener("click", (event) => {
+      for (const filter of [messageGroupFilter, messageTopicFilter, threadGroupFilter, threadTopicFilter]) {
+        if (!event.target.closest(".multi-filter")) filter.close();
+      }
+    });
     loadThreadFilterOptions().then(load);
     setInterval(() => { if (currentPage === "groups") loadGroups(); else if (currentPage === "threads") loadThreads(); else load(); }, 5000);
   </script>
@@ -1327,8 +1386,8 @@ async function fetchMessages(request, env) {
 
   const filters = [];
   const q = url.searchParams.get("q");
-  const group = url.searchParams.get("group");
-  const topic = url.searchParams.get("topic");
+  const groups = url.searchParams.getAll("group").map((value) => value.trim()).filter(Boolean);
+  const topicsFilter = url.searchParams.getAll("topic").map((value) => value.trim()).filter(Boolean);
   const jalaliDateFilter = url.searchParams.get("jalali_date");
   const chatId = url.searchParams.get("chat_id");
   const senderId = url.searchParams.get("sender_id");
@@ -1337,7 +1396,6 @@ async function fetchMessages(request, env) {
     filters.push(`body.ilike.${pattern},caption.ilike.${pattern},chat_title.ilike.${pattern},topic_name.ilike.${pattern},sender_username.ilike.${pattern}`);
   }
   if (filters.length) params.set("or", `(${filters.join(",")})`);
-  if (group) params.set("chat_title", `ilike.*${group.replace(/[%*]/g, "")}*`);
   if (chatId) params.set("chat_id", `eq.${chatId}`);
   if (senderId) params.set("sender_id", `eq.${senderId}`);
 
@@ -1373,9 +1431,13 @@ async function fetchMessages(request, env) {
       ...(date ? tehranParts(date) : { sent_date: null, sent_jalali_date: null, sent_time: null, display_timezone: "Asia/Tehran" }),
     };
   });
-  if (topic) {
-    const normalizedTopic = topic.toLowerCase();
-    messages = messages.filter((row) => String(row.topic_name || "").toLowerCase().includes(normalizedTopic));
+  if (topicsFilter.length) {
+    const normalizedTopics = topicsFilter.map((value) => value.toLowerCase());
+    messages = messages.filter((row) => normalizedTopics.includes(String(row.topic_name || "").toLowerCase()));
+  }
+  if (groups.length) {
+    const normalizedGroups = groups.map((value) => value.toLowerCase());
+    messages = messages.filter((row) => normalizedGroups.includes(String(row.chat_title || "").toLowerCase()));
   }
   if (jalaliDateFilter) {
     messages = messages.filter((row) => String(row.sent_jalali_date || "") === jalaliDateFilter);
