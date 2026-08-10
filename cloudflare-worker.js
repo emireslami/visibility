@@ -50,6 +50,10 @@ const HTML = `<!doctype html>
     .thread-muted { color:var(--muted); font-size:12px; }
     .thread-pill { display:inline-flex; align-items:center; height:24px; padding:0 8px; border:1px solid var(--line); border-radius:999px; background:#f7f8fa; color:#24343b; font-size:12px; direction:ltr; }
     .thread-message { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.7; text-align:right; }
+    .thread-reactions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; margin-top:8px; direction:ltr; }
+    .reaction-chip { display:inline-flex; align-items:center; gap:4px; min-height:24px; padding:2px 6px; border:1px solid var(--line); border-radius:999px; background:#f7f8fa; }
+    .reaction-emoji { font-size:15px; line-height:1; }
+    .reaction-avatar { width:18px; height:18px; border-radius:50%; border:1px solid var(--line); background:#eef3f4; color:#36505a; display:grid; place-items:center; font-size:10px; font-weight:800; object-fit:cover; direction:ltr; }
     td.json { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     td.json .clip { direction:ltr; text-align:left; }
     .meta { color: var(--muted); font-size: 12px; }
@@ -347,6 +351,27 @@ const HTML = `<!doctype html>
       }
       return \`<span class="thread-avatar">\${esc(initials(row))}</span>\`;
     }
+    function reactionInitials(reaction) {
+      const source = [reaction.user_first_name, reaction.user_last_name].filter(Boolean).join(" ") || reaction.user_username || "?";
+      return source.trim().slice(0, 1).toUpperCase() || "?";
+    }
+    function reactionAvatar(reaction) {
+      if (reaction.user_photo_file_id) {
+        return \`<img class="reaction-avatar" src="/api/profile-photo?file_id=\${encodeURIComponent(reaction.user_photo_file_id)}" alt="" loading="lazy" />\`;
+      }
+      return \`<span class="reaction-avatar">\${esc(reactionInitials(reaction))}</span>\`;
+    }
+    function reactionEmoji(reaction) {
+      if (reaction.reaction_emoji) return reaction.reaction_emoji;
+      if (reaction.reaction_type === "paid") return "⭐";
+      if (reaction.custom_emoji_id) return "◌";
+      return reaction.reaction_type || "";
+    }
+    function reactionBar(row) {
+      const reactions = Array.isArray(row.reactions) ? row.reactions : [];
+      if (!reactions.length) return "";
+      return \`<div class="thread-reactions">\${reactions.map((reaction) => \`<span class="reaction-chip" title="\${esc(reaction.user_username || reaction.user_first_name || "")}">\${reactionAvatar(reaction)}<span class="reaction-emoji">\${esc(reactionEmoji(reaction))}</span></span>\`).join("")}</div>\`;
+    }
     function threadNode(row, kind, index) {
       if (row.missing) {
         return \`<article class="thread-missing">
@@ -372,6 +397,7 @@ const HTML = `<!doctype html>
               <button class="details-button" type="button" data-detail-key="thread-detail-\${index}">Details</button>
             </div>
             <div class="thread-message">\${messageWithBadge(row)}</div>
+            \${reactionBar(row)}
           </div>
         </div>
       </article>\`;
@@ -772,6 +798,21 @@ function withEditHistory(messages, historyRows = messages) {
   return messages;
 }
 
+function withReactions(messages, reactionRows = []) {
+  const byMessage = new Map();
+  for (const reaction of reactionRows) {
+    if (!reaction.chat_id || !reaction.message_id) continue;
+    const key = `${reaction.chat_id}:${reaction.message_id}`;
+    const list = byMessage.get(key) || [];
+    list.push(reaction);
+    byMessage.set(key, list);
+  }
+  return messages.map((message) => ({
+    ...message,
+    reactions: byMessage.get(`${message.chat_id}:${message.message_id}`) || [],
+  }));
+}
+
 function topicData(message) {
   const created = message.forum_topic_created;
   const edited = message.forum_topic_edited;
@@ -782,6 +823,80 @@ function topicData(message) {
     topicIconColor: created?.icon_color ?? null,
     topicIconCustomEmojiId: created?.icon_custom_emoji_id ?? edited?.icon_custom_emoji_id ?? null,
   };
+}
+
+function reactionType(reaction) {
+  return reaction?.type || "unknown";
+}
+
+function reactionEmojiValue(reaction) {
+  return reaction?.type === "emoji" ? reaction.emoji ?? null : null;
+}
+
+function customEmojiId(reaction) {
+  return reaction?.type === "custom_emoji" ? reaction.custom_emoji_id ?? null : null;
+}
+
+async function deletePreviousReactions(env, reactionUpdate) {
+  const chatId = reactionUpdate.chat?.id;
+  const messageId = reactionUpdate.message_id;
+  const userId = reactionUpdate.user?.id;
+  const actorChatId = reactionUpdate.actor_chat?.id;
+  if (!chatId || !messageId || (!userId && !actorChatId)) return;
+
+  const params = new URLSearchParams();
+  params.set("chat_id", `eq.${chatId}`);
+  params.set("message_id", `eq.${messageId}`);
+  if (userId) params.set("user_id", `eq.${userId}`);
+  if (actorChatId) params.set("actor_chat_id", `eq.${actorChatId}`);
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_message_reactions?${params}`, {
+    method: "DELETE",
+    headers: supabaseHeaders(env, "return=minimal"),
+  });
+  if (!response.ok) throw new Error(await response.text());
+}
+
+async function handleMessageReaction(env, update) {
+  const reactionUpdate = update.message_reaction;
+  if (!reactionUpdate?.chat?.id || !reactionUpdate.message_id) {
+    return json({ ok: true, ignored: "message_reaction" });
+  }
+
+  await deletePreviousReactions(env, reactionUpdate);
+  const newReactions = Array.isArray(reactionUpdate.new_reaction) ? reactionUpdate.new_reaction : [];
+  if (!newReactions.length) return json({ ok: true, reaction: "removed" });
+
+  const user = reactionUpdate.user ?? {};
+  const actorChat = reactionUpdate.actor_chat ?? {};
+  const userPhoto = user.id ? await fetchSenderProfilePhoto(env, user.id) : {};
+  const reactedAt = isoFromUnix(reactionUpdate.date);
+  const rows = newReactions.map((reaction) => ({
+    update_id: update.update_id,
+    chat_id: reactionUpdate.chat.id,
+    message_id: reactionUpdate.message_id,
+    user_id: user.id ?? null,
+    actor_chat_id: actorChat.id ?? null,
+    reaction_type: reactionType(reaction),
+    reaction_emoji: reactionEmojiValue(reaction),
+    custom_emoji_id: customEmojiId(reaction),
+    reaction_json: reaction,
+    user_username: user.username ?? actorChat.username ?? null,
+    user_first_name: user.first_name ?? actorChat.title ?? null,
+    user_last_name: user.last_name ?? null,
+    user_photo_file_id: userPhoto.sender_photo_file_id ?? null,
+    user_photo_file_unique_id: userPhoto.sender_photo_file_unique_id ?? null,
+    reacted_at_utc: reactedAt,
+    raw_payload_json: update,
+    updated_at_utc: new Date().toISOString(),
+  }));
+
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_message_reactions`, {
+    method: "POST",
+    headers: supabaseHeaders(env, "return=minimal"),
+    body: JSON.stringify(rows),
+  });
+  if (!response.ok) return json({ ok: false, error: await response.text() }, 500);
+  return json({ ok: true, reaction: true });
 }
 
 function isPrivateChat(message) {
@@ -979,6 +1094,9 @@ async function handleTelegramWebhook(request, env) {
   }
 
   const update = await request.json();
+  if (update.message_reaction) return handleMessageReaction(env, update);
+  if (update.message_reaction_count) return json({ ok: true, ignored: "message_reaction_count" });
+
   if (update.my_chat_member && await upsertChatFromMembership(env, update)) {
     return json({ ok: true, membership: true });
   }
@@ -1163,7 +1281,42 @@ async function fetchMessages(request, env) {
     });
     if (historyResponse.ok) historyRows = await historyResponse.json();
   }
-  messages = withEditHistory(messages, historyRows);
+  let reactionRows = [];
+  const reactionKeys = [...new Set(
+    messages
+      .filter((row) => row.chat_id && row.message_id)
+      .map((row) => `${row.chat_id}:${row.message_id}`)
+  )];
+  if (reactionKeys.length) {
+    const reactionParams = new URLSearchParams();
+    reactionParams.set("select", [
+      "chat_id",
+      "message_id",
+      "user_id",
+      "actor_chat_id",
+      "reaction_type",
+      "reaction_emoji",
+      "custom_emoji_id",
+      "reaction_json",
+      "user_username",
+      "user_first_name",
+      "user_last_name",
+      "user_photo_file_id",
+      "user_photo_file_unique_id",
+      "reacted_at_utc",
+    ].join(","));
+    reactionParams.set("limit", "10000");
+    reactionParams.set("order", "reacted_at_utc.asc.nullslast,id.asc");
+    reactionParams.set("or", `(${reactionKeys.map((key) => {
+      const [chatIdValue, messageIdValue] = key.split(":");
+      return `and(chat_id.eq.${chatIdValue},message_id.eq.${messageIdValue})`;
+    }).join(",")})`);
+    const reactionsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_message_reactions?${reactionParams}`, {
+      headers,
+    });
+    if (reactionsResponse.ok) reactionRows = await reactionsResponse.json();
+  }
+  messages = withReactions(withEditHistory(messages, historyRows), reactionRows);
   return json({ messages });
 }
 

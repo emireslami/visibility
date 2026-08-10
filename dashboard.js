@@ -69,6 +69,21 @@ function withEditHistory(messages, historyRows = messages) {
   return messages;
 }
 
+function withReactions(messages, reactionRows = []) {
+  const byMessage = new Map();
+  for (const reaction of reactionRows) {
+    if (!reaction.chat_id || !reaction.message_id) continue;
+    const key = `${reaction.chat_id}:${reaction.message_id}`;
+    const list = byMessage.get(key) || [];
+    list.push(reaction);
+    byMessage.set(key, list);
+  }
+  return messages.map((message) => ({
+    ...message,
+    reactions: byMessage.get(`${message.chat_id}:${message.message_id}`) || [],
+  }));
+}
+
 function sendJson(res, value) {
   const body = JSON.stringify(value);
   res.writeHead(200, {
@@ -158,6 +173,10 @@ function sendHtml(res) {
     .thread-muted { color:var(--muted); font-size:12px; }
     .thread-pill { display:inline-flex; align-items:center; height:24px; padding:0 8px; border:1px solid var(--line); border-radius:999px; background:#f7f8fa; color:#24343b; font-size:12px; direction:ltr; }
     .thread-message { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.7; text-align:right; }
+    .thread-reactions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; margin-top:8px; direction:ltr; }
+    .reaction-chip { display:inline-flex; align-items:center; gap:4px; min-height:24px; padding:2px 6px; border:1px solid var(--line); border-radius:999px; background:#f7f8fa; }
+    .reaction-emoji { font-size:15px; line-height:1; }
+    .reaction-avatar { width:18px; height:18px; border-radius:50%; border:1px solid var(--line); background:#eef3f4; color:#36505a; display:grid; place-items:center; font-size:10px; font-weight:800; object-fit:cover; direction:ltr; }
     td.json { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     td.json .clip { direction:ltr; text-align:left; }
     .meta { color: var(--muted); font-size: 12px; }
@@ -455,6 +474,27 @@ function sendHtml(res) {
       }
       return \`<span class="thread-avatar">\${esc(initials(row))}</span>\`;
     }
+    function reactionInitials(reaction) {
+      const source = [reaction.user_first_name, reaction.user_last_name].filter(Boolean).join(" ") || reaction.user_username || "?";
+      return source.trim().slice(0, 1).toUpperCase() || "?";
+    }
+    function reactionAvatar(reaction) {
+      if (reaction.user_photo_file_id) {
+        return \`<img class="reaction-avatar" src="/api/profile-photo?file_id=\${encodeURIComponent(reaction.user_photo_file_id)}" alt="" loading="lazy" />\`;
+      }
+      return \`<span class="reaction-avatar">\${esc(reactionInitials(reaction))}</span>\`;
+    }
+    function reactionEmoji(reaction) {
+      if (reaction.reaction_emoji) return reaction.reaction_emoji;
+      if (reaction.reaction_type === "paid") return "⭐";
+      if (reaction.custom_emoji_id) return "◌";
+      return reaction.reaction_type || "";
+    }
+    function reactionBar(row) {
+      const reactions = Array.isArray(row.reactions) ? row.reactions : [];
+      if (!reactions.length) return "";
+      return \`<div class="thread-reactions">\${reactions.map((reaction) => \`<span class="reaction-chip" title="\${esc(reaction.user_username || reaction.user_first_name || "")}">\${reactionAvatar(reaction)}<span class="reaction-emoji">\${esc(reactionEmoji(reaction))}</span></span>\`).join("")}</div>\`;
+    }
     function threadNode(row, kind, index) {
       if (row.missing) {
         return \`<article class="thread-missing">
@@ -480,6 +520,7 @@ function sendHtml(res) {
               <button class="details-button" type="button" data-detail-key="thread-detail-\${index}">Details</button>
             </div>
             <div class="thread-message">\${messageWithBadge(row)}</div>
+            \${reactionBar(row)}
           </div>
         </div>
       </article>\`;
@@ -806,7 +847,30 @@ async function handle(req, res) {
         limit 10000
       `, historyParams);
     }
-    return sendJson(res, { messages: withEditHistory(enrichedMessages, historyRows) });
+    const reactionKeys = [...new Set(
+      enrichedMessages
+        .filter((row) => row.chat_id && row.message_id)
+        .map((row) => `${row.chat_id}:${row.message_id}`)
+    )];
+    let reactionRows = [];
+    if (reactionKeys.length) {
+      const reactionParams = [];
+      const reactionClauses = reactionKeys.map((key) => {
+        const [chatIdValue, messageIdValue] = key.split(":");
+        reactionParams.push(chatIdValue, messageIdValue);
+        return `(chat_id = $${reactionParams.length - 1} and message_id = $${reactionParams.length})`;
+      });
+      reactionRows = await query(`
+        select chat_id, message_id, user_id, actor_chat_id, reaction_type, reaction_emoji, custom_emoji_id,
+               reaction_json, user_username, user_first_name, user_last_name, user_photo_file_id,
+               user_photo_file_unique_id, reacted_at_utc
+        from public.telegram_message_reactions
+        where ${reactionClauses.join(" or ")}
+        order by reacted_at_utc asc nulls last, id asc
+        limit 10000
+      `, reactionParams);
+    }
+    return sendJson(res, { messages: withReactions(withEditHistory(enrichedMessages, historyRows), reactionRows) });
   }
   res.writeHead(404);
   res.end("Not found");
