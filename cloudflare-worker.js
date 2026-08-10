@@ -98,6 +98,9 @@ const HTML = `<!doctype html>
 </body>
 </html>`;
 
+const MESSAGE_KEYS = ["message", "edited_message", "channel_post", "edited_channel_post"];
+const MEDIA_KEYS = ["photo", "video", "document", "voice", "audio", "video_note", "animation", "sticker", "location", "contact", "poll", "venue"];
+
 function json(value, status = 200) {
   return new Response(JSON.stringify(value), {
     status,
@@ -116,6 +119,154 @@ function text(value, status = 200, contentType = "text/plain; charset=utf-8") {
       "cache-control": "no-store",
     },
   });
+}
+
+function supabaseHeaders(env, prefer) {
+  const headers = {
+    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+    authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    "content-type": "application/json",
+  };
+  if (prefer) headers.prefer = prefer;
+  return headers;
+}
+
+function findMessage(update) {
+  for (const key of MESSAGE_KEYS) {
+    if (update[key]) return { updateKind: key, message: update[key] };
+  }
+  return { updateKind: null, message: null };
+}
+
+function messageType(message) {
+  if (message.text !== undefined) return "text";
+  for (const key of MEDIA_KEYS) {
+    if (message[key] !== undefined) return key;
+  }
+  for (const key of [
+    "forum_topic_created",
+    "forum_topic_edited",
+    "forum_topic_closed",
+    "forum_topic_reopened",
+    "new_chat_members",
+    "left_chat_member",
+    "new_chat_title",
+    "pinned_message",
+  ]) {
+    if (message[key] !== undefined) return key;
+  }
+  return "unknown";
+}
+
+function mediaFileId(message) {
+  if (Array.isArray(message.photo) && message.photo.length) {
+    return message.photo[message.photo.length - 1]?.file_id ?? null;
+  }
+  for (const key of ["video", "document", "voice", "audio", "video_note", "animation", "sticker"]) {
+    if (message[key]?.file_id) return message[key].file_id;
+  }
+  return null;
+}
+
+function isoFromUnix(value) {
+  return value ? new Date(value * 1000).toISOString() : null;
+}
+
+function topicData(message) {
+  const created = message.forum_topic_created;
+  const edited = message.forum_topic_edited;
+  return {
+    messageThreadId: message.message_thread_id ?? null,
+    isTopicMessage: message.is_topic_message ?? null,
+    topicName: created?.name ?? edited?.name ?? null,
+    topicIconColor: created?.icon_color ?? null,
+    topicIconCustomEmojiId: created?.icon_custom_emoji_id ?? edited?.icon_custom_emoji_id ?? null,
+  };
+}
+
+async function upsertTopic(env, message, update) {
+  const chat = message.chat ?? {};
+  const topic = topicData(message);
+  if (!chat.id || !topic.messageThreadId || !topic.topicName) return;
+
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?on_conflict=chat_id,message_thread_id`, {
+    method: "POST",
+    headers: supabaseHeaders(env, "resolution=merge-duplicates,return=minimal"),
+    body: JSON.stringify({
+      chat_id: chat.id,
+      message_thread_id: topic.messageThreadId,
+      topic_name: topic.topicName,
+      icon_color: topic.topicIconColor,
+      icon_custom_emoji_id: topic.topicIconCustomEmojiId,
+      raw_payload_json: update,
+      updated_at_utc: new Date().toISOString(),
+    }),
+  });
+  if (!response.ok) throw new Error(await response.text());
+}
+
+async function handleTelegramWebhook(request, env) {
+  if (request.method !== "POST") return text("ok");
+  if (env.TELEGRAM_WEBHOOK_SECRET && request.headers.get("x-telegram-bot-api-secret-token") !== env.TELEGRAM_WEBHOOK_SECRET) {
+    return text("unauthorized", 401);
+  }
+
+  const update = await request.json();
+  const { message } = findMessage(update);
+  if (!message) return json({ ok: true, ignored: true });
+
+  await upsertTopic(env, message, update);
+
+  const chat = message.chat ?? {};
+  const sender = message.from ?? {};
+  const senderChat = message.sender_chat ?? {};
+  const sentAt = isoFromUnix(message.date);
+  const editedAt = isoFromUnix(message.edit_date);
+  const topic = topicData(message);
+
+  const row = {
+    update_id: update.update_id,
+    message_id: message.message_id ?? null,
+    chat_id: chat.id ?? null,
+    chat_title: chat.title ?? null,
+    chat_username: chat.username ?? null,
+    chat_type: chat.type ?? null,
+    message_thread_id: topic.messageThreadId,
+    is_topic_message: topic.isTopicMessage,
+    topic_name: topic.topicName,
+    topic_icon_color: topic.topicIconColor,
+    topic_icon_custom_emoji_id: topic.topicIconCustomEmojiId,
+    sender_id: sender.id ?? null,
+    sender_username: sender.username ?? null,
+    sender_first_name: sender.first_name ?? null,
+    sender_last_name: sender.last_name ?? null,
+    sender_is_bot: sender.is_bot ?? null,
+    sender_chat_id: senderChat.id ?? null,
+    sender_chat_title: senderChat.title ?? null,
+    body: message.text ?? null,
+    caption: message.caption ?? null,
+    message_type: messageType(message),
+    sent_at_utc: sentAt,
+    sent_date: sentAt?.slice(0, 10) ?? null,
+    sent_time: sentAt?.slice(11, 19) ?? null,
+    edited_at_utc: editedAt,
+    reply_to_message_id: message.reply_to_message?.message_id ?? null,
+    forward_origin_json: message.forward_origin ?? null,
+    entities_json: message.entities ?? message.caption_entities ?? null,
+    media_file_id: mediaFileId(message),
+    media_group_id: message.media_group_id ?? null,
+    raw_payload_json: update,
+  };
+
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?on_conflict=update_id,message_id`, {
+    method: "POST",
+    headers: supabaseHeaders(env, "resolution=ignore-duplicates,return=minimal"),
+    body: JSON.stringify(row),
+  });
+  if (!response.ok) {
+    return json({ ok: false, error: await response.text() }, 500);
+  }
+  return json({ ok: true });
 }
 
 async function fetchMessages(request, env) {
@@ -139,10 +290,7 @@ async function fetchMessages(request, env) {
   if (chatId) params.set("chat_id", `eq.${chatId}`);
   if (senderId) params.set("sender_id", `eq.${senderId}`);
 
-  const headers = {
-    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-    authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-  };
+  const headers = supabaseHeaders(env);
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, {
     headers,
   });
@@ -183,6 +331,7 @@ export default {
     if (url.pathname === "/") return text(HTML, 200, "text/html; charset=utf-8");
     if (url.pathname === "/api/debug") return text("Not found", 404);
     if (url.pathname === "/api/messages") return fetchMessages(request, env);
+    if (url.pathname === "/telegram-webhook") return handleTelegramWebhook(request, env);
     return text("Not found", 404);
   },
 };
