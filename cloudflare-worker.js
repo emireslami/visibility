@@ -54,6 +54,14 @@ const HTML = `<!doctype html>
     .reaction-chip { display:inline-flex; align-items:center; gap:4px; min-height:24px; padding:2px 6px; border:1px solid var(--line); border-radius:999px; background:#f7f8fa; }
     .reaction-emoji { font-size:15px; line-height:1; }
     .reaction-avatar { width:18px; height:18px; border-radius:50%; border:1px solid var(--line); background:#eef3f4; color:#36505a; display:grid; place-items:center; font-size:10px; font-weight:800; object-fit:cover; direction:ltr; }
+    .thread-media { margin-top:10px; display:flex; justify-content:flex-end; }
+    .thread-photo { max-width:min(280px, 100%); max-height:220px; border:1px solid var(--line); border-radius:8px; object-fit:cover; display:block; }
+    .thread-file { display:inline-flex; align-items:center; gap:8px; min-height:34px; padding:0 10px; border:1px solid var(--line); border-radius:8px; background:#f7f8fa; color:var(--ink); text-decoration:none; direction:rtl; }
+    .media-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .media-preview { max-width:260px; max-height:220px; border:1px solid var(--line); border-radius:8px; object-fit:contain; display:block; background:#f7f8fa; }
+    .media-open { padding:0; border:0; background:transparent; cursor:zoom-in; display:block; }
+    .modal-media { display:grid; gap:14px; justify-items:center; white-space:normal; }
+    .modal-image { max-width:100%; max-height:70vh; object-fit:contain; border:1px solid var(--line); border-radius:8px; background:#f7f8fa; }
     td.json { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     td.json .clip { direction:ltr; text-align:left; }
     .meta { color: var(--muted); font-size: 12px; }
@@ -272,6 +280,39 @@ const HTML = `<!doctype html>
       const button = shouldCollapse(text, limit) ? \`<button class="more" type="button" data-full-key="\${esc(key)}" aria-label="مشاهده بیشتر" title="مشاهده بیشتر">+</button>\` : "";
       return \`<span class="clip">\${linkify(shortText(text, limit))}</span>\${button}\`;
     }
+    function fileUrl(row, download = false) {
+      if (!row.media_file_id) return "";
+      const params = new URLSearchParams({ file_id: row.media_file_id });
+      if (download) params.set("download", "1");
+      return "/api/telegram-file?" + params.toString();
+    }
+    function isPhoto(row) {
+      return row.message_type === "photo" && row.media_file_id;
+    }
+    function isDownloadableFile(row) {
+      return row.message_type === "document" && row.media_file_id;
+    }
+    function mediaFileName(row) {
+      return row.raw_payload_json?.message?.document?.file_name
+        || row.raw_payload_json?.edited_message?.document?.file_name
+        || row.raw_payload_json?.channel_post?.document?.file_name
+        || row.raw_payload_json?.edited_channel_post?.document?.file_name
+        || "دانلود فایل";
+    }
+    function mediaBadge(row) {
+      if (isPhoto(row)) return '<span class="badge">Image</span>';
+      if (isDownloadableFile(row)) return '<span class="badge">File</span>';
+      return "";
+    }
+    function mediaDetailHtml(row) {
+      if (isPhoto(row)) {
+        return \`<div class="detail-row"><div class="detail-label">Media</div><div class="detail-value media-actions"><img class="media-preview" src="\${fileUrl(row)}" alt="" loading="lazy" /><a class="details-button" href="\${fileUrl(row, true)}" download>Download Image</a></div></div>\`;
+      }
+      if (isDownloadableFile(row)) {
+        return \`<div class="detail-row"><div class="detail-label">Media</div><div class="detail-value media-actions"><a class="details-button" href="\${fileUrl(row, true)}" download>\${esc(mediaFileName(row))}</a></div></div>\`;
+      }
+      return "";
+    }
     function detailValue(value) {
       const text = typeof value === "object" && value !== null ? jsonText(value) : String(value ?? "");
       return \`<span class="\${text.includes("{") || text.includes("[") ? "detail-value detail-pre" : "detail-value"}">\${linkify(text)}</span>\`;
@@ -317,7 +358,7 @@ const HTML = `<!doctype html>
         ["Entities", row.entities_json],
         ["Raw Telegram Payload", row.raw_payload_json],
       ];
-      return \`<div class="details-grid">\${details.map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
+      return \`<div class="details-grid">\${mediaDetailHtml(row)}\${details.map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
     }
     function messageContent(row) {
       return row.body || row.caption || (row.message_type ? "[" + row.message_type + "]" : "");
@@ -333,7 +374,16 @@ const HTML = `<!doctype html>
       return row.edited_at_utc ? '<span class="badge">Edited</span>' : '';
     }
     function messageWithBadge(row) {
-      return \`\${editedBadge(row)}\${compactMessage(row)}\`;
+      return \`\${editedBadge(row)}\${mediaBadge(row)}\${compactMessage(row)}\`;
+    }
+    function threadMedia(row) {
+      if (isPhoto(row)) {
+        return \`<div class="thread-media"><button class="media-open" type="button" data-media-src="\${fileUrl(row)}" data-media-download="\${fileUrl(row, true)}" aria-label="مشاهده عکس"><img class="thread-photo" src="\${fileUrl(row)}" alt="" loading="lazy" /></button></div>\`;
+      }
+      if (isDownloadableFile(row)) {
+        return \`<div class="thread-media"><a class="thread-file" href="\${fileUrl(row, true)}" download><span>فایل</span><strong>\${esc(mediaFileName(row))}</strong></a></div>\`;
+      }
+      return "";
     }
     function isTopicRootReply(row) {
       if (!row.reply_to_message_id || !row.message_thread_id) return false;
@@ -397,6 +447,7 @@ const HTML = `<!doctype html>
               <button class="details-button" type="button" data-detail-key="thread-detail-\${index}">Details</button>
             </div>
             <div class="thread-message">\${messageWithBadge(row)}</div>
+            \${threadMedia(row)}
             \${reactionBar(row)}
           </div>
         </div>
@@ -463,6 +514,11 @@ const HTML = `<!doctype html>
       modalBodyEl.innerHTML = html;
       modalBackdropEl.classList.add("open");
     }
+    function openMediaModal(src, downloadUrl) {
+      modalTitleEl.textContent = "تصویر";
+      modalBodyEl.innerHTML = \`<div class="modal-media"><img class="modal-image" src="\${src}" alt="" /><a class="details-button" href="\${downloadUrl || src}" download>Download Image</a></div>\`;
+      modalBackdropEl.classList.add("open");
+    }
     function closeModal() {
       modalBackdropEl.classList.remove("open");
       modalBodyEl.textContent = "";
@@ -491,7 +547,7 @@ const HTML = `<!doctype html>
           <td class="full-cell">\${esc(row.sender_first_name)}</td>
           <td class="full-cell">\${esc(row.sender_last_name)}</td>
           <td class="full-cell">\${esc(row.sender_username)}</td>
-          <td class="body message-cell">\${editedBadge(row)}\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 115)}</td>
+          <td class="body message-cell">\${editedBadge(row)}\${mediaBadge(row)}\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 115)}</td>
           <td>\${esc(row.sent_jalali_date)}</td>
           <td class="full-cell">\${esc(row.sent_time)}</td>
           <td>\${esc(row.message_id)}</td>
@@ -579,6 +635,11 @@ const HTML = `<!doctype html>
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "");
     });
     threadRowsEl.addEventListener("click", event => {
+      const mediaButton = event.target.closest("[data-media-src]");
+      if (mediaButton) {
+        openMediaModal(mediaButton.dataset.mediaSrc, mediaButton.dataset.mediaDownload);
+        return;
+      }
       const detailsButton = event.target.closest("[data-detail-key]");
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "");
     });
@@ -965,6 +1026,42 @@ async function fetchTelegramProfilePhoto(request, env) {
       "cache-control": "private, max-age=86400",
     },
   });
+}
+
+function contentTypeFromPath(filePath, fallback = "application/octet-stream") {
+  const lower = String(filePath || "").toLowerCase();
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".gif")) return "image/gif";
+  if (lower.endsWith(".pdf")) return "application/pdf";
+  return fallback;
+}
+
+async function fetchTelegramFile(request, env) {
+  if (!env.TELEGRAM_BOT_TOKEN) return text("Telegram token is not configured", 503);
+  const url = new URL(request.url);
+  const fileId = url.searchParams.get("file_id");
+  if (!fileId) return text("Missing file_id", 400);
+
+  const fileResponse = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${encodeURIComponent(fileId)}`);
+  if (!fileResponse.ok) return text("File lookup failed", 502);
+  const fileData = await fileResponse.json();
+  const filePath = fileData?.result?.file_path;
+  if (!filePath) return text("File not found", 404);
+
+  const fileDownloadResponse = await fetch(`https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${filePath}`);
+  if (!fileDownloadResponse.ok || !fileDownloadResponse.body) return text("File fetch failed", 502);
+  const telegramType = fileDownloadResponse.headers.get("content-type") || "";
+  const headers = new Headers({
+    "content-type": telegramType.startsWith("application/octet-stream") ? contentTypeFromPath(filePath, telegramType) : (telegramType || contentTypeFromPath(filePath)),
+    "cache-control": "private, max-age=86400",
+  });
+  if (url.searchParams.get("download") === "1") {
+    const filename = filePath.split("/").pop() || "telegram-file";
+    headers.set("content-disposition", `attachment; filename="${filename.replace(/"/g, "")}"`);
+  }
+  return new Response(fileDownloadResponse.body, { status: 200, headers });
 }
 
 async function rejectPrivateUser(env, message) {
@@ -1451,7 +1548,7 @@ export default {
       });
     }
     if (!dashboardAuthorized(request, env)) {
-      if (url.pathname === "/api/messages" || url.pathname === "/api/groups" || url.pathname === "/api/thread-filter-options" || url.pathname === "/api/profile-photo") return json({ error: "Unauthorized" }, 401);
+      if (url.pathname === "/api/messages" || url.pathname === "/api/groups" || url.pathname === "/api/thread-filter-options" || url.pathname === "/api/profile-photo" || url.pathname === "/api/telegram-file") return json({ error: "Unauthorized" }, 401);
       return text(LOGIN_HTML, 200, "text/html; charset=utf-8");
     }
     if (url.pathname === "/") return text(HTML, 200, "text/html; charset=utf-8");
@@ -1460,6 +1557,7 @@ export default {
     if (url.pathname === "/api/groups") return fetchGroups(request, env);
     if (url.pathname === "/api/thread-filter-options") return fetchThreadFilterOptions(request, env);
     if (url.pathname === "/api/profile-photo") return fetchTelegramProfilePhoto(request, env);
+    if (url.pathname === "/api/telegram-file") return fetchTelegramFile(request, env);
     return text("Not found", 404);
   },
 };
