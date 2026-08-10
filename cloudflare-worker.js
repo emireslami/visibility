@@ -1284,11 +1284,7 @@ async function handleLogin(request, env) {
   const email = normalizeEmail(form.get("email"));
   const password = String(form.get("password") || "");
   if (!validAccessEmail(email)) return text(loginHtml("ایمیل باید به شکل anything@toman.ir باشد.", email), 400, "text/html; charset=utf-8");
-  let user = await getAccessUserByEmail(env, email);
-  const userCount = await countAccessUsers(env);
-  if (!user && userCount === 0 && password === "changeme") {
-    user = await createAccessUser(env, email);
-  }
+  const user = await getAccessUserByEmail(env, email);
   if (!user) {
     return text(loginHtml("این ایمیل مجوز دسترسی ندارد.", email), 401, "text/html; charset=utf-8");
   }
@@ -1339,15 +1335,6 @@ async function getAccessUserByEmail(env, email) {
   if (!response.ok) return null;
   const rows = await response.json();
   return rows[0] || null;
-}
-
-async function countAccessUsers(env) {
-  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_access_users?select=id&limit=1`, {
-    headers: { ...supabaseHeaders(env), prefer: "count=exact" },
-  });
-  if (!response.ok) return 0;
-  const range = response.headers.get("content-range") || "";
-  return Number(range.split("/")[1] || 0);
 }
 
 async function createAccessUser(env, email) {
