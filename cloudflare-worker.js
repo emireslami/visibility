@@ -120,8 +120,12 @@ const HTML = `<!doctype html>
     .legend-item { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; }
     .legend-swatch { width:10px; height:10px; border-radius:2px; flex:0 0 auto; }
     .empty-chart { min-height:240px; display:grid; place-items:center; color:var(--muted); border:1px dashed var(--line); border-radius:8px; }
-    .access-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:760px; margin:0 auto; }
+    .access-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
     .access-panel h2 { margin:0 0 6px; font-size:18px; }
+    .access-tabs { display:flex; justify-content:flex-start; gap:8px; margin:14px 0; direction:ltr; }
+    .access-tab { height:32px; padding:0 12px; background:#fff; color:var(--ink); border-color:var(--line); }
+    .access-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .access-section[hidden] { display:none; }
     .access-form { display:grid; grid-template-columns:minmax(220px, 1fr) 120px; gap:10px; margin:14px 0; }
     .access-message { min-height:24px; color:var(--muted); font-size:12px; }
     .access-list { display:grid; gap:8px; margin-top:12px; }
@@ -136,6 +140,10 @@ const HTML = `<!doctype html>
     .revoke-button { height:30px; padding:0 10px; background:#fff; color:#b42318; border-color:#f0b8b2; }
     .revoke-button:disabled { cursor:not-allowed; color:var(--muted); border-color:var(--line); background:#f3f5f6; }
     .reactivate-button { height:30px; padding:0 10px; background:#fff; color:var(--accent); border-color:#9bd6dd; }
+    .access-log-list { display:grid; gap:8px; margin-top:12px; }
+    .access-log-row { display:grid; grid-template-columns:140px 1fr 1fr 130px 86px; gap:10px; align-items:center; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; direction:ltr; }
+    .access-log-action { font-weight:800; color:var(--ink); }
+    .access-log-meta { color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } }
   </style>
 </head>
@@ -239,13 +247,23 @@ const HTML = `<!doctype html>
       <section class="access-panel">
         <h2>Access</h2>
         <p class="thread-muted">فقط ایمیل‌های دامنه toman.ir قابل اضافه شدن هستند. پسورد اولیه هر کاربر changeme است.</p>
-        <form class="access-form" id="accessForm">
-          <input id="accessEmail" type="email" placeholder="anything@toman.ir" autocomplete="off" />
-          <button type="submit">افزودن</button>
-          <div class="permission-grid" id="accessNewPermissions"></div>
-        </form>
-        <div class="access-message" id="accessMessage"></div>
-        <div class="access-list" id="accessRows"></div>
+        <div class="access-tabs">
+          <button class="access-tab active" id="accessUsersTab" type="button">Users</button>
+          <button class="access-tab" id="accessLogsTab" type="button">Logs</button>
+        </div>
+        <section class="access-section" id="accessUsersSection">
+          <form class="access-form" id="accessForm">
+            <input id="accessEmail" type="email" placeholder="anything@toman.ir" autocomplete="off" />
+            <button type="submit">افزودن</button>
+            <div class="permission-grid" id="accessNewPermissions"></div>
+          </form>
+          <div class="access-message" id="accessMessage"></div>
+          <div class="access-list" id="accessRows"></div>
+        </section>
+        <section class="access-section" id="accessLogsSection" hidden>
+          <div class="access-message" id="accessLogMessage"></div>
+          <div class="access-log-list" id="accessLogRows"></div>
+        </section>
       </section>
     </section>
   </main>
@@ -289,11 +307,17 @@ const HTML = `<!doctype html>
     const modalTitleEl = document.getElementById("modalTitle");
     const modalBodyEl = document.getElementById("modalBody");
     const modalCloseEl = document.getElementById("modalClose");
+    const accessUsersTabEl = document.getElementById("accessUsersTab");
+    const accessLogsTabEl = document.getElementById("accessLogsTab");
+    const accessUsersSectionEl = document.getElementById("accessUsersSection");
+    const accessLogsSectionEl = document.getElementById("accessLogsSection");
     const accessFormEl = document.getElementById("accessForm");
     const accessEmailEl = document.getElementById("accessEmail");
     const accessNewPermissionsEl = document.getElementById("accessNewPermissions");
     const accessMessageEl = document.getElementById("accessMessage");
     const accessRowsEl = document.getElementById("accessRows");
+    const accessLogMessageEl = document.getElementById("accessLogMessage");
+    const accessLogRowsEl = document.getElementById("accessLogRows");
     const currentUserPermissions = new Set(__CURRENT_USER_PERMISSIONS__);
     const permissionOptions = [
       { key:"access", label:"Access" },
@@ -325,6 +349,26 @@ const HTML = `<!doctype html>
           <input type="checkbox" data-permission="\${esc(option.key)}" \${selectedSet.has(option.key) ? "checked" : ""} />
           <span>\${esc(option.label)}</span>
         </label>\`).join("");
+    }
+    function accessLogDetailsHtml(log) {
+      return \`<div class="details-grid">
+        <div class="detail-row"><div class="detail-label">Action</div><div class="detail-value">\${esc(log.action)}</div></div>
+        <div class="detail-row"><div class="detail-label">Actor</div><div class="detail-value">\${esc(log.actor_email || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">Target</div><div class="detail-value">\${esc(log.target_email || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">Time (Tehran)</div><div class="detail-value">\${esc(log.created_at_utc ? tehranDisplay(log.created_at_utc) : "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">Old Values</div><pre class="detail-value detail-pre">\${esc(JSON.stringify(log.old_values || {}, null, 2))}</pre></div>
+        <div class="detail-row"><div class="detail-label">New Values</div><pre class="detail-value detail-pre">\${esc(JSON.stringify(log.new_values || {}, null, 2))}</pre></div>
+        <div class="detail-row"><div class="detail-label">Metadata</div><pre class="detail-value detail-pre">\${esc(JSON.stringify(log.metadata || {}, null, 2))}</pre></div>
+      </div>\`;
+    }
+    function showAccessSection(section) {
+      const isLogs = section === "logs";
+      accessUsersSectionEl.hidden = isLogs;
+      accessLogsSectionEl.hidden = !isLogs;
+      accessUsersTabEl.classList.toggle("active", !isLogs);
+      accessLogsTabEl.classList.toggle("active", isLogs);
+      if (isLogs) loadAccessLogs();
+      else loadAccessUsers();
     }
     function setupAccessShell() {
       accessNewPermissionsEl.innerHTML = permissionGridHtml(permissionOptions.map(option => option.key), "new");
@@ -994,6 +1038,37 @@ const HTML = `<!doctype html>
         setStatus(token, "خطا در دریافت کاربران");
       }
     }
+    async function loadAccessLogs() {
+      const token = showLoading("در حال دریافت لاگ دسترسی‌ها...");
+      try {
+        const res = await fetch("/api/access-logs");
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.logs)) {
+          accessLogRowsEl.innerHTML = "";
+          accessLogMessageEl.textContent = data.detail || data.error || "خطا در دریافت لاگ‌ها";
+          setStatus(token, data.detail || data.error || "خطا در دریافت لاگ‌ها");
+          return;
+        }
+        detailByKey.clear();
+        accessLogRowsEl.innerHTML = data.logs.map((log, index) => {
+          const key = "access-log-" + index;
+          detailByKey.set(key, accessLogDetailsHtml(log));
+          return \`<div class="access-log-row">
+            <span class="access-log-action">\${esc(log.action)}</span>
+            <span class="access-log-meta">Actor: \${esc(log.actor_email || "-")}</span>
+            <span class="access-log-meta">Target: \${esc(log.target_email || "-")}</span>
+            <span class="access-log-meta">\${esc(log.created_at_utc ? tehranDisplay(log.created_at_utc) : "-")}</span>
+            <button class="details-button" type="button" data-detail-key="\${esc(key)}">Details</button>
+          </div>\`;
+        }).join("") || '<div class="empty">لاگی ثبت نشده است</div>';
+        accessLogMessageEl.textContent = "";
+        setStatus(token, data.logs.length + " لاگ");
+      } catch (error) {
+        accessLogRowsEl.innerHTML = "";
+        accessLogMessageEl.textContent = "خطا در دریافت لاگ‌ها";
+        setStatus(token, "خطا در دریافت لاگ‌ها");
+      }
+    }
     async function loadThreads() {
       updateFilterButtons();
       const token = showLoading("در حال دریافت تردها...");
@@ -1051,7 +1126,7 @@ const HTML = `<!doctype html>
       if (isDashboard) loadDashboard();
       else if (isGroups) loadGroups();
       else if (isThreads) loadThreadFilterOptions().then(loadThreads);
-      else if (isAccess) loadAccessUsers();
+      else if (isAccess) showAccessSection(accessLogsSectionEl.hidden ? "users" : "logs");
       else loadThreadFilterOptions().then(load);
     }
     rowsEl.addEventListener("click", event => {
@@ -1069,6 +1144,10 @@ const HTML = `<!doctype html>
         openMediaModal(mediaButton.dataset.mediaSrc, mediaButton.dataset.mediaDownload);
         return;
       }
+      const detailsButton = event.target.closest("[data-detail-key]");
+      if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "");
+    });
+    accessLogRowsEl.addEventListener("click", event => {
       const detailsButton = event.target.closest("[data-detail-key]");
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "");
     });
@@ -1093,6 +1172,8 @@ const HTML = `<!doctype html>
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
     accessNavEl.addEventListener("click", () => showPage("access"));
+    accessUsersTabEl.addEventListener("click", () => showAccessSection("users"));
+    accessLogsTabEl.addEventListener("click", () => showAccessSection("logs"));
     accessFormEl.addEventListener("submit", async (event) => {
       event.preventDefault();
       accessMessageEl.textContent = "در حال افزودن...";
@@ -1182,7 +1263,7 @@ const HTML = `<!doctype html>
       }
     });
     setupAccessShell();
-    setInterval(() => { if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "access" && canOpen("access")) loadAccessUsers(); else if (canOpen("messages")) load(); }, 5000);
+    setInterval(() => { if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? loadAccessUsers() : loadAccessLogs()); else if (canOpen("messages")) load(); }, 5000);
   </script>
 </body>
 </html>`;
@@ -1515,6 +1596,37 @@ async function listAccessUsers(env) {
   return response.json();
 }
 
+async function insertAccessAuditLog(env, { actorEmail, targetEmail, action, oldValues = {}, newValues = {}, metadata = {} }) {
+  const row = {
+    actor_email: actorEmail ? normalizeEmail(actorEmail) : null,
+    target_email: targetEmail ? normalizeEmail(targetEmail) : null,
+    action,
+    old_values: oldValues || {},
+    new_values: newValues || {},
+    metadata: metadata || {},
+  };
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_access_audit_logs`, {
+    method: "POST",
+    headers: supabaseHeaders(env),
+    body: JSON.stringify(row),
+  });
+  if (!response.ok) {
+    const body = await readSupabaseJson(response);
+    console.error("access audit log failed", body?.message || response.status);
+  }
+}
+
+async function listAccessAuditLogs(env) {
+  const params = new URLSearchParams({
+    select: "id,actor_email,target_email,action,old_values,new_values,metadata,created_at_utc",
+    order: "created_at_utc.desc",
+    limit: "200",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_access_audit_logs?${params}`, { headers: supabaseHeaders(env) });
+  if (!response.ok) return [];
+  return response.json();
+}
+
 async function handleSetPassword(request, env, user) {
   if (!user) return redirect("/login");
   if (request.method !== "POST") return text(passwordPageHtml(), 200, "text/html; charset=utf-8");
@@ -1534,6 +1646,13 @@ async function handleSetPassword(request, env, user) {
     must_change_password: false,
     updated_at_utc: new Date().toISOString(),
   });
+  await insertAccessAuditLog(env, {
+    actorEmail: user.email,
+    targetEmail: user.email,
+    action: "password_change",
+    oldValues: { must_change_password: user.must_change_password },
+    newValues: { must_change_password: false },
+  });
   return new Response(null, {
     status: 303,
     headers: {
@@ -1548,7 +1667,11 @@ async function fetchAccessUsers(env) {
   return json({ users: users.map((user) => ({ ...user, permissions: accessPermissionsForUser(user) })) });
 }
 
-async function addAccessUser(request, env) {
+async function fetchAccessAuditLogs(env) {
+  return json({ logs: await listAccessAuditLogs(env) });
+}
+
+async function addAccessUser(request, env, authUser) {
   let body = {};
   try {
     body = await request.json();
@@ -1561,6 +1684,17 @@ async function addAccessUser(request, env) {
     const existing = await getAccessUserByEmail(env, email);
     if (existing) return json({ error: "این ایمیل قبلاً اضافه شده است" }, 409);
     const user = await createAccessUser(env, email, body.permissions);
+    await insertAccessAuditLog(env, {
+      actorEmail: authUser?.email,
+      targetEmail: user.email,
+      action: "invite",
+      newValues: {
+        email: user.email,
+        must_change_password: user.must_change_password,
+        is_active: user.is_active,
+        permissions: accessPermissionsForUser(user),
+      },
+    });
     return json({ user: { email: user.email, must_change_password: user.must_change_password } }, 201);
   } catch (error) {
     return json({ error: error.message || "ساخت کاربر انجام نشد" }, 500);
@@ -1584,13 +1718,20 @@ async function revokeAccessUser(request, env, authUser) {
       is_active: false,
       updated_at_utc: new Date().toISOString(),
     });
+    await insertAccessAuditLog(env, {
+      actorEmail: authUser?.email,
+      targetEmail: email,
+      action: "revoke",
+      oldValues: { is_active: existing.is_active },
+      newValues: { is_active: user.is_active },
+    });
     return json({ user: { email: user.email, is_active: user.is_active } });
   } catch (error) {
     return json({ error: error.message || "Revoke انجام نشد" }, 500);
   }
 }
 
-async function reactivateAccessUser(request, env) {
+async function reactivateAccessUser(request, env, authUser) {
   let body = {};
   try {
     body = await request.json();
@@ -1606,13 +1747,20 @@ async function reactivateAccessUser(request, env) {
       is_active: true,
       updated_at_utc: new Date().toISOString(),
     });
+    await insertAccessAuditLog(env, {
+      actorEmail: authUser?.email,
+      targetEmail: email,
+      action: "reactivate",
+      oldValues: { is_active: existing.is_active },
+      newValues: { is_active: user.is_active },
+    });
     return json({ user: { email: user.email, is_active: user.is_active } });
   } catch (error) {
     return json({ error: error.message || "فعال‌سازی انجام نشد" }, 500);
   }
 }
 
-async function updateAccessUserPermissions(request, env) {
+async function updateAccessUserPermissions(request, env, authUser) {
   let body = {};
   try {
     body = await request.json();
@@ -1628,6 +1776,13 @@ async function updateAccessUserPermissions(request, env) {
     const user = await patchAccessUser(env, email, {
       permissions,
       updated_at_utc: new Date().toISOString(),
+    });
+    await insertAccessAuditLog(env, {
+      actorEmail: authUser?.email,
+      targetEmail: email,
+      action: "permissions_update",
+      oldValues: { permissions: accessPermissionsForUser(existing) },
+      newValues: { permissions: accessPermissionsForUser(user) },
     });
     return json({ user: { email: user.email, permissions: accessPermissionsForUser(user) } });
   } catch (error) {
@@ -2477,11 +2632,13 @@ export default {
     if (url.pathname === "/api/debug") return text("Not found", 404);
     if (url.pathname === "/api/access-users" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname.startsWith("/api/access-users/") && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
+    if (url.pathname === "/api/access-logs" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname === "/api/access-users" && request.method === "GET") return fetchAccessUsers(env);
-    if (url.pathname === "/api/access-users" && request.method === "POST") return addAccessUser(request, env);
+    if (url.pathname === "/api/access-users" && request.method === "POST") return addAccessUser(request, env, authUser);
     if (url.pathname === "/api/access-users/revoke" && request.method === "POST") return revokeAccessUser(request, env, authUser);
-    if (url.pathname === "/api/access-users/reactivate" && request.method === "POST") return reactivateAccessUser(request, env);
-    if (url.pathname === "/api/access-users/permissions" && request.method === "POST") return updateAccessUserPermissions(request, env);
+    if (url.pathname === "/api/access-users/reactivate" && request.method === "POST") return reactivateAccessUser(request, env, authUser);
+    if (url.pathname === "/api/access-users/permissions" && request.method === "POST") return updateAccessUserPermissions(request, env, authUser);
+    if (url.pathname === "/api/access-logs" && request.method === "GET") return fetchAccessAuditLogs(env);
     if (url.pathname === "/api/messages") {
       const view = url.searchParams.get("view");
       if (view === "threads" ? !hasAccessPermission(authUser, "threads") : !hasAccessPermission(authUser, "messages")) return forbiddenAccess();
