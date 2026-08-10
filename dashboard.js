@@ -139,7 +139,7 @@ function sendHtml(res) {
     .full-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.45; }
     .message-cell .clip { max-width:100%; }
     .clip { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .badge { display:inline-flex; align-items:center; height:22px; margin-top:6px; padding:0 8px; border-radius:999px; background:#fff4d6; color:#7a4a00; border:1px solid #f1cf75; font-size:11px; font-weight:700; direction:ltr; }
+    .badge { display:inline-flex; align-items:center; height:22px; margin-inline-end:6px; padding:0 8px; border-radius:999px; background:#fff4d6; color:#7a4a00; border:1px solid #f1cf75; font-size:11px; font-weight:700; direction:ltr; }
     .more { height: 28px; margin-top: 6px; padding: 0 9px; font-size: 12px; }
     .details-button { height: 28px; padding: 0 8px; font-size: 12px; }
     .thread-list { display:grid; gap:14px; max-width:980px; margin:0 auto; direction:rtl; }
@@ -376,6 +376,12 @@ function sendHtml(res) {
       const text = messageContent(row);
       return text ? linkify(text) : '<span class="thread-muted">بدون متن</span>';
     }
+    function editedBadge(row) {
+      return row.edited_at_utc ? '<span class="badge">Edited</span>' : '';
+    }
+    function messageWithBadge(row) {
+      return \`\${editedBadge(row)}\${compactMessage(row)}\`;
+    }
     function initials(row) {
       const source = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "?";
       return source.trim().slice(0, 1).toUpperCase() || "?";
@@ -407,10 +413,9 @@ function sendHtml(res) {
               <span class="thread-pill">Message ID: \${esc(row.message_id)}</span>
               \${row.reply_to_message_id ? \`<span class="thread-pill">Reply To: \${esc(row.reply_to_message_id)}</span>\` : ""}
               <span class="thread-muted">\${esc(row.sent_jalali_date || "")} \${esc(row.sent_time || "")}</span>
-              \${row.edited_at_utc ? '<span class="badge">Edited</span>' : ''}
               <button class="details-button" type="button" data-detail-key="thread-detail-\${index}">Details</button>
             </div>
-            <div class="thread-message">\${compactMessage(row)}</div>
+            <div class="thread-message">\${messageWithBadge(row)}</div>
           </div>
         </div>
       </article>\`;
@@ -482,7 +487,7 @@ function sendHtml(res) {
           <td class="full-cell">\${esc(row.sender_first_name)}</td>
           <td class="full-cell">\${esc(row.sender_last_name)}</td>
           <td class="full-cell">\${esc(row.sender_username)}</td>
-          <td class="body message-cell">\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 120)}\${row.edited_at_utc ? '<span class="badge">Edited</span>' : ''}</td>
+          <td class="body message-cell">\${editedBadge(row)}\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 120)}</td>
           <td>\${esc(row.sent_jalali_date)}</td>
           <td class="full-cell">\${esc(row.sent_time)}</td>
           <td>\${esc(row.message_id)}</td>
