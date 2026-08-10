@@ -115,6 +115,14 @@ const HTML = `<!doctype html>
     .legend-item { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; }
     .legend-swatch { width:10px; height:10px; border-radius:2px; flex:0 0 auto; }
     .empty-chart { min-height:240px; display:grid; place-items:center; color:var(--muted); border:1px dashed var(--line); border-radius:8px; }
+    .access-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:760px; margin:0 auto; }
+    .access-panel h2 { margin:0 0 6px; font-size:18px; }
+    .access-form { display:grid; grid-template-columns:minmax(220px, 1fr) 120px; gap:10px; margin:14px 0; }
+    .access-message { min-height:24px; color:var(--muted); font-size:12px; }
+    .access-list { display:grid; gap:8px; margin-top:12px; }
+    .access-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; direction:ltr; }
+    .access-email { font-weight:700; }
+    .access-state { color:var(--muted); font-size:12px; }
     @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } }
   </style>
 </head>
@@ -127,6 +135,7 @@ const HTML = `<!doctype html>
         <button class="nav-button active" id="messagesNav" type="button">Messages</button>
         <button class="nav-button" id="groupsNav" type="button">Groups</button>
         <button class="nav-button" id="threadsNav" type="button">Threads</button>
+        <button class="nav-button" id="accessNav" type="button">Access</button>
       </nav>
     </div>
     <div class="meta" id="status">در حال دریافت...</div>
@@ -213,6 +222,18 @@ const HTML = `<!doctype html>
       </section>
       <div class="thread-list" id="threadRows"></div>
     </section>
+    <section class="page" id="accessPage" hidden>
+      <section class="access-panel">
+        <h2>Access</h2>
+        <p class="thread-muted">فقط ایمیل‌های دامنه toman.ir قابل اضافه شدن هستند. پسورد اولیه هر کاربر changeme است.</p>
+        <form class="access-form" id="accessForm">
+          <input id="accessEmail" type="email" placeholder="anything@toman.ir" autocomplete="off" />
+          <button type="submit">افزودن</button>
+        </form>
+        <div class="access-message" id="accessMessage"></div>
+        <div class="access-list" id="accessRows"></div>
+      </section>
+    </section>
   </main>
   <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
@@ -234,10 +255,12 @@ const HTML = `<!doctype html>
     const messagesNavEl = document.getElementById("messagesNav");
     const groupsNavEl = document.getElementById("groupsNav");
     const threadsNavEl = document.getElementById("threadsNav");
+    const accessNavEl = document.getElementById("accessNav");
     const dashboardPageEl = document.getElementById("dashboardPage");
     const messagesPageEl = document.getElementById("messagesPage");
     const groupsPageEl = document.getElementById("groupsPage");
     const threadsPageEl = document.getElementById("threadsPage");
+    const accessPageEl = document.getElementById("accessPage");
     const searchEl = document.getElementById("search");
     const groupEl = document.getElementById("group");
     const topicEl = document.getElementById("topic");
@@ -252,6 +275,10 @@ const HTML = `<!doctype html>
     const modalTitleEl = document.getElementById("modalTitle");
     const modalBodyEl = document.getElementById("modalBody");
     const modalCloseEl = document.getElementById("modalClose");
+    const accessFormEl = document.getElementById("accessForm");
+    const accessEmailEl = document.getElementById("accessEmail");
+    const accessMessageEl = document.getElementById("accessMessage");
+    const accessRowsEl = document.getElementById("accessRows");
     const fullTextByKey = new Map();
     const detailByKey = new Map();
     const chartColors = ["#087f8c", "#f25f5c", "#3b82f6", "#f59e0b", "#7c3aed", "#10b981", "#ef476f", "#6b7280", "#06b6d4", "#84cc16"];
@@ -260,6 +287,9 @@ const HTML = `<!doctype html>
     let loadingToken = 0;
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
+    }
+    function tehranDisplay(value) {
+      return new Date(value).toLocaleString("fa-IR", { timeZone:"Asia/Tehran", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" });
     }
     function showLoading(label = "در حال دریافت داده...") {
       loadingToken += 1;
@@ -840,6 +870,26 @@ const HTML = `<!doctype html>
         setStatus(token, "خطا در دریافت گروه‌ها");
       }
     }
+    async function loadAccessUsers() {
+      const token = showLoading("در حال دریافت کاربران...");
+      try {
+        const res = await fetch("/api/access-users");
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.users)) {
+          accessRowsEl.innerHTML = "";
+          setStatus(token, data.detail || data.error || "خطا در دریافت کاربران");
+          return;
+        }
+        accessRowsEl.innerHTML = data.users.map((user) => \`
+          <div class="access-row">
+            <span class="access-email">\${esc(user.email)}</span>
+            <span class="access-state">\${user.must_change_password ? "نیازمند تغییر پسورد" : "فعال"} · \${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</span>
+          </div>\`).join("");
+        setStatus(token, data.users.length + " کاربر");
+      } catch (error) {
+        setStatus(token, "خطا در دریافت کاربران");
+      }
+    }
     async function loadThreads() {
       const token = showLoading("در حال دریافت تردها...");
       try {
@@ -880,17 +930,21 @@ const HTML = `<!doctype html>
       const isDashboard = page === "dashboard";
       const isGroups = page === "groups";
       const isThreads = page === "threads";
+      const isAccess = page === "access";
       dashboardPageEl.hidden = !isDashboard;
-      messagesPageEl.hidden = isDashboard || isGroups || isThreads;
+      messagesPageEl.hidden = isDashboard || isGroups || isThreads || isAccess;
       groupsPageEl.hidden = !isGroups;
       threadsPageEl.hidden = !isThreads;
+      accessPageEl.hidden = !isAccess;
       dashboardNavEl.classList.toggle("active", isDashboard);
-      messagesNavEl.classList.toggle("active", !isDashboard && !isGroups && !isThreads);
+      messagesNavEl.classList.toggle("active", !isDashboard && !isGroups && !isThreads && !isAccess);
       groupsNavEl.classList.toggle("active", isGroups);
       threadsNavEl.classList.toggle("active", isThreads);
+      accessNavEl.classList.toggle("active", isAccess);
       if (isDashboard) loadDashboard();
       else if (isGroups) loadGroups();
       else if (isThreads) loadThreadFilterOptions().then(loadThreads);
+      else if (isAccess) loadAccessUsers();
       else loadThreadFilterOptions().then(load);
     }
     rowsEl.addEventListener("click", event => {
@@ -920,6 +974,28 @@ const HTML = `<!doctype html>
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
+    accessNavEl.addEventListener("click", () => showPage("access"));
+    accessFormEl.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      accessMessageEl.textContent = "در حال افزودن...";
+      try {
+        const res = await fetch("/api/access-users", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: accessEmailEl.value.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          accessMessageEl.textContent = data.error || "افزودن کاربر انجام نشد";
+          return;
+        }
+        accessEmailEl.value = "";
+        accessMessageEl.textContent = "کاربر اضافه شد. پسورد اولیه changeme است.";
+        loadAccessUsers();
+      } catch (error) {
+        accessMessageEl.textContent = "افزودن کاربر انجام نشد";
+      }
+    });
     searchEl.addEventListener("keydown", e => { if (e.key === "Enter") load(); });
     document.addEventListener("click", (event) => {
       for (const filter of [messageGroupFilter, messageTopicFilter, threadGroupFilter, threadTopicFilter, threadYearFilter, threadMonthFilter, threadDayFilter]) {
@@ -927,7 +1003,7 @@ const HTML = `<!doctype html>
       }
     });
     loadThreadFilterOptions().then(load);
-    setInterval(() => { if (currentPage === "dashboard") loadDashboard(); else if (currentPage === "groups") loadGroups(); else if (currentPage === "threads") loadThreads(); else load(); }, 5000);
+    setInterval(() => { if (currentPage === "dashboard") loadDashboard(); else if (currentPage === "groups") loadGroups(); else if (currentPage === "threads") loadThreads(); else if (currentPage === "access") loadAccessUsers(); else load(); }, 5000);
   </script>
 </body>
 </html>`;
@@ -957,12 +1033,50 @@ const LOGIN_HTML = `<!doctype html>
 <body>
   <form method="post" action="/login">
     <h1>Visibility</h1>
-    <label for="password">رمز ورود داشبورد</label>
-    <input id="password" name="password" type="password" autocomplete="current-password" autofocus />
+    <label for="email">ایمیل</label>
+    <input id="email" name="email" type="email" autocomplete="username" placeholder="anything@toman.ir" autofocus />
+    <label for="password">پسورد</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" />
     <button type="submit">ورود</button>
   </form>
 </body>
 </html>`;
+
+function passwordPageHtml(error = "") {
+  return `<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Set Password</title>
+  <style>
+    :root { --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; --error:#b42318; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; font-family:"IRANSans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); }
+    form { width:min(420px, calc(100vw - 32px)); background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:22px; }
+    h1 { margin:0 0 8px; font-size:20px; }
+    p { margin:0 0 16px; color:var(--muted); font-size:13px; line-height:1.8; }
+    label { display:block; margin:10px 0 8px; color:var(--muted); font-size:13px; }
+    input, button { width:100%; height:40px; border-radius:6px; font:inherit; }
+    input { border:1px solid var(--line); padding:0 10px; direction:ltr; }
+    button { margin-top:14px; border:0; background:var(--accent); color:#fff; cursor:pointer; }
+    .error { min-height:22px; color:var(--error); font-size:12px; }
+  </style>
+</head>
+<body>
+  <form method="post" action="/set-password">
+    <h1>تنظیم پسورد جدید</h1>
+    <p>برای ادامه باید پسورد قوی انتخاب کنید. بعد از ذخیره، خودکار خارج می‌شوید و باید با پسورد جدید وارد شوید.</p>
+    <div class="error">${error}</div>
+    <label for="current_password">پسورد فعلی</label>
+    <input id="current_password" name="current_password" type="password" autocomplete="current-password" autofocus />
+    <label for="new_password">پسورد جدید</label>
+    <input id="new_password" name="new_password" type="password" autocomplete="new-password" />
+    <button type="submit">ذخیره پسورد</button>
+  </form>
+</body>
+</html>`;
+}
 
 const MESSAGE_KEYS = ["message", "edited_message", "channel_post", "edited_channel_post"];
 const MEDIA_KEYS = ["photo", "video", "document", "voice", "audio", "video_note", "animation", "sticker", "location", "contact", "poll", "venue"];
@@ -994,24 +1108,112 @@ function redirect(location) {
   });
 }
 
-function dashboardAuthorized(request, env) {
-  if (!env.DASHBOARD_PASSWORD) return false;
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
+function validAccessEmail(email) {
+  return /^[^@\s]+@toman\.ir$/.test(normalizeEmail(email));
+}
+
+function strongPassword(password) {
+  return typeof password === "string"
+    && password.length >= 10
+    && /[a-z]/.test(password)
+    && /[A-Z]/.test(password)
+    && /\d/.test(password)
+    && /[^A-Za-z0-9]/.test(password)
+    && password !== "changeme";
+}
+
+function randomHex(bytes = 16) {
+  const values = new Uint8Array(bytes);
+  crypto.getRandomValues(values);
+  return [...values].map((value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+function bytesToHex(buffer) {
+  return [...new Uint8Array(buffer)].map((value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+function base64UrlEncode(value) {
+  return btoa(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function base64UrlDecode(value) {
+  const padded = value.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - value.length % 4) % 4);
+  return atob(padded);
+}
+
+async function sha256Hex(value) {
+  return bytesToHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
+}
+
+async function hashPassword(password, salt) {
+  return sha256Hex(`${salt}:${password}`);
+}
+
+function sessionSecret(env) {
+  return env.SESSION_SECRET || env.SUPABASE_SERVICE_ROLE_KEY || env.DASHBOARD_PASSWORD || "visibility-session";
+}
+
+async function signSessionPayload(payload, env) {
+  return sha256Hex(`${payload}.${sessionSecret(env)}`);
+}
+
+async function makeSessionCookie(user, env) {
+  const payload = base64UrlEncode(JSON.stringify({
+    email: user.email,
+    exp: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    ph: String(user.password_hash || "").slice(0, 16),
+  }));
+  const signature = await signSessionPayload(payload, env);
+  return `${payload}.${signature}`;
+}
+
+function clearSessionCookie() {
+  return "visibility_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0";
+}
+
+async function dashboardAuthorized(request, env) {
   const cookie = request.headers.get("cookie") || "";
-  return cookie.split(";").some((part) => part.trim() === `visibility_session=${env.DASHBOARD_PASSWORD}`);
+  const session = cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith("visibility_session="))?.split("=")[1];
+  if (!session || !session.includes(".")) return null;
+  const [payload, signature] = session.split(".");
+  if (signature !== await signSessionPayload(payload, env)) return null;
+  let data;
+  try {
+    data = JSON.parse(base64UrlDecode(payload));
+  } catch {
+    return null;
+  }
+  if (!data.email || !data.exp || Date.now() > data.exp) return null;
+  const user = await getAccessUserByEmail(env, data.email);
+  if (!user || !user.is_active || String(user.password_hash || "").slice(0, 16) !== data.ph) return null;
+  return user;
 }
 
 async function handleLogin(request, env) {
   if (request.method !== "POST") return text(LOGIN_HTML, 200, "text/html; charset=utf-8");
-  if (!env.DASHBOARD_PASSWORD) return text("Dashboard password is not configured", 503);
   const form = await request.formData();
-  if (form.get("password") !== env.DASHBOARD_PASSWORD) {
+  const email = normalizeEmail(form.get("email"));
+  const password = String(form.get("password") || "");
+  if (!validAccessEmail(email)) return text(LOGIN_HTML, 401, "text/html; charset=utf-8");
+  let user = await getAccessUserByEmail(env, email);
+  const userCount = await countAccessUsers(env);
+  if (!user && userCount === 0 && password === "changeme") {
+    user = await createAccessUser(env, email);
+  }
+  if (!user || !user.is_active || await hashPassword(password, user.password_salt) !== user.password_hash) {
     return text(LOGIN_HTML, 401, "text/html; charset=utf-8");
   }
+  await patchAccessUser(env, email, { last_login_at_utc: new Date().toISOString(), updated_at_utc: new Date().toISOString() });
+  const cookieValue = await makeSessionCookie(user, env);
   return new Response(null, {
     status: 303,
     headers: {
-      location: "/",
-      "set-cookie": `visibility_session=${env.DASHBOARD_PASSWORD}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+      location: user.must_change_password ? "/set-password" : "/",
+      "set-cookie": `visibility_session=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
     },
   });
 }
@@ -1024,6 +1226,131 @@ function supabaseHeaders(env, prefer) {
   };
   if (prefer) headers.prefer = prefer;
   return headers;
+}
+
+async function readSupabaseJson(response) {
+  const textValue = await response.text();
+  if (!textValue) return null;
+  try {
+    return JSON.parse(textValue);
+  } catch {
+    return null;
+  }
+}
+
+async function getAccessUserByEmail(env, email) {
+  const params = new URLSearchParams({
+    select: "id,email,password_hash,password_salt,must_change_password,is_active,last_login_at_utc,created_at_utc,updated_at_utc",
+    email: `eq.${normalizeEmail(email)}`,
+    limit: "1",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_access_users?${params}`, { headers: supabaseHeaders(env) });
+  if (!response.ok) return null;
+  const rows = await response.json();
+  return rows[0] || null;
+}
+
+async function countAccessUsers(env) {
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_access_users?select=id&limit=1`, {
+    headers: { ...supabaseHeaders(env), prefer: "count=exact" },
+  });
+  if (!response.ok) return 0;
+  const range = response.headers.get("content-range") || "";
+  return Number(range.split("/")[1] || 0);
+}
+
+async function createAccessUser(env, email) {
+  const normalized = normalizeEmail(email);
+  if (!validAccessEmail(normalized)) throw new Error("ایمیل باید از دامنه toman.ir باشد");
+  const salt = randomHex();
+  const row = {
+    email: normalized,
+    password_salt: salt,
+    password_hash: await hashPassword("changeme", salt),
+    must_change_password: true,
+    is_active: true,
+    updated_at_utc: new Date().toISOString(),
+  };
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_access_users?on_conflict=email`, {
+    method: "POST",
+    headers: supabaseHeaders(env, "resolution=ignore-duplicates,return=representation"),
+    body: JSON.stringify(row),
+  });
+  const body = await readSupabaseJson(response);
+  if (!response.ok) throw new Error(body?.message || "ساخت کاربر انجام نشد");
+  return Array.isArray(body) ? body[0] : body;
+}
+
+async function patchAccessUser(env, email, row) {
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_access_users?email=eq.${encodeURIComponent(normalizeEmail(email))}`, {
+    method: "PATCH",
+    headers: supabaseHeaders(env, "return=representation"),
+    body: JSON.stringify(row),
+  });
+  const body = await readSupabaseJson(response);
+  if (!response.ok) throw new Error(body?.message || "به‌روزرسانی کاربر انجام نشد");
+  return Array.isArray(body) ? body[0] : body;
+}
+
+async function listAccessUsers(env) {
+  const params = new URLSearchParams({
+    select: "email,must_change_password,is_active,last_login_at_utc,created_at_utc",
+    order: "created_at_utc.desc",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_access_users?${params}`, { headers: supabaseHeaders(env) });
+  if (!response.ok) return [];
+  return response.json();
+}
+
+async function handleSetPassword(request, env, user) {
+  if (!user) return redirect("/login");
+  if (request.method !== "POST") return text(passwordPageHtml(), 200, "text/html; charset=utf-8");
+  const form = await request.formData();
+  const currentPassword = String(form.get("current_password") || "");
+  const newPassword = String(form.get("new_password") || "");
+  if (await hashPassword(currentPassword, user.password_salt) !== user.password_hash) {
+    return text(passwordPageHtml("پسورد فعلی درست نیست."), 401, "text/html; charset=utf-8");
+  }
+  if (!strongPassword(newPassword)) {
+    return text(passwordPageHtml("پسورد باید حداقل ۱۰ کاراکتر و شامل حروف بزرگ، حروف کوچک، عدد و علامت باشد."), 400, "text/html; charset=utf-8");
+  }
+  const salt = randomHex();
+  await patchAccessUser(env, user.email, {
+    password_salt: salt,
+    password_hash: await hashPassword(newPassword, salt),
+    must_change_password: false,
+    updated_at_utc: new Date().toISOString(),
+  });
+  return new Response(null, {
+    status: 303,
+    headers: {
+      location: "/login",
+      "set-cookie": clearSessionCookie(),
+    },
+  });
+}
+
+async function fetchAccessUsers(env) {
+  return json({ users: await listAccessUsers(env) });
+}
+
+async function addAccessUser(request, env) {
+  let body = {};
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const email = normalizeEmail(body.email);
+  if (!validAccessEmail(email)) return json({ error: "ایمیل باید به شکل anything@toman.ir باشد" }, 400);
+  try {
+    const existing = await getAccessUserByEmail(env, email);
+    if (existing) return json({ error: "این ایمیل قبلاً اضافه شده است" }, 409);
+    const user = await createAccessUser(env, email);
+    return json({ user: { email: user.email, must_change_password: user.must_change_password } }, 201);
+  } catch (error) {
+    return json({ error: error.message || "ساخت کاربر انجام نشد" }, 500);
+  }
 }
 
 function findMessage(update) {
@@ -1846,16 +2173,25 @@ export default {
         status: 303,
         headers: {
           location: "/login",
-          "set-cookie": "visibility_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0",
+          "set-cookie": clearSessionCookie(),
         },
       });
     }
-    if (!dashboardAuthorized(request, env)) {
-      if (url.pathname === "/api/messages" || url.pathname === "/api/groups" || url.pathname === "/api/dashboard" || url.pathname === "/api/thread-filter-options" || url.pathname === "/api/profile-photo" || url.pathname === "/api/telegram-file") return json({ error: "Unauthorized" }, 401);
+    const authUser = await dashboardAuthorized(request, env);
+    if (url.pathname === "/set-password") return handleSetPassword(request, env, authUser);
+    const apiPath = url.pathname.startsWith("/api/");
+    if (!authUser) {
+      if (apiPath) return json({ error: "Unauthorized" }, 401);
       return text(LOGIN_HTML, 200, "text/html; charset=utf-8");
+    }
+    if (authUser.must_change_password) {
+      if (apiPath) return json({ error: "Password change required" }, 403);
+      return redirect("/set-password");
     }
     if (url.pathname === "/") return text(HTML, 200, "text/html; charset=utf-8");
     if (url.pathname === "/api/debug") return text("Not found", 404);
+    if (url.pathname === "/api/access-users" && request.method === "GET") return fetchAccessUsers(env);
+    if (url.pathname === "/api/access-users" && request.method === "POST") return addAccessUser(request, env);
     if (url.pathname === "/api/messages") return fetchMessages(request, env);
     if (url.pathname === "/api/groups") return fetchGroups(request, env);
     if (url.pathname === "/api/dashboard") return fetchDashboard(request, env);
