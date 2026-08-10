@@ -91,11 +91,12 @@ const HTML = `<!doctype html>
       </section>
       <table class="messages-table">
         <colgroup>
-          <col style="width:12%" />
+          <col style="width:11%" />
           <col style="width:8%" />
-          <col style="width:8%" />
-          <col style="width:8%" />
-          <col style="width:38%" />
+          <col style="width:7%" />
+          <col style="width:7%" />
+          <col style="width:7%" />
+          <col style="width:34%" />
           <col style="width:8%" />
           <col style="width:7%" />
           <col style="width:6%" />
@@ -104,6 +105,7 @@ const HTML = `<!doctype html>
         <thead>
           <tr>
             <th>Group Name</th>
+            <th>Topic</th>
             <th>Sender First Name</th>
             <th>Sender Last Name</th>
             <th>Username</th>
@@ -123,6 +125,7 @@ const HTML = `<!doctype html>
           <tr>
             <th>Group ID</th>
             <th>Group Name</th>
+            <th>Topics</th>
             <th>Group Username</th>
             <th>Group Type</th>
             <th>Messages</th>
@@ -304,6 +307,9 @@ const HTML = `<!doctype html>
     function messageContent(row) {
       return row.body || row.caption || (row.message_type ? "[" + row.message_type + "]" : "");
     }
+    function topicLabel(row) {
+      return row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : "");
+    }
     function compactMessage(row) {
       const text = messageContent(row);
       return text ? linkify(text) : '<span class="thread-muted">بدون متن</span>';
@@ -348,6 +354,7 @@ const HTML = `<!doctype html>
               <span class="thread-author">\${esc(author)}</span>
               <span class="thread-muted">\${esc(row.sender_username ? "@" + row.sender_username : "")}</span>
               <span class="thread-muted">\${esc(row.chat_title)}</span>
+              \${topicLabel(row) ? \`<span class="thread-pill">Topic: \${esc(topicLabel(row))}</span>\` : ""}
               <span class="thread-pill">Message ID: \${esc(row.message_id)}</span>
               \${row.reply_to_message_id ? \`<span class="thread-pill">Reply To: \${esc(row.reply_to_message_id)}</span>\` : ""}
               <span class="thread-muted">\${esc(row.sent_jalali_date || "")} \${esc(row.sent_time || "")}</span>
@@ -428,6 +435,7 @@ const HTML = `<!doctype html>
       rowsEl.innerHTML = data.messages.map((row, index) => \`
         <tr>
           <td class="full-cell">\${esc(row.chat_title)}</td>
+          <td class="full-cell">\${esc(topicLabel(row))}</td>
           <td class="full-cell">\${esc(row.sender_first_name)}</td>
           <td class="full-cell">\${esc(row.sender_last_name)}</td>
           <td class="full-cell">\${esc(row.sender_username)}</td>
@@ -452,6 +460,7 @@ const HTML = `<!doctype html>
         <tr>
           <td>\${esc(row.chat_id)}</td>
           <td>\${esc(row.chat_title)}</td>
+          <td class="full-cell">\${esc(row.topic_names)}</td>
           <td>\${esc(row.chat_username)}</td>
           <td>\${esc(row.chat_type)}</td>
           <td>\${esc(row.message_count)}</td>
@@ -1136,11 +1145,23 @@ async function fetchGroups(request, env) {
   params.set("order", "message_count.desc,last_seen_at_utc.desc");
   params.set("limit", "1000");
 
-  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${params}`, {
-    headers: supabaseHeaders(env),
-  });
+  const headers = supabaseHeaders(env);
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${params}`, { headers });
   if (!response.ok) {
     return json({ error: "Supabase groups request failed", detail: await response.text() }, 500);
+  }
+
+  const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?select=chat_id,topic_name,message_thread_id&limit=10000`, { headers });
+  if (!topicsResponse.ok) {
+    return json({ error: "Supabase topics request failed", detail: await topicsResponse.text() }, 500);
+  }
+  const topicsByChat = new Map();
+  for (const topic of await topicsResponse.json()) {
+    const topicName = topic.topic_name || (topic.message_thread_id ? "#" + topic.message_thread_id : "");
+    if (!topic.chat_id || !topicName) continue;
+    const list = topicsByChat.get(String(topic.chat_id)) || [];
+    if (!list.includes(topicName)) list.push(topicName);
+    topicsByChat.set(String(topic.chat_id), list);
   }
 
   const rows = await response.json();
@@ -1151,6 +1172,7 @@ async function fetchGroups(request, env) {
     const lastMessage = row.last_message_at_utc ? tehranParts(new Date(row.last_message_at_utc)) : { sent_date: null, sent_time: null };
     return {
       ...row,
+      topic_names: (topicsByChat.get(String(row.chat_id)) || []).join(", "),
       message_count: Number(row.message_count || 0),
       joined_date: joined.sent_date,
       joined_time: joined.sent_time,

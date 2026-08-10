@@ -199,11 +199,12 @@ function sendHtml(res) {
       </section>
       <table class="messages-table">
         <colgroup>
-          <col style="width:12%" />
+          <col style="width:11%" />
           <col style="width:8%" />
-          <col style="width:8%" />
-          <col style="width:8%" />
-          <col style="width:38%" />
+          <col style="width:7%" />
+          <col style="width:7%" />
+          <col style="width:7%" />
+          <col style="width:34%" />
           <col style="width:8%" />
           <col style="width:7%" />
           <col style="width:6%" />
@@ -212,6 +213,7 @@ function sendHtml(res) {
         <thead>
           <tr>
             <th>Group Name</th>
+            <th>Topic</th>
             <th>Sender First Name</th>
             <th>Sender Last Name</th>
             <th>Username</th>
@@ -231,6 +233,7 @@ function sendHtml(res) {
           <tr>
             <th>Group ID</th>
             <th>Group Name</th>
+            <th>Topics</th>
             <th>Group Username</th>
             <th>Group Type</th>
             <th>Messages</th>
@@ -412,6 +415,9 @@ function sendHtml(res) {
     function messageContent(row) {
       return row.body || row.caption || (row.message_type ? "[" + row.message_type + "]" : "");
     }
+    function topicLabel(row) {
+      return row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : "");
+    }
     function compactMessage(row) {
       const text = messageContent(row);
       return text ? linkify(text) : '<span class="thread-muted">بدون متن</span>';
@@ -456,6 +462,7 @@ function sendHtml(res) {
               <span class="thread-author">\${esc(author)}</span>
               <span class="thread-muted">\${esc(row.sender_username ? "@" + row.sender_username : "")}</span>
               <span class="thread-muted">\${esc(row.chat_title)}</span>
+              \${topicLabel(row) ? \`<span class="thread-pill">Topic: \${esc(topicLabel(row))}</span>\` : ""}
               <span class="thread-pill">Message ID: \${esc(row.message_id)}</span>
               \${row.reply_to_message_id ? \`<span class="thread-pill">Reply To: \${esc(row.reply_to_message_id)}</span>\` : ""}
               <span class="thread-muted">\${esc(row.sent_jalali_date || "")} \${esc(row.sent_time || "")}</span>
@@ -531,6 +538,7 @@ function sendHtml(res) {
       rowsEl.innerHTML = data.messages.map((row, index) => \`
         <tr>
           <td class="full-cell">\${esc(row.chat_title)}</td>
+          <td class="full-cell">\${esc(topicLabel(row))}</td>
           <td class="full-cell">\${esc(row.sender_first_name)}</td>
           <td class="full-cell">\${esc(row.sender_last_name)}</td>
           <td class="full-cell">\${esc(row.sender_username)}</td>
@@ -550,6 +558,7 @@ function sendHtml(res) {
         <tr>
           <td>\${esc(row.chat_id)}</td>
           <td>\${esc(row.chat_title)}</td>
+          <td class="full-cell">\${esc(row.topic_names)}</td>
           <td>\${esc(row.chat_username)}</td>
           <td>\${esc(row.chat_type)}</td>
           <td>\${esc(row.message_count)}</td>
@@ -647,9 +656,10 @@ async function handle(req, res) {
       select
         c.chat_id,
         c.chat_title,
+        string_agg(distinct coalesce(t.topic_name, '#' || t.message_thread_id::text), ', ') as topic_names,
         c.chat_username,
         c.chat_type,
-        count(m.id)::bigint as message_count,
+        count(distinct m.id)::bigint as message_count,
         to_char(coalesce(c.joined_at_utc, c.first_seen_at_utc) at time zone 'Asia/Tehran', 'YYYY-MM-DD') as joined_date,
         to_char(coalesce(c.joined_at_utc, c.first_seen_at_utc) at time zone 'Asia/Tehran', 'HH24:MI:SS') as joined_time,
         to_char(c.last_seen_at_utc at time zone 'Asia/Tehran', 'YYYY-MM-DD') as last_seen_date,
@@ -658,6 +668,7 @@ async function handle(req, res) {
         to_char(max(m.sent_at_utc) at time zone 'Asia/Tehran', 'HH24:MI:SS') as last_message_time
       from public.telegram_chats c
       left join public.telegram_messages m on m.chat_id = c.chat_id
+      left join public.telegram_topics t on t.chat_id = c.chat_id
       group by c.chat_id, c.chat_title, c.chat_username, c.chat_type, c.joined_at_utc, c.first_seen_at_utc, c.last_seen_at_utc
       order by message_count desc, c.last_seen_at_utc desc
       limit 1000
