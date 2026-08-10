@@ -198,7 +198,7 @@ function sendHtml(res) {
     .nav-button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
     main { padding: 18px 24px; }
     .page[hidden] { display:none; }
-    .filters { position:sticky; top:var(--header-h); z-index:45; display:grid; grid-template-columns: 1fr 170px 170px 170px 170px 110px; gap:10px; min-height:var(--filters-h); align-items:center; margin:0 0 14px; padding:8px 0; background:var(--bg); }
+    .filters { position:sticky; top:var(--header-h); z-index:45; display:grid; grid-template-columns: 1fr 170px 170px 110px; gap:10px; min-height:var(--filters-h); align-items:center; margin:0 0 14px; padding:8px 0; background:var(--bg); }
     .thread-filters { grid-template-columns: minmax(200px, 1fr) minmax(170px, .8fr) 105px 105px 105px 110px; max-width:980px; margin:0 auto 14px; }
     input, select, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
@@ -327,8 +327,6 @@ function sendHtml(res) {
         <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
         <div id="group" class="multi-filter"></div>
         <div id="topic" class="multi-filter"></div>
-        <input id="chat" placeholder="Chat ID" />
-        <input id="sender" placeholder="Sender ID" />
         <button id="refresh">به‌روزرسانی</button>
       </section>
       <table class="messages-table">
@@ -421,8 +419,6 @@ function sendHtml(res) {
     const searchEl = document.getElementById("search");
     const groupEl = document.getElementById("group");
     const topicEl = document.getElementById("topic");
-    const chatEl = document.getElementById("chat");
-    const senderEl = document.getElementById("sender");
     const refreshEl = document.getElementById("refresh");
     const threadGroupEl = document.getElementById("threadGroup");
     const threadTopicEl = document.getElementById("threadTopic");
@@ -942,8 +938,6 @@ function sendHtml(res) {
         if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
         appendFilterValues(params, "group", messageGroupFilter.values());
         appendFilterValues(params, "topic", messageTopicFilter.values());
-        if (chatEl.value.trim()) params.set("chat_id", chatEl.value.trim());
-        if (senderEl.value.trim()) params.set("sender_id", senderEl.value.trim());
         const res = await fetch("/api/messages?" + params);
         const data = await res.json();
         if (!res.ok || !Array.isArray(data.messages)) {
@@ -1082,7 +1076,7 @@ function sendHtml(res) {
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
-    [searchEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
+    searchEl.addEventListener("keydown", e => { if (e.key === "Enter") load(); });
     document.addEventListener("click", (event) => {
       for (const filter of [messageGroupFilter, messageTopicFilter, threadGroupFilter, threadTopicFilter, threadYearFilter, threadMonthFilter, threadDayFilter]) {
         if (!event.target.closest(".multi-filter")) filter.close();
