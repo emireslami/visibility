@@ -11,7 +11,7 @@ const HTML = `<!doctype html>
     header { padding: 18px 24px; background: var(--panel); border-bottom: 1px solid var(--line); display:flex; gap:16px; align-items:center; justify-content:space-between; }
     h1 { margin: 0; font-size: 20px; }
     main { padding: 18px 24px; }
-    .filters { display:grid; grid-template-columns: 1fr 170px 170px 110px; gap:10px; margin-bottom:14px; }
+    .filters { display:grid; grid-template-columns: 1fr 170px 170px 170px 110px; gap:10px; margin-bottom:14px; }
     input, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
     table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:ltr; }
@@ -30,6 +30,7 @@ const HTML = `<!doctype html>
   <main>
     <section class="filters">
       <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
+      <input id="topic" placeholder="Topic" />
       <input id="chat" placeholder="Chat ID" />
       <input id="sender" placeholder="Sender ID" />
       <button id="refresh">به‌روزرسانی</button>
@@ -39,6 +40,7 @@ const HTML = `<!doctype html>
         <tr>
           <th>Group ID</th>
           <th>Group Name</th>
+          <th>Topic</th>
           <th>Username</th>
           <th>Sender ID</th>
           <th>Message</th>
@@ -54,6 +56,7 @@ const HTML = `<!doctype html>
     const rowsEl = document.getElementById("rows");
     const statusEl = document.getElementById("status");
     const searchEl = document.getElementById("search");
+    const topicEl = document.getElementById("topic");
     const chatEl = document.getElementById("chat");
     const senderEl = document.getElementById("sender");
     const refreshEl = document.getElementById("refresh");
@@ -63,6 +66,7 @@ const HTML = `<!doctype html>
     async function load() {
       const params = new URLSearchParams();
       if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
+      if (topicEl.value.trim()) params.set("topic", topicEl.value.trim());
       if (chatEl.value.trim()) params.set("chat_id", chatEl.value.trim());
       if (senderEl.value.trim()) params.set("sender_id", senderEl.value.trim());
       const res = await fetch("/api/messages?" + params);
@@ -76,6 +80,7 @@ const HTML = `<!doctype html>
         <tr>
           <td>\${esc(row.chat_id)}</td>
           <td>\${esc(row.chat_title)}</td>
+          <td>\${esc(row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : ""))}</td>
           <td>\${esc(row.sender_username)}</td>
           <td>\${esc(row.sender_id)}</td>
           <td class="body">\${esc(row.body || row.caption || "[" + row.message_type + "]")}</td>
@@ -86,7 +91,7 @@ const HTML = `<!doctype html>
       statusEl.textContent = data.messages.length + " پیام";
     }
     refreshEl.addEventListener("click", load);
-    [searchEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
+    [searchEl, topicEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
     load();
     setInterval(load, 5000);
   </script>
@@ -116,36 +121,55 @@ function text(value, status = 200, contentType = "text/plain; charset=utf-8") {
 async function fetchMessages(request, env) {
   const url = new URL(request.url);
   const params = new URLSearchParams();
-  params.set("select", "update_id,message_id,chat_id,chat_title,sender_username,sender_id,body,caption,message_type,sent_at_utc");
+  params.set("select", "update_id,message_id,chat_id,chat_title,message_thread_id,topic_name,sender_username,sender_id,body,caption,message_type,sent_at_utc");
   params.set("order", "sent_at_utc.desc.nullslast,id.desc");
   params.set("limit", "500");
 
   const filters = [];
   const q = url.searchParams.get("q");
+  const topic = url.searchParams.get("topic");
   const chatId = url.searchParams.get("chat_id");
   const senderId = url.searchParams.get("sender_id");
   if (q) {
     const pattern = `*${q.replace(/[%*]/g, "")}*`;
-    filters.push(`body.ilike.${pattern},caption.ilike.${pattern},chat_title.ilike.${pattern},sender_username.ilike.${pattern}`);
+    filters.push(`body.ilike.${pattern},caption.ilike.${pattern},chat_title.ilike.${pattern},topic_name.ilike.${pattern},sender_username.ilike.${pattern}`);
   }
   if (filters.length) params.set("or", `(${filters.join(",")})`);
+  if (topic) params.set("topic_name", `ilike.*${topic.replace(/[%*]/g, "")}*`);
   if (chatId) params.set("chat_id", `eq.${chatId}`);
   if (senderId) params.set("sender_id", `eq.${senderId}`);
 
+  const headers = {
+    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+    authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+  };
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, {
-    headers: {
-      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-      authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-    },
+    headers,
   });
   if (!response.ok) {
     return json({ error: "Supabase request failed", detail: await response.text() }, 500);
   }
+
+  const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?select=chat_id,message_thread_id,topic_name&limit=10000`, {
+    headers,
+  });
+  if (!topicsResponse.ok) {
+    return json({ error: "Supabase topics request failed", detail: await topicsResponse.text() }, 500);
+  }
+
+  const topics = await topicsResponse.json();
+  const topicByThread = new Map(
+    topics.map((topicRow) => [`${topicRow.chat_id}:${topicRow.message_thread_id}`, topicRow.topic_name])
+  );
   const rows = await response.json();
   const messages = rows.map((row) => {
     const date = row.sent_at_utc ? new Date(row.sent_at_utc) : null;
+    const mappedTopicName = row.message_thread_id
+      ? topicByThread.get(`${row.chat_id}:${row.message_thread_id}`)
+      : null;
     return {
       ...row,
+      topic_name: row.topic_name || mappedTopicName || null,
       sent_date: date ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tehran" }).format(date) : null,
       sent_time: date ? new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Tehran", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(date) : null,
     };

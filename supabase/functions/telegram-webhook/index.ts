@@ -36,6 +36,18 @@ function isoFromUnix(value?: number) {
   return value ? new Date(value * 1000).toISOString() : null;
 }
 
+function topicData(message: Record<string, any>) {
+  const created = message.forum_topic_created;
+  const edited = message.forum_topic_edited;
+  return {
+    messageThreadId: message.message_thread_id ?? null,
+    isTopicMessage: message.is_topic_message ?? null,
+    topicName: created?.name ?? edited?.name ?? null,
+    topicIconColor: created?.icon_color ?? null,
+    topicIconCustomEmojiId: created?.icon_custom_emoji_id ?? edited?.icon_custom_emoji_id ?? null,
+  };
+}
+
 serve(async (request) => {
   if (request.method !== "POST") {
     return new Response("ok");
@@ -63,6 +75,20 @@ serve(async (request) => {
   const senderChat = message.sender_chat ?? {};
   const sentAt = isoFromUnix(message.date);
   const editedAt = isoFromUnix(message.edit_date);
+  const topic = topicData(message);
+
+  if (chat.id && topic.messageThreadId && topic.topicName) {
+    await supabase.from("telegram_topics").upsert({
+      chat_id: chat.id,
+      message_thread_id: topic.messageThreadId,
+      topic_name: topic.topicName,
+      icon_color: topic.topicIconColor,
+      icon_custom_emoji_id: topic.topicIconCustomEmojiId,
+      raw_payload_json: update,
+      updated_at_utc: new Date().toISOString(),
+    }, { onConflict: "chat_id,message_thread_id" });
+  }
+
   const row = {
     update_id: update.update_id,
     message_id: message.message_id ?? null,
@@ -70,6 +96,11 @@ serve(async (request) => {
     chat_title: chat.title ?? null,
     chat_username: chat.username ?? null,
     chat_type: chat.type ?? null,
+    message_thread_id: topic.messageThreadId,
+    is_topic_message: topic.isTopicMessage,
+    topic_name: topic.topicName,
+    topic_icon_color: topic.topicIconColor,
+    topic_icon_custom_emoji_id: topic.topicIconCustomEmojiId,
     sender_id: sender.id ?? null,
     sender_username: sender.username ?? null,
     sender_first_name: sender.first_name ?? null,

@@ -6,6 +6,11 @@ CREATE TABLE IF NOT EXISTS public.telegram_messages (
     chat_title TEXT,
     chat_username TEXT,
     chat_type TEXT,
+    message_thread_id BIGINT,
+    is_topic_message BOOLEAN,
+    topic_name TEXT,
+    topic_icon_color BIGINT,
+    topic_icon_custom_emoji_id TEXT,
     sender_id BIGINT,
     sender_username TEXT,
     sender_first_name TEXT,
@@ -30,6 +35,25 @@ CREATE TABLE IF NOT EXISTS public.telegram_messages (
     UNIQUE(update_id, message_id)
 );
 
+CREATE TABLE IF NOT EXISTS public.telegram_topics (
+    chat_id BIGINT NOT NULL,
+    message_thread_id BIGINT NOT NULL,
+    topic_name TEXT,
+    icon_color BIGINT,
+    icon_custom_emoji_id TEXT,
+    raw_payload_json JSONB,
+    created_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (chat_id, message_thread_id)
+);
+
+ALTER TABLE public.telegram_messages
+    ADD COLUMN IF NOT EXISTS message_thread_id BIGINT,
+    ADD COLUMN IF NOT EXISTS is_topic_message BOOLEAN,
+    ADD COLUMN IF NOT EXISTS topic_name TEXT,
+    ADD COLUMN IF NOT EXISTS topic_icon_color BIGINT,
+    ADD COLUMN IF NOT EXISTS topic_icon_custom_emoji_id TEXT;
+
 CREATE INDEX IF NOT EXISTS telegram_messages_chat_id_idx
     ON public.telegram_messages(chat_id);
 
@@ -39,15 +63,26 @@ CREATE INDEX IF NOT EXISTS telegram_messages_sender_id_idx
 CREATE INDEX IF NOT EXISTS telegram_messages_sent_at_utc_idx
     ON public.telegram_messages(sent_at_utc DESC);
 
+CREATE INDEX IF NOT EXISTS telegram_messages_thread_idx
+    ON public.telegram_messages(chat_id, message_thread_id);
+
 CREATE INDEX IF NOT EXISTS telegram_messages_body_search_idx
     ON public.telegram_messages
     USING GIN (to_tsvector('simple', COALESCE(body, '') || ' ' || COALESCE(caption, '')));
 
 ALTER TABLE public.telegram_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.telegram_topics ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "telegram_messages_no_public_access" ON public.telegram_messages;
 CREATE POLICY "telegram_messages_no_public_access"
     ON public.telegram_messages
+    FOR ALL
+    USING (false)
+    WITH CHECK (false);
+
+DROP POLICY IF EXISTS "telegram_topics_no_public_access" ON public.telegram_topics;
+CREATE POLICY "telegram_topics_no_public_access"
+    ON public.telegram_topics
     FOR ALL
     USING (false)
     WITH CHECK (false);

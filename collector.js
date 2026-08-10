@@ -58,6 +58,43 @@ function messageType(message) {
   return "unknown";
 }
 
+function topicData(message) {
+  const created = message.forum_topic_created;
+  const edited = message.forum_topic_edited;
+  return {
+    messageThreadId: message.message_thread_id || null,
+    isTopicMessage: message.is_topic_message ?? null,
+    topicName: created?.name || edited?.name || null,
+    topicIconColor: created?.icon_color || null,
+    topicIconCustomEmojiId: created?.icon_custom_emoji_id || edited?.icon_custom_emoji_id || null,
+  };
+}
+
+async function saveTopic(client, message, update) {
+  const chat = message.chat || {};
+  const topic = topicData(message);
+  if (!chat.id || !topic.messageThreadId || !topic.topicName) return;
+  await client.query(
+    `insert into public.telegram_topics (
+      chat_id, message_thread_id, topic_name, icon_color, icon_custom_emoji_id, raw_payload_json, updated_at_utc
+    ) values ($1, $2, $3, $4, $5, $6, now())
+    on conflict(chat_id, message_thread_id) do update set
+      topic_name = coalesce(excluded.topic_name, telegram_topics.topic_name),
+      icon_color = coalesce(excluded.icon_color, telegram_topics.icon_color),
+      icon_custom_emoji_id = coalesce(excluded.icon_custom_emoji_id, telegram_topics.icon_custom_emoji_id),
+      raw_payload_json = excluded.raw_payload_json,
+      updated_at_utc = now()`,
+    [
+      chat.id,
+      topic.messageThreadId,
+      topic.topicName,
+      topic.topicIconColor,
+      topic.topicIconCustomEmojiId,
+      JSON.stringify(update),
+    ]
+  );
+}
+
 function mediaFileId(message) {
   if (message.photo?.length) return message.photo[message.photo.length - 1].file_id;
   for (const key of ["video", "document", "voice", "audio", "video_note", "animation", "sticker"]) {
@@ -100,10 +137,14 @@ async function saveUpdate(client, update) {
   const body = message.text || null;
   const caption = message.caption || null;
   const type = messageType(message);
+  const topic = topicData(message);
+
+  await saveTopic(client, message, update);
 
   await client.query(
     `insert into public.telegram_messages (
       update_id, message_id, chat_id, chat_title, chat_username, chat_type,
+      message_thread_id, is_topic_message, topic_name, topic_icon_color, topic_icon_custom_emoji_id,
       sender_id, sender_username, sender_first_name, sender_last_name, sender_is_bot,
       sender_chat_id, sender_chat_title, body, caption, message_type,
       sent_at_utc, sent_date, sent_time, edited_at_utc, reply_to_message_id,
@@ -113,7 +154,8 @@ async function saveUpdate(client, update) {
       $7, $8, $9, $10, $11,
       $12, $13, $14, $15, $16,
       $17, $18, $19, $20, $21,
-      $22, $23, $24, $25, $26
+      $22, $23, $24, $25, $26,
+      $27, $28, $29, $30, $31
     )
     on conflict(update_id, message_id) do nothing`,
     [
@@ -123,6 +165,11 @@ async function saveUpdate(client, update) {
       chat.title || null,
       chat.username || null,
       chat.type || null,
+      topic.messageThreadId,
+      topic.isTopicMessage,
+      topic.topicName,
+      topic.topicIconColor,
+      topic.topicIconCustomEmojiId,
       sender.id || null,
       sender.username || null,
       sender.first_name || null,

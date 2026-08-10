@@ -22,6 +22,8 @@ async function main() {
     "-json",
     sqlitePath,
     `select update_id, message_id, chat_id, chat_title, chat_username, chat_type,
+            null as message_thread_id, null as is_topic_message, null as topic_name,
+            null as topic_icon_color, null as topic_icon_custom_emoji_id,
             sender_id, sender_username, sender_first_name, sender_last_name, sender_is_bot,
             sender_chat_id, sender_chat_title, body, caption, message_type,
             sent_at_utc, sent_date, sent_time, edited_at_utc, reply_to_message_id,
@@ -41,6 +43,7 @@ async function main() {
     const result = await client.query(
       `insert into public.telegram_messages (
         update_id, message_id, chat_id, chat_title, chat_username, chat_type,
+        message_thread_id, is_topic_message, topic_name, topic_icon_color, topic_icon_custom_emoji_id,
         sender_id, sender_username, sender_first_name, sender_last_name, sender_is_bot,
         sender_chat_id, sender_chat_title, body, caption, message_type,
         sent_at_utc, sent_date, sent_time, edited_at_utc, reply_to_message_id,
@@ -50,11 +53,13 @@ async function main() {
         $7, $8, $9, $10, $11,
         $12, $13, $14, $15, $16,
         $17, $18, $19, $20, $21,
-        $22, $23, $24, $25, $26
+        $22, $23, $24, $25, $26,
+        $27, $28, $29, $30, $31
       )
       on conflict(update_id, message_id) do nothing`,
       [
         row.update_id, row.message_id, row.chat_id, row.chat_title, row.chat_username, row.chat_type,
+        row.message_thread_id, row.is_topic_message, row.topic_name, row.topic_icon_color, row.topic_icon_custom_emoji_id,
         row.sender_id, row.sender_username, row.sender_first_name, row.sender_last_name,
         row.sender_is_bot === null ? null : Boolean(row.sender_is_bot),
         row.sender_chat_id, row.sender_chat_title, row.body, row.caption, row.message_type,

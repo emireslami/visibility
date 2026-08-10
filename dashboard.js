@@ -51,7 +51,7 @@ function sendHtml(res) {
     header { padding: 18px 24px; background: var(--panel); border-bottom: 1px solid var(--line); display:flex; gap:16px; align-items:center; justify-content:space-between; }
     h1 { margin: 0; font-size: 20px; }
     main { padding: 18px 24px; }
-    .filters { display:grid; grid-template-columns: 1fr 170px 170px 110px; gap:10px; margin-bottom:14px; }
+    .filters { display:grid; grid-template-columns: 1fr 170px 170px 170px 110px; gap:10px; margin-bottom:14px; }
     input, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
     table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:ltr; }
@@ -70,6 +70,7 @@ function sendHtml(res) {
   <main>
     <section class="filters">
       <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
+      <input id="topic" placeholder="Topic" />
       <input id="chat" placeholder="Chat ID" />
       <input id="sender" placeholder="Sender ID" />
       <button id="refresh">به‌روزرسانی</button>
@@ -79,6 +80,7 @@ function sendHtml(res) {
         <tr>
           <th>Group ID</th>
           <th>Group Name</th>
+          <th>Topic</th>
           <th>Username</th>
           <th>Sender ID</th>
           <th>Message</th>
@@ -94,6 +96,7 @@ function sendHtml(res) {
     const rowsEl = document.getElementById("rows");
     const statusEl = document.getElementById("status");
     const searchEl = document.getElementById("search");
+    const topicEl = document.getElementById("topic");
     const chatEl = document.getElementById("chat");
     const senderEl = document.getElementById("sender");
     const refreshEl = document.getElementById("refresh");
@@ -103,6 +106,7 @@ function sendHtml(res) {
     async function load() {
       const params = new URLSearchParams();
       if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
+      if (topicEl.value.trim()) params.set("topic", topicEl.value.trim());
       if (chatEl.value.trim()) params.set("chat_id", chatEl.value.trim());
       if (senderEl.value.trim()) params.set("sender_id", senderEl.value.trim());
       const res = await fetch("/api/messages?" + params);
@@ -111,6 +115,7 @@ function sendHtml(res) {
         <tr>
           <td>\${esc(row.chat_id)}</td>
           <td>\${esc(row.chat_title)}</td>
+          <td>\${esc(row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : ""))}</td>
           <td>\${esc(row.sender_username)}</td>
           <td>\${esc(row.sender_id)}</td>
           <td class="body">\${esc(row.body || row.caption || "[" + row.message_type + "]")}</td>
@@ -121,7 +126,7 @@ function sendHtml(res) {
       statusEl.textContent = data.messages.length + " پیام";
     }
     refreshEl.addEventListener("click", load);
-    [searchEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
+    [searchEl, topicEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
     load();
     setInterval(load, 5000);
   </script>
@@ -136,11 +141,16 @@ async function handle(req, res) {
     const clauses = [];
     const params = [];
     const q = url.searchParams.get("q");
+    const topic = url.searchParams.get("topic");
     const chatId = url.searchParams.get("chat_id");
     const senderId = url.searchParams.get("sender_id");
     if (q) {
       params.push(`%${q}%`);
-      clauses.push(`(body ilike $${params.length} or caption ilike $${params.length} or chat_title ilike $${params.length} or sender_username ilike $${params.length})`);
+      clauses.push(`(body ilike $${params.length} or caption ilike $${params.length} or chat_title ilike $${params.length} or topic_name ilike $${params.length} or sender_username ilike $${params.length})`);
+    }
+    if (topic) {
+      params.push(`%${topic}%`);
+      clauses.push(`topic_name ilike $${params.length}`);
     }
     if (chatId) {
       params.push(chatId);
@@ -152,7 +162,7 @@ async function handle(req, res) {
     }
     const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
     const messages = await query(`
-      select update_id, message_id, chat_id, chat_title, sender_username, sender_id,
+      select update_id, message_id, chat_id, chat_title, message_thread_id, topic_name, sender_username, sender_id,
              body, caption, message_type,
              to_char(sent_at_utc at time zone 'Asia/Tehran', 'YYYY-MM-DD') as sent_date,
              to_char(sent_at_utc at time zone 'Asia/Tehran', 'HH24:MI:SS') as sent_time
