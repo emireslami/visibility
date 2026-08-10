@@ -523,7 +523,7 @@ function sendHtml(res) {
       const text = String(value ?? "");
       if (!text) return "";
       fullTextByKey.set(key, linkify(text));
-      const button = shouldCollapse(text, limit) ? \`<button class="more" type="button" data-full-key="\${esc(key)}" aria-label="مشاهده بیشتر" title="مشاهده بیشتر">+</button>\` : "";
+      const button = \`<button class="more" type="button" data-full-key="\${esc(key)}" aria-label="مشاهده بیشتر" title="مشاهده بیشتر">+</button>\`;
       return \`<span class="clip">\${linkify(shortText(text, limit))}</span>\${button}\`;
     }
     function fileUrl(row, download = false) {
