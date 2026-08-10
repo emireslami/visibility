@@ -382,6 +382,12 @@ function sendHtml(res) {
     function messageWithBadge(row) {
       return \`\${editedBadge(row)}\${compactMessage(row)}\`;
     }
+    function isTopicRootReply(row) {
+      if (!row.reply_to_message_id || !row.message_thread_id) return false;
+      if (String(row.reply_to_message_id) !== String(row.message_thread_id)) return false;
+      const topic = String(row.topic_name || "").trim();
+      return !topic || topic === "#" + row.message_thread_id;
+    }
     function initials(row) {
       const source = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "?";
       return source.trim().slice(0, 1).toUpperCase() || "?";
@@ -433,6 +439,7 @@ function sendHtml(res) {
       const repliesByParent = new Map();
       for (const row of latestByMessage.values()) {
         if (!row.reply_to_message_id || !row.chat_id) continue;
+        if (isTopicRootReply(row)) continue;
         const parentKey = row.chat_id + ":" + row.reply_to_message_id;
         const list = repliesByParent.get(parentKey) || [];
         list.push(row);
@@ -440,7 +447,7 @@ function sendHtml(res) {
       }
       const rootKeys = new Set();
       for (const [key, row] of latestByMessage.entries()) {
-        if (!row.reply_to_message_id || repliesByParent.has(key)) rootKeys.add(key);
+        if (!row.reply_to_message_id || isTopicRootReply(row) || repliesByParent.has(key)) rootKeys.add(key);
       }
       for (const parentKey of repliesByParent.keys()) {
         if (!latestByMessage.has(parentKey)) rootKeys.add(parentKey);
