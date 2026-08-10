@@ -215,6 +215,9 @@ function sendHtml(res) {
     .multi-option { min-height:32px; display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
     .multi-option:hover { background:#f2f6f7; }
     .multi-option input { width:16px; height:16px; flex:0 0 auto; }
+    .single-option { width:100%; min-height:32px; display:flex; align-items:center; justify-content:flex-end; padding:6px 8px; border:0; border-radius:6px; background:#fff; color:var(--ink); cursor:pointer; text-align:right; }
+    .single-option:hover, .single-option.selected { background:#f2f6f7; }
+    .single-option.selected::before { content:"✓"; margin-inline-end:auto; color:var(--accent); font-weight:800; }
     .multi-empty { padding:8px; color:var(--muted); font-size:12px; }
     table { width: 100%; table-layout: fixed; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:rtl; }
     th, td { padding: 6px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: middle; font-size: 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -383,9 +386,9 @@ function sendHtml(res) {
       <section class="filters thread-filters">
         <div id="threadGroup" class="multi-filter"></div>
         <div id="threadTopic" class="multi-filter"></div>
-        <select id="threadYear"><option value="">سال</option></select>
-        <select id="threadMonth"><option value="">ماه</option></select>
-        <select id="threadDay"><option value="">روز</option></select>
+        <div id="threadYear" class="multi-filter single-filter"></div>
+        <div id="threadMonth" class="multi-filter single-filter"></div>
+        <div id="threadDay" class="multi-filter single-filter"></div>
         <button id="threadRefresh" type="button">فیلتر</button>
       </section>
       <div class="thread-list" id="threadRows"></div>
@@ -449,14 +452,6 @@ function sendHtml(res) {
       if (token !== loadingToken) return;
       statusEl.textContent = text;
     }
-    function optionHtml(value, label) {
-      return \`<option value="\${esc(value)}">\${esc(label ?? value)}</option>\`;
-    }
-    function setSelectOptions(select, values, placeholder) {
-      const current = select.value;
-      select.innerHTML = optionHtml("", placeholder) + values.map((value) => optionHtml(value, value)).join("");
-      select.value = values.includes(current) ? current : "";
-    }
     function createMultiFilter(root, placeholder, onChange) {
       const state = { options: [], selected: new Set() };
       root.innerHTML = \`<div class="multi-control"><button class="multi-button" type="button"><span class="multi-label">\${esc(placeholder)}</span></button><button class="multi-clear" type="button" aria-label="پاک کردن فیلتر" title="پاک کردن فیلتر">×</button></div><div class="multi-panel"></div>\`;
@@ -512,25 +507,85 @@ function sendHtml(res) {
         },
       };
     }
+    function createSingleFilter(root, placeholder, onChange) {
+      const state = { options: [], selected: "" };
+      root.innerHTML = \`<div class="multi-control"><button class="multi-button" type="button"><span class="multi-label">\${esc(placeholder)}</span></button><button class="multi-clear" type="button" aria-label="پاک کردن فیلتر" title="پاک کردن فیلتر">×</button></div><div class="multi-panel"></div>\`;
+      const button = root.querySelector(".multi-button");
+      const clearButton = root.querySelector(".multi-clear");
+      const label = root.querySelector(".multi-label");
+      const panel = root.querySelector(".multi-panel");
+      function syncLabel() {
+        label.textContent = state.selected || placeholder;
+        root.classList.toggle("has-value", Boolean(state.selected));
+      }
+      function render() {
+        if (!state.options.length) {
+          panel.innerHTML = \`<div class="multi-empty">موردی نیست</div>\`;
+          return;
+        }
+        panel.innerHTML = state.options.map((value) => \`<button class="single-option \${state.selected === value ? "selected" : ""}" type="button" data-value="\${esc(value)}">\${esc(value)}</button>\`).join("");
+      }
+      button.addEventListener("click", () => root.classList.toggle("open"));
+      clearButton.addEventListener("click", () => {
+        state.selected = "";
+        root.classList.remove("open");
+        render();
+        syncLabel();
+        onChange?.();
+      });
+      panel.addEventListener("click", (event) => {
+        const option = event.target.closest("[data-value]");
+        if (!option) return;
+        state.selected = option.dataset.value;
+        root.classList.remove("open");
+        render();
+        syncLabel();
+        onChange?.();
+      });
+      return {
+        setOptions(values) {
+          state.options = [...new Set(values.filter(Boolean))];
+          if (!state.options.includes(state.selected)) state.selected = "";
+          render();
+          syncLabel();
+        },
+        value() {
+          return state.selected;
+        },
+        clear() {
+          state.selected = "";
+          render();
+          syncLabel();
+        },
+        close() {
+          root.classList.remove("open");
+        },
+      };
+    }
     const messageGroupFilter = createMultiFilter(groupEl, "همه گروه‌ها", () => { updateMessageTopicOptions(); load(); });
     const messageTopicFilter = createMultiFilter(topicEl, "همه تاپیک‌ها", load);
     const threadGroupFilter = createMultiFilter(threadGroupEl, "همه گروه‌ها", () => { updateThreadTopicOptions(); loadThreads(); });
     const threadTopicFilter = createMultiFilter(threadTopicEl, "همه تاپیک‌ها", loadThreads);
+    const threadYearFilter = createSingleFilter(threadYearEl, "سال", () => { updateThreadDateOptions(); loadThreads(); });
+    const threadMonthFilter = createSingleFilter(threadMonthEl, "ماه", () => { updateThreadDateOptions(); loadThreads(); });
+    const threadDayFilter = createSingleFilter(threadDayEl, "روز", loadThreads);
     function appendFilterValues(params, key, values) {
       values.forEach((value) => params.append(key, value));
     }
     function updateThreadDateOptions() {
       const dates = threadFilterOptions?.jalali_dates || [];
       const years = [...new Set(dates.map((date) => date.split("-")[0]))].sort().reverse();
-      setSelectOptions(threadYearEl, years, "سال");
+      threadYearFilter.setOptions(years);
+      const selectedYear = threadYearFilter.value();
       const months = [...new Set(dates
-        .filter((date) => !threadYearEl.value || date.startsWith(threadYearEl.value + "-"))
+        .filter((date) => !selectedYear || date.startsWith(selectedYear + "-"))
         .map((date) => date.split("-")[1]))].sort();
-      setSelectOptions(threadMonthEl, months, "ماه");
+      threadMonthFilter.setOptions(months);
+      const selectedMonth = threadMonthFilter.value();
       const days = [...new Set(dates
-        .filter((date) => (!threadYearEl.value || date.startsWith(threadYearEl.value + "-")) && (!threadMonthEl.value || date.split("-")[1] === threadMonthEl.value))
+        .filter((date) => (!selectedYear || date.startsWith(selectedYear + "-")) && (!selectedMonth || date.split("-")[1] === selectedMonth))
         .map((date) => date.split("-")[2]))].sort();
-      setSelectOptions(threadDayEl, days, "روز");
+      threadDayFilter.setOptions(days);
     }
     function updateThreadTopicOptions() {
       const topics = (threadFilterOptions?.topics || [])
@@ -547,8 +602,11 @@ function sendHtml(res) {
       messageTopicFilter.setOptions(topics);
     }
     function selectedThreadJalaliDate() {
-      if (!threadYearEl.value || !threadMonthEl.value || !threadDayEl.value) return "";
-      return \`\${threadYearEl.value}-\${threadMonthEl.value}-\${threadDayEl.value}\`;
+      const year = threadYearFilter.value();
+      const month = threadMonthFilter.value();
+      const day = threadDayFilter.value();
+      if (!year || !month || !day) return "";
+      return \`\${year}-\${month}-\${day}\`;
     }
     async function loadThreadFilterOptions() {
       if (threadFilterOptions) return;
@@ -1025,11 +1083,8 @@ function sendHtml(res) {
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
     [searchEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
-    threadYearEl.addEventListener("change", () => { updateThreadDateOptions(); loadThreads(); });
-    threadMonthEl.addEventListener("change", () => { updateThreadDateOptions(); loadThreads(); });
-    threadDayEl.addEventListener("change", loadThreads);
     document.addEventListener("click", (event) => {
-      for (const filter of [messageGroupFilter, messageTopicFilter, threadGroupFilter, threadTopicFilter]) {
+      for (const filter of [messageGroupFilter, messageTopicFilter, threadGroupFilter, threadTopicFilter, threadYearFilter, threadMonthFilter, threadDayFilter]) {
         if (!event.target.closest(".multi-filter")) filter.close();
       }
     });
