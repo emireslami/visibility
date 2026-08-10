@@ -75,7 +75,6 @@ const HTML = `<!doctype html>
             <th>Sender Last Name</th>
             <th>Username</th>
             <th>Message</th>
-            <th>Date (Tehran)</th>
             <th>Date (Jalali)</th>
             <th>Time (Tehran)</th>
             <th>Edited At</th>
@@ -240,7 +239,6 @@ const HTML = `<!doctype html>
           <td class="full-cell">\${esc(row.sender_last_name)}</td>
           <td class="full-cell">\${esc(row.sender_username)}</td>
           <td class="body message-cell">\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 55)}</td>
-          <td class="full-cell">\${esc(row.sent_date)}</td>
           <td>\${esc(row.sent_jalali_date)}</td>
           <td class="full-cell">\${esc(row.sent_time)}</td>
           <td class="full-cell">\${esc(row.edited_at_utc)}</td>
