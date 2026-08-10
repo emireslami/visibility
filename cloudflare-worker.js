@@ -25,12 +25,13 @@ const HTML = `<!doctype html>
     input, select, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
     table { width: 100%; table-layout: fixed; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:rtl; }
-    th, td { padding: 6px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; font-size: 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    th, td { padding: 6px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: middle; font-size: 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     th { background: #eef3f4; color: #24343b; position: sticky; top: 0; }
     td.body { direction:rtl; text-align:right; }
     .full-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.45; }
-    .message-cell { display:flex; align-items:center; gap:6px; min-width:0; }
-    .message-cell .clip { flex:1 1 auto; min-width:0; }
+    .message-cell { min-width:0; }
+    .message-inner { display:flex; align-items:center; gap:6px; min-width:0; width:100%; }
+    .message-inner .clip { flex:1 1 auto; min-width:0; }
     .clip { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .badge { display:inline-flex; align-items:center; height:22px; margin-inline-end:6px; padding:0 8px; border-radius:999px; background:#fff4d6; color:#7a4a00; border:1px solid #f1cf75; font-size:11px; font-weight:700; direction:ltr; }
     .more { flex:0 0 auto; width:24px; height:24px; padding:0; display:inline-grid; place-items:center; border-radius:50%; font-size:16px; font-weight:700; line-height:1; }
@@ -547,7 +548,7 @@ const HTML = `<!doctype html>
           <td class="full-cell">\${esc(row.sender_first_name)}</td>
           <td class="full-cell">\${esc(row.sender_last_name)}</td>
           <td class="full-cell">\${esc(row.sender_username)}</td>
-          <td class="body message-cell">\${editedBadge(row)}\${mediaBadge(row)}\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 115)}</td>
+          <td class="body message-cell"><div class="message-inner">\${editedBadge(row)}\${mediaBadge(row)}\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 115)}</div></td>
           <td>\${esc(row.sent_jalali_date)}</td>
           <td class="full-cell">\${esc(row.sent_time)}</td>
           <td>\${esc(row.message_id)}</td>
