@@ -9,8 +9,13 @@ const HTML = `<!doctype html>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
     header { padding: 18px 24px; background: var(--panel); border-bottom: 1px solid var(--line); display:flex; gap:16px; align-items:center; justify-content:space-between; }
+    .brand { display:flex; gap:14px; align-items:center; }
     h1 { margin: 0; font-size: 20px; }
+    nav { display:flex; gap:8px; direction:ltr; }
+    .nav-button { height:32px; padding:0 12px; background:#fff; color:var(--ink); border-color:var(--line); }
+    .nav-button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
     main { padding: 18px 24px; }
+    .page[hidden] { display:none; }
     .filters { display:grid; grid-template-columns: 1fr 170px 170px 170px 170px 110px; gap:10px; margin-bottom:14px; }
     input, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
@@ -34,53 +39,81 @@ const HTML = `<!doctype html>
 </head>
 <body>
   <header>
-    <h1>Visibility</h1>
+    <div class="brand">
+      <h1>Visibility</h1>
+      <nav aria-label="Dashboard pages">
+        <button class="nav-button active" id="messagesNav" type="button">Messages</button>
+        <button class="nav-button" id="groupsNav" type="button">Groups</button>
+      </nav>
+    </div>
     <div class="meta" id="status">در حال دریافت...</div>
   </header>
   <main>
-    <section class="filters">
-      <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
-      <input id="group" placeholder="Group Name" />
-      <input id="topic" placeholder="Topic Name" />
-      <input id="chat" placeholder="Chat ID" />
-      <input id="sender" placeholder="Sender ID" />
-      <button id="refresh">به‌روزرسانی</button>
+    <section class="page" id="messagesPage">
+      <section class="filters">
+        <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
+        <input id="group" placeholder="Group Name" />
+        <input id="topic" placeholder="Topic Name" />
+        <input id="chat" placeholder="Chat ID" />
+        <input id="sender" placeholder="Sender ID" />
+        <button id="refresh">به‌روزرسانی</button>
+      </section>
+      <table>
+        <thead>
+          <tr>
+            <th>Update ID</th>
+            <th>Message ID</th>
+            <th>Group ID</th>
+            <th>Group Name</th>
+            <th>Group Username</th>
+            <th>Group Type</th>
+            <th>Topic</th>
+            <th>Topic ID</th>
+            <th>Is Topic</th>
+            <th>Username</th>
+            <th>Sender ID</th>
+            <th>Sender First Name</th>
+            <th>Sender Last Name</th>
+            <th>Sender Is Bot</th>
+            <th>Sender Chat ID</th>
+            <th>Sender Chat Title</th>
+            <th>Message</th>
+            <th>Caption</th>
+            <th>Date (Tehran)</th>
+            <th>Time (Tehran)</th>
+            <th>Type</th>
+            <th>Edited At</th>
+            <th>Reply To Message ID</th>
+            <th>Media File ID</th>
+            <th>Media Group ID</th>
+            <th>Forward Origin</th>
+            <th>Entities</th>
+            <th>Raw Telegram Payload</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
     </section>
-    <table>
-      <thead>
-        <tr>
-          <th>Update ID</th>
-          <th>Message ID</th>
-          <th>Group ID</th>
-          <th>Group Name</th>
-          <th>Group Username</th>
-          <th>Group Type</th>
-          <th>Topic</th>
-          <th>Topic ID</th>
-          <th>Is Topic</th>
-          <th>Username</th>
-          <th>Sender ID</th>
-          <th>Sender First Name</th>
-          <th>Sender Last Name</th>
-          <th>Sender Is Bot</th>
-          <th>Sender Chat ID</th>
-          <th>Sender Chat Title</th>
-          <th>Message</th>
-          <th>Caption</th>
-          <th>Date (Tehran)</th>
-          <th>Time (Tehran)</th>
-          <th>Type</th>
-          <th>Edited At</th>
-          <th>Reply To Message ID</th>
-          <th>Media File ID</th>
-          <th>Media Group ID</th>
-          <th>Forward Origin</th>
-          <th>Entities</th>
-          <th>Raw Telegram Payload</th>
-        </tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
+    <section class="page" id="groupsPage" hidden>
+      <table>
+        <thead>
+          <tr>
+            <th>Group ID</th>
+            <th>Group Name</th>
+            <th>Group Username</th>
+            <th>Group Type</th>
+            <th>Messages</th>
+            <th>Joined Date (Tehran)</th>
+            <th>Joined Time (Tehran)</th>
+            <th>Last Seen Date (Tehran)</th>
+            <th>Last Seen Time (Tehran)</th>
+            <th>Last Message Date (Tehran)</th>
+            <th>Last Message Time (Tehran)</th>
+          </tr>
+        </thead>
+        <tbody id="groupRows"></tbody>
+      </table>
+    </section>
   </main>
   <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
@@ -93,7 +126,12 @@ const HTML = `<!doctype html>
   </div>
   <script>
     const rowsEl = document.getElementById("rows");
+    const groupRowsEl = document.getElementById("groupRows");
     const statusEl = document.getElementById("status");
+    const messagesNavEl = document.getElementById("messagesNav");
+    const groupsNavEl = document.getElementById("groupsNav");
+    const messagesPageEl = document.getElementById("messagesPage");
+    const groupsPageEl = document.getElementById("groupsPage");
     const searchEl = document.getElementById("search");
     const groupEl = document.getElementById("group");
     const topicEl = document.getElementById("topic");
@@ -104,6 +142,7 @@ const HTML = `<!doctype html>
     const modalBodyEl = document.getElementById("modalBody");
     const modalCloseEl = document.getElementById("modalClose");
     const fullTextByKey = new Map();
+    let currentPage = "messages";
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
     }
@@ -184,6 +223,40 @@ const HTML = `<!doctype html>
         </tr>\`).join("");
       statusEl.textContent = data.messages.length + " پیام";
     }
+    async function loadGroups() {
+      const res = await fetch("/api/groups");
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data.groups)) {
+        groupRowsEl.innerHTML = "";
+        statusEl.textContent = data.detail || data.error || "خطا در دریافت گروه‌ها";
+        return;
+      }
+      groupRowsEl.innerHTML = data.groups.map(row => \`
+        <tr>
+          <td>\${esc(row.chat_id)}</td>
+          <td>\${esc(row.chat_title)}</td>
+          <td>\${esc(row.chat_username)}</td>
+          <td>\${esc(row.chat_type)}</td>
+          <td>\${esc(row.message_count)}</td>
+          <td>\${esc(row.joined_date)}</td>
+          <td>\${esc(row.joined_time)}</td>
+          <td>\${esc(row.last_seen_date)}</td>
+          <td>\${esc(row.last_seen_time)}</td>
+          <td>\${esc(row.last_message_date)}</td>
+          <td>\${esc(row.last_message_time)}</td>
+        </tr>\`).join("");
+      statusEl.textContent = data.groups.length + " گروه";
+    }
+    function showPage(page) {
+      currentPage = page;
+      const isGroups = page === "groups";
+      messagesPageEl.hidden = isGroups;
+      groupsPageEl.hidden = !isGroups;
+      messagesNavEl.classList.toggle("active", !isGroups);
+      groupsNavEl.classList.toggle("active", isGroups);
+      if (isGroups) loadGroups();
+      else load();
+    }
     rowsEl.addEventListener("click", event => {
       const button = event.target.closest("[data-full-key]");
       if (!button) return;
@@ -193,9 +266,11 @@ const HTML = `<!doctype html>
     modalBackdropEl.addEventListener("click", event => { if (event.target === modalBackdropEl) closeModal(); });
     document.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
     refreshEl.addEventListener("click", load);
+    messagesNavEl.addEventListener("click", () => showPage("messages"));
+    groupsNavEl.addEventListener("click", () => showPage("groups"));
     [searchEl, groupEl, topicEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
     load();
-    setInterval(load, 5000);
+    setInterval(() => { if (currentPage === "groups") loadGroups(); else load(); }, 5000);
   </script>
 </body>
 </html>`;
@@ -366,6 +441,96 @@ function topicData(message) {
   };
 }
 
+function activeMemberStatus(status) {
+  return ["member", "administrator", "creator"].includes(status);
+}
+
+function leftMemberStatus(status) {
+  return ["left", "kicked"].includes(status);
+}
+
+async function insertChat(env, row) {
+  if (!row.chat_id) return;
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_chats?on_conflict=chat_id`, {
+    method: "POST",
+    headers: supabaseHeaders(env, "resolution=ignore-duplicates,return=minimal"),
+    body: JSON.stringify(row),
+  });
+  if (!response.ok) throw new Error(await response.text());
+}
+
+async function patchChat(env, chatId, row) {
+  if (!chatId) return;
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_chats?chat_id=eq.${chatId}`, {
+    method: "PATCH",
+    headers: supabaseHeaders(env, "return=minimal"),
+    body: JSON.stringify(row),
+  });
+  if (!response.ok) throw new Error(await response.text());
+}
+
+async function upsertChatFromMessage(env, message, update) {
+  const chat = message.chat ?? {};
+  if (!chat.id) return;
+  const now = new Date().toISOString();
+  const seenAt = isoFromUnix(message.date) || now;
+  await insertChat(env, {
+    chat_id: chat.id,
+    chat_title: chat.title ?? null,
+    chat_username: chat.username ?? null,
+    chat_type: chat.type ?? null,
+    joined_at_utc: seenAt,
+    first_seen_at_utc: seenAt,
+    last_seen_at_utc: seenAt,
+    raw_payload_json: update,
+    updated_at_utc: now,
+  });
+  await patchChat(env, chat.id, {
+    chat_title: chat.title ?? null,
+    chat_username: chat.username ?? null,
+    chat_type: chat.type ?? null,
+    last_seen_at_utc: seenAt,
+    raw_payload_json: update,
+    updated_at_utc: now,
+  });
+}
+
+async function upsertChatFromMembership(env, update) {
+  const membership = update.my_chat_member;
+  if (!membership?.chat?.id) return false;
+
+  const chat = membership.chat;
+  const joinedAt = isoFromUnix(membership.date) || new Date().toISOString();
+  const oldStatus = membership.old_chat_member?.status;
+  const newStatus = membership.new_chat_member?.status;
+  const isJoinEvent = leftMemberStatus(oldStatus) && activeMemberStatus(newStatus);
+  const now = new Date().toISOString();
+
+  await insertChat(env, {
+    chat_id: chat.id,
+    chat_title: chat.title ?? null,
+    chat_username: chat.username ?? null,
+    chat_type: chat.type ?? null,
+    joined_at_utc: isJoinEvent ? joinedAt : null,
+    first_seen_at_utc: joinedAt,
+    last_seen_at_utc: joinedAt,
+    raw_payload_json: update,
+    updated_at_utc: now,
+  });
+
+  const patch = {
+    chat_title: chat.title ?? null,
+    chat_username: chat.username ?? null,
+    chat_type: chat.type ?? null,
+    last_seen_at_utc: joinedAt,
+    raw_payload_json: update,
+    updated_at_utc: now,
+  };
+  if (isJoinEvent) patch.joined_at_utc = joinedAt;
+  await patchChat(env, chat.id, patch);
+  return true;
+}
+
 async function upsertTopic(env, message, update) {
   const chat = message.chat ?? {};
   const topic = topicData(message);
@@ -394,9 +559,14 @@ async function handleTelegramWebhook(request, env) {
   }
 
   const update = await request.json();
+  if (update.my_chat_member && await upsertChatFromMembership(env, update)) {
+    return json({ ok: true, membership: true });
+  }
+
   const { message } = findMessage(update);
   if (!message) return json({ ok: true, ignored: true });
 
+  await upsertChatFromMessage(env, message, update);
   await upsertTopic(env, message, update);
 
   const chat = message.chat ?? {};
@@ -539,6 +709,40 @@ async function fetchMessages(request, env) {
   return json({ messages });
 }
 
+async function fetchGroups(request, env) {
+  const params = new URLSearchParams();
+  params.set("select", "chat_id,chat_title,chat_username,chat_type,joined_at_utc,first_seen_at_utc,last_seen_at_utc,message_count,last_message_at_utc");
+  params.set("order", "message_count.desc,last_seen_at_utc.desc");
+  params.set("limit", "1000");
+
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${params}`, {
+    headers: supabaseHeaders(env),
+  });
+  if (!response.ok) {
+    return json({ error: "Supabase groups request failed", detail: await response.text() }, 500);
+  }
+
+  const rows = await response.json();
+  const groups = rows.map((row) => {
+    const joinedAt = row.joined_at_utc || row.first_seen_at_utc;
+    const joined = joinedAt ? tehranParts(new Date(joinedAt)) : { sent_date: null, sent_time: null };
+    const lastSeen = row.last_seen_at_utc ? tehranParts(new Date(row.last_seen_at_utc)) : { sent_date: null, sent_time: null };
+    const lastMessage = row.last_message_at_utc ? tehranParts(new Date(row.last_message_at_utc)) : { sent_date: null, sent_time: null };
+    return {
+      ...row,
+      message_count: Number(row.message_count || 0),
+      joined_date: joined.sent_date,
+      joined_time: joined.sent_time,
+      last_seen_date: lastSeen.sent_date,
+      last_seen_time: lastSeen.sent_time,
+      last_message_date: lastMessage.sent_date,
+      last_message_time: lastMessage.sent_time,
+      display_timezone: "Asia/Tehran",
+    };
+  });
+  return json({ groups });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -554,12 +758,13 @@ export default {
       });
     }
     if (!dashboardAuthorized(request, env)) {
-      if (url.pathname === "/api/messages") return json({ error: "Unauthorized" }, 401);
+      if (url.pathname === "/api/messages" || url.pathname === "/api/groups") return json({ error: "Unauthorized" }, 401);
       return text(LOGIN_HTML, 200, "text/html; charset=utf-8");
     }
     if (url.pathname === "/") return text(HTML, 200, "text/html; charset=utf-8");
     if (url.pathname === "/api/debug") return text("Not found", 404);
     if (url.pathname === "/api/messages") return fetchMessages(request, env);
+    if (url.pathname === "/api/groups") return fetchGroups(request, env);
     return text("Not found", 404);
   },
 };
