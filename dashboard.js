@@ -51,7 +51,7 @@ function sendHtml(res) {
     header { padding: 18px 24px; background: var(--panel); border-bottom: 1px solid var(--line); display:flex; gap:16px; align-items:center; justify-content:space-between; }
     h1 { margin: 0; font-size: 20px; }
     main { padding: 18px 24px; }
-    .filters { display:grid; grid-template-columns: 1fr 170px 170px 170px 110px; gap:10px; margin-bottom:14px; }
+    .filters { display:grid; grid-template-columns: 1fr 170px 170px 170px 170px 110px; gap:10px; margin-bottom:14px; }
     input, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
     table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:ltr; }
@@ -71,7 +71,8 @@ function sendHtml(res) {
   <main>
     <section class="filters">
       <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
-      <input id="topic" placeholder="Topic" />
+      <input id="group" placeholder="Group Name" />
+      <input id="topic" placeholder="Topic Name" />
       <input id="chat" placeholder="Chat ID" />
       <input id="sender" placeholder="Sender ID" />
       <button id="refresh">به‌روزرسانی</button>
@@ -116,6 +117,7 @@ function sendHtml(res) {
     const rowsEl = document.getElementById("rows");
     const statusEl = document.getElementById("status");
     const searchEl = document.getElementById("search");
+    const groupEl = document.getElementById("group");
     const topicEl = document.getElementById("topic");
     const chatEl = document.getElementById("chat");
     const senderEl = document.getElementById("sender");
@@ -133,6 +135,7 @@ function sendHtml(res) {
     async function load() {
       const params = new URLSearchParams();
       if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
+      if (groupEl.value.trim()) params.set("group", groupEl.value.trim());
       if (topicEl.value.trim()) params.set("topic", topicEl.value.trim());
       if (chatEl.value.trim()) params.set("chat_id", chatEl.value.trim());
       if (senderEl.value.trim()) params.set("sender_id", senderEl.value.trim());
@@ -172,7 +175,7 @@ function sendHtml(res) {
       statusEl.textContent = data.messages.length + " پیام";
     }
     refreshEl.addEventListener("click", load);
-    [searchEl, topicEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
+    [searchEl, groupEl, topicEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
     load();
     setInterval(load, 5000);
   </script>
@@ -187,38 +190,45 @@ async function handle(req, res) {
     const clauses = [];
     const params = [];
     const q = url.searchParams.get("q");
+    const group = url.searchParams.get("group");
     const topic = url.searchParams.get("topic");
     const chatId = url.searchParams.get("chat_id");
     const senderId = url.searchParams.get("sender_id");
     if (q) {
       params.push(`%${q}%`);
-      clauses.push(`(body ilike $${params.length} or caption ilike $${params.length} or chat_title ilike $${params.length} or topic_name ilike $${params.length} or sender_username ilike $${params.length})`);
+      clauses.push(`(m.body ilike $${params.length} or m.caption ilike $${params.length} or m.chat_title ilike $${params.length} or coalesce(m.topic_name, t.topic_name) ilike $${params.length} or m.sender_username ilike $${params.length})`);
+    }
+    if (group) {
+      params.push(`%${group}%`);
+      clauses.push(`m.chat_title ilike $${params.length}`);
     }
     if (topic) {
       params.push(`%${topic}%`);
-      clauses.push(`topic_name ilike $${params.length}`);
+      clauses.push(`coalesce(m.topic_name, t.topic_name) ilike $${params.length}`);
     }
     if (chatId) {
       params.push(chatId);
-      clauses.push(`chat_id = $${params.length}`);
+      clauses.push(`m.chat_id = $${params.length}`);
     }
     if (senderId) {
       params.push(senderId);
-      clauses.push(`sender_id = $${params.length}`);
+      clauses.push(`m.sender_id = $${params.length}`);
     }
     const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
     const messages = await query(`
-      select update_id, message_id, chat_id, chat_title, chat_username, chat_type,
-             message_thread_id, is_topic_message, topic_name,
-             sender_username, sender_id, sender_first_name, sender_last_name, sender_is_bot,
-             sender_chat_id, sender_chat_title,
-             body, caption, message_type, edited_at_utc, reply_to_message_id,
-             media_file_id, media_group_id, forward_origin_json, entities_json, raw_payload_json,
-             to_char(sent_at_utc at time zone 'Asia/Tehran', 'YYYY-MM-DD') as sent_date,
-             to_char(sent_at_utc at time zone 'Asia/Tehran', 'HH24:MI:SS') as sent_time
-      from public.telegram_messages
+      select m.update_id, m.message_id, m.chat_id, m.chat_title, m.chat_username, m.chat_type,
+             m.message_thread_id, m.is_topic_message, coalesce(m.topic_name, t.topic_name) as topic_name,
+             m.sender_username, m.sender_id, m.sender_first_name, m.sender_last_name, m.sender_is_bot,
+             m.sender_chat_id, m.sender_chat_title,
+             m.body, m.caption, m.message_type, m.edited_at_utc, m.reply_to_message_id,
+             m.media_file_id, m.media_group_id, m.forward_origin_json, m.entities_json, m.raw_payload_json,
+             to_char(m.sent_at_utc at time zone 'Asia/Tehran', 'YYYY-MM-DD') as sent_date,
+             to_char(m.sent_at_utc at time zone 'Asia/Tehran', 'HH24:MI:SS') as sent_time
+      from public.telegram_messages m
+      left join public.telegram_topics t
+        on t.chat_id = m.chat_id and t.message_thread_id = m.message_thread_id
       ${where}
-      order by sent_at_utc desc nulls last, id desc
+      order by m.sent_at_utc desc nulls last, m.id desc
       limit 500
     `, params);
     return sendJson(res, { messages });

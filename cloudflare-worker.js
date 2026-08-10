@@ -11,7 +11,7 @@ const HTML = `<!doctype html>
     header { padding: 18px 24px; background: var(--panel); border-bottom: 1px solid var(--line); display:flex; gap:16px; align-items:center; justify-content:space-between; }
     h1 { margin: 0; font-size: 20px; }
     main { padding: 18px 24px; }
-    .filters { display:grid; grid-template-columns: 1fr 170px 170px 170px 110px; gap:10px; margin-bottom:14px; }
+    .filters { display:grid; grid-template-columns: 1fr 170px 170px 170px 170px 110px; gap:10px; margin-bottom:14px; }
     input, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
     table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:ltr; }
@@ -31,7 +31,8 @@ const HTML = `<!doctype html>
   <main>
     <section class="filters">
       <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
-      <input id="topic" placeholder="Topic" />
+      <input id="group" placeholder="Group Name" />
+      <input id="topic" placeholder="Topic Name" />
       <input id="chat" placeholder="Chat ID" />
       <input id="sender" placeholder="Sender ID" />
       <button id="refresh">به‌روزرسانی</button>
@@ -76,6 +77,7 @@ const HTML = `<!doctype html>
     const rowsEl = document.getElementById("rows");
     const statusEl = document.getElementById("status");
     const searchEl = document.getElementById("search");
+    const groupEl = document.getElementById("group");
     const topicEl = document.getElementById("topic");
     const chatEl = document.getElementById("chat");
     const senderEl = document.getElementById("sender");
@@ -93,6 +95,7 @@ const HTML = `<!doctype html>
     async function load() {
       const params = new URLSearchParams();
       if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
+      if (groupEl.value.trim()) params.set("group", groupEl.value.trim());
       if (topicEl.value.trim()) params.set("topic", topicEl.value.trim());
       if (chatEl.value.trim()) params.set("chat_id", chatEl.value.trim());
       if (senderEl.value.trim()) params.set("sender_id", senderEl.value.trim());
@@ -137,7 +140,7 @@ const HTML = `<!doctype html>
       statusEl.textContent = data.messages.length + " پیام";
     }
     refreshEl.addEventListener("click", load);
-    [searchEl, topicEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
+    [searchEl, groupEl, topicEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
     load();
     setInterval(load, 5000);
   </script>
@@ -432,6 +435,7 @@ async function fetchMessages(request, env) {
 
   const filters = [];
   const q = url.searchParams.get("q");
+  const group = url.searchParams.get("group");
   const topic = url.searchParams.get("topic");
   const chatId = url.searchParams.get("chat_id");
   const senderId = url.searchParams.get("sender_id");
@@ -440,7 +444,7 @@ async function fetchMessages(request, env) {
     filters.push(`body.ilike.${pattern},caption.ilike.${pattern},chat_title.ilike.${pattern},topic_name.ilike.${pattern},sender_username.ilike.${pattern}`);
   }
   if (filters.length) params.set("or", `(${filters.join(",")})`);
-  if (topic) params.set("topic_name", `ilike.*${topic.replace(/[%*]/g, "")}*`);
+  if (group) params.set("chat_title", `ilike.*${group.replace(/[%*]/g, "")}*`);
   if (chatId) params.set("chat_id", `eq.${chatId}`);
   if (senderId) params.set("sender_id", `eq.${senderId}`);
 
@@ -464,7 +468,7 @@ async function fetchMessages(request, env) {
     topics.map((topicRow) => [`${topicRow.chat_id}:${topicRow.message_thread_id}`, topicRow.topic_name])
   );
   const rows = await response.json();
-  const messages = rows.map((row) => {
+  let messages = rows.map((row) => {
     const date = row.sent_at_utc ? new Date(row.sent_at_utc) : null;
     const mappedTopicName = row.message_thread_id
       ? topicByThread.get(`${row.chat_id}:${row.message_thread_id}`)
@@ -475,6 +479,10 @@ async function fetchMessages(request, env) {
       ...(date ? tehranParts(date) : { sent_date: null, sent_time: null, display_timezone: "Asia/Tehran" }),
     };
   });
+  if (topic) {
+    const normalizedTopic = topic.toLowerCase();
+    messages = messages.filter((row) => String(row.topic_name || "").toLowerCase().includes(normalizedTopic));
+  }
   return json({ messages });
 }
 
