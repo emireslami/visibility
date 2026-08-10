@@ -141,10 +141,10 @@ const HTML = `<!doctype html>
     .revoke-button { height:30px; padding:0 10px; background:#fff; color:#b42318; border-color:#f0b8b2; }
     .revoke-button:disabled { cursor:not-allowed; color:var(--muted); border-color:var(--line); background:#f3f5f6; }
     .reactivate-button { height:30px; padding:0 10px; background:#fff; color:var(--accent); border-color:#9bd6dd; }
-    .access-log-list { display:grid; gap:8px; margin-top:12px; }
-    .access-log-row { display:grid; grid-template-columns:140px 1fr 1fr 130px 86px; gap:10px; align-items:center; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; direction:ltr; }
-    .access-log-action { font-weight:800; color:var(--ink); }
-    .access-log-meta { color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .access-log-table { margin-top:12px; direction:ltr; }
+    .access-log-table th, .access-log-table td { direction:ltr; text-align:left; }
+    .access-log-table th { top:var(--header-h); }
+    .access-log-table .details-cell { text-align:center; }
     @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } .access-form, .access-main { grid-template-columns:1fr; } .permission-grid, .access-row .permission-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .access-actions { justify-content:flex-start; } }
   </style>
 </head>
@@ -263,7 +263,25 @@ const HTML = `<!doctype html>
         </section>
         <section class="access-section" id="accessLogsSection" hidden>
           <div class="access-message" id="accessLogMessage"></div>
-          <div class="access-log-list" id="accessLogRows"></div>
+          <table class="access-log-table">
+            <colgroup>
+              <col style="width:13%" />
+              <col style="width:26%" />
+              <col style="width:26%" />
+              <col style="width:23%" />
+              <col style="width:12%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Actor</th>
+                <th>Target</th>
+                <th>Time (Tehran)</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="accessLogRows"></tbody>
+          </table>
         </section>
       </section>
     </section>
@@ -1056,14 +1074,14 @@ const HTML = `<!doctype html>
         accessLogRowsEl.innerHTML = data.logs.map((log, index) => {
           const key = "access-log-" + index;
           detailByKey.set(key, accessLogDetailsHtml(log));
-          return \`<div class="access-log-row">
-            <span class="access-log-action">\${esc(log.action)}</span>
-            <span class="access-log-meta">Actor: \${esc(log.actor_email || "-")}</span>
-            <span class="access-log-meta">Target: \${esc(log.target_email || "-")}</span>
-            <span class="access-log-meta">\${esc(log.created_at_utc ? tehranDisplay(log.created_at_utc) : "-")}</span>
-            <button class="details-button" type="button" data-detail-key="\${esc(key)}">Details</button>
-          </div>\`;
-        }).join("") || '<div class="empty">لاگی ثبت نشده است</div>';
+          return \`<tr>
+            <td>\${esc(log.action)}</td>
+            <td>\${esc(log.actor_email || "-")}</td>
+            <td>\${esc(log.target_email || "-")}</td>
+            <td>\${esc(log.created_at_utc ? tehranDisplay(log.created_at_utc) : "-")}</td>
+            <td class="details-cell"><button class="details-button" type="button" data-detail-key="\${esc(key)}">Details</button></td>
+          </tr>\`;
+        }).join("") || '<tr><td colspan="5" class="empty">لاگی ثبت نشده است</td></tr>';
         accessLogMessageEl.textContent = "";
         setStatus(token, data.logs.length + " لاگ");
       } catch (error) {
