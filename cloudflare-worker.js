@@ -315,6 +315,11 @@ const HTML = `<!doctype html>
         values() {
           return [...state.selected];
         },
+        setValues(values) {
+          state.selected = new Set([...new Set(values.filter(Boolean))].filter((value) => state.options.includes(value)));
+          render();
+          syncLabel();
+        },
         clear() {
           state.selected.clear();
           render();
@@ -381,14 +386,31 @@ const HTML = `<!doctype html>
       };
     }
     const messageGroupFilter = createMultiFilter(groupEl, "همه گروه‌ها", () => { updateMessageTopicOptions(); load(); });
-    const messageTopicFilter = createMultiFilter(topicEl, "همه تاپیک‌ها", load);
+    const messageTopicFilter = createMultiFilter(topicEl, "همه تاپیک‌ها", () => {
+      syncGroupsFromSelectedTopics(messageGroupFilter, messageTopicFilter);
+      updateMessageTopicOptions();
+      load();
+    });
     const threadGroupFilter = createMultiFilter(threadGroupEl, "همه گروه‌ها", () => { updateThreadTopicOptions(); loadThreads(); });
-    const threadTopicFilter = createMultiFilter(threadTopicEl, "همه تاپیک‌ها", loadThreads);
+    const threadTopicFilter = createMultiFilter(threadTopicEl, "همه تاپیک‌ها", () => {
+      syncGroupsFromSelectedTopics(threadGroupFilter, threadTopicFilter);
+      updateThreadTopicOptions();
+      loadThreads();
+    });
     const threadYearFilter = createSingleFilter(threadYearEl, "سال", () => { updateThreadDateOptions(); loadThreads(); });
     const threadMonthFilter = createSingleFilter(threadMonthEl, "ماه", () => { updateThreadDateOptions(); loadThreads(); });
     const threadDayFilter = createSingleFilter(threadDayEl, "روز", loadThreads);
     function appendFilterValues(params, key, values) {
       values.forEach((value) => params.append(key, value));
+    }
+    function syncGroupsFromSelectedTopics(groupFilter, topicFilter) {
+      const selectedTopics = topicFilter.values();
+      if (!selectedTopics.length) return;
+      const groups = (threadFilterOptions?.topics || [])
+        .filter((topic) => selectedTopics.includes(topic.topic_name))
+        .map((topic) => topic.chat_title)
+        .filter(Boolean);
+      if (groups.length) groupFilter.setValues(groups);
     }
     function updateThreadDateOptions() {
       const dates = threadFilterOptions?.jalali_dates || [];
