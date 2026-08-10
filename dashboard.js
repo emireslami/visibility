@@ -131,17 +131,6 @@ function sendHtml(res) {
             <th>Date (Jalali)</th>
             <th>Time (Tehran)</th>
             <th>Edited At</th>
-            <th>Group Type</th>
-            <th>Topic</th>
-            <th>Topic ID</th>
-            <th>Is Topic</th>
-            <th>Sender ID</th>
-            <th>Sender Is Bot</th>
-            <th>Update ID</th>
-            <th>Message ID</th>
-            <th>Group ID</th>
-            <th>Type</th>
-            <th>Reply To Message ID</th>
             <th>Details</th>
           </tr>
         </thead>
@@ -300,17 +289,6 @@ function sendHtml(res) {
           <td>\${esc(row.sent_jalali_date)}</td>
           <td class="full-cell">\${esc(row.sent_time)}</td>
           <td class="full-cell">\${esc(row.edited_at_utc)}</td>
-          <td>\${esc(row.chat_type)}</td>
-          <td>\${esc(row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : ""))}</td>
-          <td>\${esc(row.message_thread_id)}</td>
-          <td>\${esc(row.is_topic_message)}</td>
-          <td>\${esc(row.sender_id)}</td>
-          <td>\${esc(row.sender_is_bot)}</td>
-          <td>\${esc(row.update_id)}</td>
-          <td>\${esc(row.message_id)}</td>
-          <td>\${esc(row.chat_id)}</td>
-          <td>\${esc(row.message_type)}</td>
-          <td>\${esc(row.reply_to_message_id)}</td>
           <td><button class="details-button" type="button" data-detail-key="detail-\${index}">Details</button></td>
         </tr>\`).join("");
       data.messages.forEach((row, index) => detailByKey.set("detail-" + index, detailHtml(row)));
