@@ -131,6 +131,7 @@ const HTML = `<!doctype html>
     .access-actions { display:flex; align-items:center; gap:10px; }
     .revoke-button { height:30px; padding:0 10px; background:#fff; color:#b42318; border-color:#f0b8b2; }
     .revoke-button:disabled { cursor:not-allowed; color:var(--muted); border-color:var(--line); background:#f3f5f6; }
+    .reactivate-button { height:30px; padding:0 10px; background:#fff; color:var(--accent); border-color:#9bd6dd; }
     @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } }
   </style>
 </head>
@@ -942,7 +943,9 @@ const HTML = `<!doctype html>
             <span class="access-email">\${esc(user.email)}</span>
             <span class="access-actions">
               <span class="access-state">\${!user.is_active ? "Revoked" : (user.must_change_password ? "نیازمند تغییر پسورد" : "فعال")} · \${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</span>
-              <button class="revoke-button" type="button" data-revoke-email="\${esc(user.email)}" \${!user.is_active ? "disabled" : ""}>Revoke</button>
+              \${user.is_active
+                ? \`<button class="revoke-button" type="button" data-revoke-email="\${esc(user.email)}">Revoke</button>\`
+                : \`<button class="reactivate-button" type="button" data-reactivate-email="\${esc(user.email)}">Re-Active</button>\`}
             </span>
           </div>\`).join("");
         setStatus(token, data.users.length + " کاربر");
@@ -1069,34 +1072,37 @@ const HTML = `<!doctype html>
       }
     });
     accessRowsEl.addEventListener("click", async (event) => {
-      const button = event.target.closest("[data-revoke-email]");
+      const revokeButton = event.target.closest("[data-revoke-email]");
+      const reactivateButton = event.target.closest("[data-reactivate-email]");
+      const button = revokeButton || reactivateButton;
       if (!button || button.disabled) return;
-      const email = button.dataset.revokeEmail;
+      const isReactivate = Boolean(reactivateButton);
+      const email = isReactivate ? button.dataset.reactivateEmail : button.dataset.revokeEmail;
       const confirmed = await openConfirmModal({
-        title: "تایید Revoke",
-        message: \`دسترسی <span class="confirm-target">\${esc(email)}</span> revoke شود؟\`,
-        confirmText: "Revoke",
+        title: isReactivate ? "تایید Re-Active" : "تایید Revoke",
+        message: \`دسترسی <span class="confirm-target">\${esc(email)}</span> \${isReactivate ? "دوباره فعال" : "revoke"} شود؟\`,
+        confirmText: isReactivate ? "Re-Active" : "Revoke",
         cancelText: "انصراف",
       });
       if (!confirmed) return;
       button.disabled = true;
-      accessMessageEl.textContent = "در حال revoke...";
+      accessMessageEl.textContent = isReactivate ? "در حال فعال‌سازی..." : "در حال revoke...";
       try {
-        const res = await fetch("/api/access-users/revoke", {
+        const res = await fetch(isReactivate ? "/api/access-users/reactivate" : "/api/access-users/revoke", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ email }),
         });
         const data = await res.json();
         if (!res.ok) {
-          accessMessageEl.textContent = data.error || "Revoke انجام نشد";
+          accessMessageEl.textContent = data.error || (isReactivate ? "فعال‌سازی انجام نشد" : "Revoke انجام نشد");
           button.disabled = false;
           return;
         }
-        accessMessageEl.textContent = "دسترسی revoke شد.";
+        accessMessageEl.textContent = isReactivate ? "دسترسی دوباره فعال شد." : "دسترسی revoke شد.";
         loadAccessUsers();
       } catch (error) {
-        accessMessageEl.textContent = "Revoke انجام نشد";
+        accessMessageEl.textContent = isReactivate ? "فعال‌سازی انجام نشد" : "Revoke انجام نشد";
         button.disabled = false;
       }
     });
@@ -1485,6 +1491,28 @@ async function revokeAccessUser(request, env, authUser) {
     return json({ user: { email: user.email, is_active: user.is_active } });
   } catch (error) {
     return json({ error: error.message || "Revoke انجام نشد" }, 500);
+  }
+}
+
+async function reactivateAccessUser(request, env) {
+  let body = {};
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const email = normalizeEmail(body.email);
+  if (!validAccessEmail(email)) return json({ error: "ایمیل نامعتبر است" }, 400);
+  try {
+    const existing = await getAccessUserByEmail(env, email);
+    if (!existing) return json({ error: "کاربر پیدا نشد" }, 404);
+    const user = await patchAccessUser(env, email, {
+      is_active: true,
+      updated_at_utc: new Date().toISOString(),
+    });
+    return json({ user: { email: user.email, is_active: user.is_active } });
+  } catch (error) {
+    return json({ error: error.message || "فعال‌سازی انجام نشد" }, 500);
   }
 }
 
@@ -2328,6 +2356,7 @@ export default {
     if (url.pathname === "/api/access-users" && request.method === "GET") return fetchAccessUsers(env);
     if (url.pathname === "/api/access-users" && request.method === "POST") return addAccessUser(request, env);
     if (url.pathname === "/api/access-users/revoke" && request.method === "POST") return revokeAccessUser(request, env, authUser);
+    if (url.pathname === "/api/access-users/reactivate" && request.method === "POST") return reactivateAccessUser(request, env);
     if (url.pathname === "/api/messages") return fetchMessages(request, env);
     if (url.pathname === "/api/groups") return fetchGroups(request, env);
     if (url.pathname === "/api/dashboard") return fetchDashboard(request, env);
