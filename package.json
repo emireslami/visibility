@@ -1,0 +1,15 @@
+{
+  "name": "telegram-visibility",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "migrate": "node migrate.js",
+    "import:sqlite": "node import_sqlite.js",
+    "collect": "node collector.js",
+    "dashboard": "node dashboard.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.2",
+    "pg": "^8.23.0"
+  }
+}

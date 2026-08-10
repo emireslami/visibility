@@ -1,6 +1,6 @@
 # Telegram dashboard bot
 
-This bot collects messages from Telegram groups and stores them in SQLite.
+This bot collects messages from Telegram groups and stores them in Supabase Postgres.
 
 ## 1. Create the bot
 
@@ -17,6 +17,7 @@ Then edit `.env`:
 
 ```sh
 TELEGRAM_BOT_TOKEN=your_real_token
+DATABASE_URL=postgresql://postgres.dniaincbngeeqnjzvfjs:your_db_password@aws-0-ca-central-1.pooler.supabase.com:6543/postgres
 ```
 
 ## 2. Make the bot able to read group messages
@@ -32,18 +33,14 @@ Then add the bot to each work group. Admin access is recommended.
 ## 3. Run
 
 ```sh
-python3 bot.py
+node migrate.js
+node collector.js
 ```
 
-Messages are stored in:
+## 4. Run dashboard
 
 ```sh
-telegram_messages.sqlite3
+node dashboard.js
 ```
 
-## 4. Inspect collected messages
-
-```sh
-sqlite3 telegram_messages.sqlite3 \
-  "select chat_id, chat_title, sender_username, sender_id, body, sent_date, sent_time from telegram_messages order by id desc limit 20;"
-```
+Open `http://127.0.0.1:3000`.
