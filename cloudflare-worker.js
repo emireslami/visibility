@@ -67,6 +67,11 @@ const HTML = `<!doctype html>
       if (senderEl.value.trim()) params.set("sender_id", senderEl.value.trim());
       const res = await fetch("/api/messages?" + params);
       const data = await res.json();
+      if (!res.ok || !Array.isArray(data.messages)) {
+        rowsEl.innerHTML = "";
+        statusEl.textContent = data.detail || data.error || "خطا در دریافت داده";
+        return;
+      }
       rowsEl.innerHTML = data.messages.map(row => \`
         <tr>
           <td>\${esc(row.chat_id)}</td>
