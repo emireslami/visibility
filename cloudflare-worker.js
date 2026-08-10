@@ -1268,6 +1268,8 @@ const HTML = `<!doctype html>
 </body>
 </html>`;
 
+const AUTH_FONT_FACE = HTML.match(/@font-face\s*\{[^}]+\}/)?.[0] || "";
+
 function loginHtml(error = "", email = "") {
   return `<!doctype html>
 <html lang="fa" dir="rtl">
@@ -1289,6 +1291,10 @@ function loginHtml(error = "", email = "") {
     input, button { width:100%; height:40px; border-radius:6px; font:inherit; }
     input { border:1px solid var(--line); padding:0 10px; }
     button { margin-top:12px; border:0; background:var(--accent); color:#fff; cursor:pointer; }
+    .password-wrap { position:relative; }
+    .password-wrap input { padding-left:48px; direction:ltr; }
+    .password-toggle { position:absolute; left:6px; top:6px; width:34px; height:28px; margin:0; padding:0; display:grid; place-items:center; border:1px solid var(--line); background:#fff; color:var(--muted); }
+    .password-toggle svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; }
     .error { min-height:22px; margin-bottom:10px; color:#b42318; font-size:12px; line-height:1.7; }
   </style>
 </head>
@@ -1299,9 +1305,22 @@ function loginHtml(error = "", email = "") {
     <label for="email">ایمیل</label>
     <input id="email" name="email" type="email" autocomplete="username" placeholder="anything@toman.ir" value="${htmlEscape(email)}" autofocus />
     <label for="password">پسورد</label>
-    <input id="password" name="password" type="password" autocomplete="current-password" />
+    <div class="password-wrap">
+      <input id="password" name="password" type="password" autocomplete="current-password" />
+      <button class="password-toggle" type="button" data-toggle-password="password" aria-label="نمایش پسورد">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
     <button type="submit">ورود</button>
   </form>
+  <script>
+    document.querySelectorAll("[data-toggle-password]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const input = document.getElementById(button.dataset.togglePassword);
+        input.type = input.type === "password" ? "text" : "password";
+      });
+    });
+  </script>
 </body>
 </html>`;
 }
@@ -1314,6 +1333,7 @@ function passwordPageHtml(error = "") {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Set Password</title>
   <style>
+    ${AUTH_FONT_FACE}
     :root { --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; --error:#b42318; }
     * { box-sizing:border-box; }
     body { margin:0; min-height:100vh; display:grid; place-items:center; font-family:"IRANSans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); }
@@ -1324,6 +1344,10 @@ function passwordPageHtml(error = "") {
     input, button { width:100%; height:40px; border-radius:6px; font:inherit; }
     input { border:1px solid var(--line); padding:0 10px; direction:ltr; }
     button { margin-top:14px; border:0; background:var(--accent); color:#fff; cursor:pointer; }
+    .password-wrap { position:relative; }
+    .password-wrap input { padding-left:48px; }
+    .password-toggle { position:absolute; left:6px; top:6px; width:34px; height:28px; margin:0; padding:0; display:grid; place-items:center; border:1px solid var(--line); background:#fff; color:var(--muted); }
+    .password-toggle svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; }
     .error { min-height:22px; color:var(--error); font-size:12px; }
   </style>
 </head>
@@ -1331,13 +1355,38 @@ function passwordPageHtml(error = "") {
   <form method="post" action="/set-password">
     <h1>تنظیم پسورد جدید</h1>
     <p>برای ادامه باید پسورد قوی انتخاب کنید. بعد از ذخیره، خودکار خارج می‌شوید و باید با پسورد جدید وارد شوید.</p>
-    <div class="error">${error}</div>
+    <div class="error">${htmlEscape(error)}</div>
     <label for="current_password">پسورد فعلی</label>
-    <input id="current_password" name="current_password" type="password" autocomplete="current-password" autofocus />
+    <div class="password-wrap">
+      <input id="current_password" name="current_password" type="password" autocomplete="current-password" autofocus />
+      <button class="password-toggle" type="button" data-toggle-password="current_password" aria-label="نمایش پسورد فعلی">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
     <label for="new_password">پسورد جدید</label>
-    <input id="new_password" name="new_password" type="password" autocomplete="new-password" />
+    <div class="password-wrap">
+      <input id="new_password" name="new_password" type="password" autocomplete="new-password" />
+      <button class="password-toggle" type="button" data-toggle-password="new_password" aria-label="نمایش پسورد جدید">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+    <label for="new_password_confirm">تکرار پسورد جدید</label>
+    <div class="password-wrap">
+      <input id="new_password_confirm" name="new_password_confirm" type="password" autocomplete="new-password" />
+      <button class="password-toggle" type="button" data-toggle-password="new_password_confirm" aria-label="نمایش تکرار پسورد جدید">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
     <button type="submit">ذخیره پسورد</button>
   </form>
+  <script>
+    document.querySelectorAll("[data-toggle-password]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const input = document.getElementById(button.dataset.togglePassword);
+        input.type = input.type === "password" ? "text" : "password";
+      });
+    });
+  </script>
 </body>
 </html>`;
 }
@@ -1633,8 +1682,12 @@ async function handleSetPassword(request, env, user) {
   const form = await request.formData();
   const currentPassword = String(form.get("current_password") || "");
   const newPassword = String(form.get("new_password") || "");
+  const newPasswordConfirm = String(form.get("new_password_confirm") || "");
   if (await hashPassword(currentPassword, user.password_salt) !== user.password_hash) {
     return text(passwordPageHtml("پسورد فعلی درست نیست."), 401, "text/html; charset=utf-8");
+  }
+  if (newPassword !== newPasswordConfirm) {
+    return text(passwordPageHtml("پسورد جدید و تکرار آن یکسان نیستند."), 400, "text/html; charset=utf-8");
   }
   if (!strongPassword(newPassword)) {
     return text(passwordPageHtml("پسورد باید حداقل ۱۰ کاراکتر و شامل حروف بزرگ، حروف کوچک، عدد و علامت باشد."), 400, "text/html; charset=utf-8");
