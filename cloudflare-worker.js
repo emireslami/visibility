@@ -29,6 +29,18 @@ const HTML = `<!doctype html>
     .badge { display:inline-flex; align-items:center; height:22px; margin-top:6px; padding:0 8px; border-radius:999px; background:#fff4d6; color:#7a4a00; border:1px solid #f1cf75; font-size:11px; font-weight:700; direction:ltr; }
     .more { height: 28px; margin-top: 6px; padding: 0 9px; font-size: 12px; }
     .details-button { height: 30px; padding: 0 10px; font-size: 12px; }
+    .thread-list { display:grid; gap:14px; max-width:980px; margin:0 auto; direction:rtl; }
+    .thread-card { background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+    .thread-root, .thread-reply, .thread-missing { padding:14px 16px; }
+    .thread-replies { border-top:1px solid var(--line); }
+    .thread-reply { position:relative; margin-right:28px; border-right:2px solid var(--line); }
+    .thread-reply + .thread-reply { border-top:1px solid var(--line); }
+    .thread-missing { color:var(--muted); background:#fbfcfd; }
+    .thread-head { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:8px; }
+    .thread-author { font-weight:700; color:var(--ink); }
+    .thread-muted { color:var(--muted); font-size:12px; }
+    .thread-pill { display:inline-flex; align-items:center; height:24px; padding:0 8px; border:1px solid var(--line); border-radius:999px; background:#f7f8fa; color:#24343b; font-size:12px; direction:ltr; }
+    .thread-message { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.7; text-align:right; }
     td.json { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     td.json .clip { direction:ltr; text-align:left; }
     .meta { color: var(--muted); font-size: 12px; }
@@ -54,6 +66,7 @@ const HTML = `<!doctype html>
       <nav aria-label="Dashboard pages">
         <button class="nav-button active" id="messagesNav" type="button">Messages</button>
         <button class="nav-button" id="groupsNav" type="button">Groups</button>
+        <button class="nav-button" id="threadsNav" type="button">Threads</button>
       </nav>
     </div>
     <div class="meta" id="status">در حال دریافت...</div>
@@ -106,6 +119,9 @@ const HTML = `<!doctype html>
         <tbody id="groupRows"></tbody>
       </table>
     </section>
+    <section class="page" id="threadsPage" hidden>
+      <div class="thread-list" id="threadRows"></div>
+    </section>
   </main>
   <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
@@ -119,11 +135,14 @@ const HTML = `<!doctype html>
   <script>
     const rowsEl = document.getElementById("rows");
     const groupRowsEl = document.getElementById("groupRows");
+    const threadRowsEl = document.getElementById("threadRows");
     const statusEl = document.getElementById("status");
     const messagesNavEl = document.getElementById("messagesNav");
     const groupsNavEl = document.getElementById("groupsNav");
+    const threadsNavEl = document.getElementById("threadsNav");
     const messagesPageEl = document.getElementById("messagesPage");
     const groupsPageEl = document.getElementById("groupsPage");
+    const threadsPageEl = document.getElementById("threadsPage");
     const searchEl = document.getElementById("search");
     const groupEl = document.getElementById("group");
     const topicEl = document.getElementById("topic");
@@ -206,6 +225,72 @@ const HTML = `<!doctype html>
       ];
       return \`<div class="details-grid">\${details.map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
     }
+    function messageContent(row) {
+      return row.body || row.caption || (row.message_type ? "[" + row.message_type + "]" : "");
+    }
+    function compactMessage(row) {
+      const text = messageContent(row);
+      return text ? esc(text) : '<span class="thread-muted">بدون متن</span>';
+    }
+    function threadNode(row, kind, index) {
+      if (row.missing) {
+        return \`<article class="thread-missing">
+          <div class="thread-head">
+            <span class="thread-pill">Message ID: \${esc(row.message_id)}</span>
+            <span class="thread-muted">پیام اصلی در محدوده فعلی داده‌ها نیست</span>
+          </div>
+        </article>\`;
+      }
+      const author = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "Unknown";
+      return \`<article class="\${kind}">
+        <div class="thread-head">
+          <span class="thread-author">\${esc(author)}</span>
+          <span class="thread-muted">\${esc(row.sender_username ? "@" + row.sender_username : "")}</span>
+          <span class="thread-muted">\${esc(row.chat_title)}</span>
+          <span class="thread-pill">Message ID: \${esc(row.message_id)}</span>
+          \${row.reply_to_message_id ? \`<span class="thread-pill">Reply To: \${esc(row.reply_to_message_id)}</span>\` : ""}
+          <span class="thread-muted">\${esc(row.sent_jalali_date || "")} \${esc(row.sent_time || "")}</span>
+          \${row.edited_at_utc ? '<span class="badge">Edited</span>' : ''}
+          <button class="details-button" type="button" data-detail-key="thread-detail-\${index}">Details</button>
+        </div>
+        <div class="thread-message">\${compactMessage(row)}</div>
+      </article>\`;
+    }
+    function buildThreads(messages) {
+      const latestByMessage = new Map();
+      for (const row of messages) {
+        if (!row.chat_id || !row.message_id) continue;
+        const key = row.chat_id + ":" + row.message_id;
+        const existing = latestByMessage.get(key);
+        if (!existing || Date.parse(row.edited_at_utc || row.sent_at_utc || 0) > Date.parse(existing.edited_at_utc || existing.sent_at_utc || 0)) {
+          latestByMessage.set(key, row);
+        }
+      }
+      const repliesByParent = new Map();
+      for (const row of latestByMessage.values()) {
+        if (!row.reply_to_message_id || !row.chat_id) continue;
+        const parentKey = row.chat_id + ":" + row.reply_to_message_id;
+        const list = repliesByParent.get(parentKey) || [];
+        list.push(row);
+        repliesByParent.set(parentKey, list);
+      }
+      const rootKeys = new Set();
+      for (const [key, row] of latestByMessage.entries()) {
+        if (!row.reply_to_message_id || repliesByParent.has(key)) rootKeys.add(key);
+      }
+      for (const parentKey of repliesByParent.keys()) {
+        if (!latestByMessage.has(parentKey)) rootKeys.add(parentKey);
+      }
+      return [...rootKeys].map((key) => {
+        const root = latestByMessage.get(key) || { missing: true, chat_id: key.split(":")[0], message_id: key.split(":")[1] };
+        const replies = (repliesByParent.get(key) || []).sort((a, b) => Number(a.message_id || 0) - Number(b.message_id || 0));
+        return { root, replies };
+      }).sort((a, b) => {
+        const aTime = Date.parse(a.root.sent_at_utc || a.replies[0]?.sent_at_utc || 0);
+        const bTime = Date.parse(b.root.sent_at_utc || b.replies[0]?.sent_at_utc || 0);
+        return bTime - aTime;
+      });
+    }
     function openModal(text) {
       modalTitleEl.textContent = "متن کامل پیام";
       modalBodyEl.textContent = text;
@@ -277,14 +362,42 @@ const HTML = `<!doctype html>
         </tr>\`).join("");
       statusEl.textContent = data.groups.length + " گروه";
     }
+    async function loadThreads() {
+      const res = await fetch("/api/messages");
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data.messages)) {
+        threadRowsEl.innerHTML = "";
+        statusEl.textContent = data.detail || data.error || "خطا در دریافت تردها";
+        return;
+      }
+      fullTextByKey.clear();
+      detailByKey.clear();
+      data.messages.forEach((row, index) => detailByKey.set("thread-detail-" + index, detailHtml(row)));
+      const indexByRow = new Map(data.messages.map((row, index) => [row, index]));
+      const threads = buildThreads(data.messages);
+      threadRowsEl.innerHTML = threads.map((thread) => {
+        const rootIndex = indexByRow.get(thread.root) ?? "missing-" + thread.root.message_id;
+        return \`<section class="thread-card">
+          \${threadNode(thread.root, "thread-root", rootIndex)}
+          <div class="thread-replies">
+            \${thread.replies.map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply))).join("")}
+          </div>
+        </section>\`;
+      }).join("");
+      statusEl.textContent = threads.length + " ترد";
+    }
     function showPage(page) {
       currentPage = page;
       const isGroups = page === "groups";
-      messagesPageEl.hidden = isGroups;
+      const isThreads = page === "threads";
+      messagesPageEl.hidden = isGroups || isThreads;
       groupsPageEl.hidden = !isGroups;
-      messagesNavEl.classList.toggle("active", !isGroups);
+      threadsPageEl.hidden = !isThreads;
+      messagesNavEl.classList.toggle("active", !isGroups && !isThreads);
       groupsNavEl.classList.toggle("active", isGroups);
+      threadsNavEl.classList.toggle("active", isThreads);
       if (isGroups) loadGroups();
+      else if (isThreads) loadThreads();
       else load();
     }
     rowsEl.addEventListener("click", event => {
@@ -296,15 +409,20 @@ const HTML = `<!doctype html>
       const detailsButton = event.target.closest("[data-detail-key]");
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "");
     });
+    threadRowsEl.addEventListener("click", event => {
+      const detailsButton = event.target.closest("[data-detail-key]");
+      if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "");
+    });
     modalCloseEl.addEventListener("click", closeModal);
     modalBackdropEl.addEventListener("click", event => { if (event.target === modalBackdropEl) closeModal(); });
     document.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
     refreshEl.addEventListener("click", load);
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
+    threadsNavEl.addEventListener("click", () => showPage("threads"));
     [searchEl, groupEl, topicEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
     load();
-    setInterval(() => { if (currentPage === "groups") loadGroups(); else load(); }, 5000);
+    setInterval(() => { if (currentPage === "groups") loadGroups(); else if (currentPage === "threads") loadThreads(); else load(); }, 5000);
   </script>
 </body>
 </html>`;
