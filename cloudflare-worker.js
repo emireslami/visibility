@@ -20,7 +20,7 @@ const HTML = `<!doctype html>
     input, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
     table { width: 100%; table-layout: fixed; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:rtl; }
-    th, td { padding: 8px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; font-size: 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    th, td { padding: 6px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; font-size: 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     th { background: #eef3f4; color: #24343b; position: sticky; top: 0; }
     td.body { direction:rtl; text-align:right; }
     .full-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.45; }
@@ -28,7 +28,7 @@ const HTML = `<!doctype html>
     .clip { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .badge { display:inline-flex; align-items:center; height:22px; margin-top:6px; padding:0 8px; border-radius:999px; background:#fff4d6; color:#7a4a00; border:1px solid #f1cf75; font-size:11px; font-weight:700; direction:ltr; }
     .more { height: 28px; margin-top: 6px; padding: 0 9px; font-size: 12px; }
-    .details-button { height: 30px; padding: 0 10px; font-size: 12px; }
+    .details-button { height: 28px; padding: 0 8px; font-size: 12px; }
     .thread-list { display:grid; gap:14px; max-width:980px; margin:0 auto; direction:rtl; }
     .thread-card { background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
     .thread-root, .thread-reply, .thread-missing { padding:14px 16px; }
@@ -81,7 +81,19 @@ const HTML = `<!doctype html>
         <input id="sender" placeholder="Sender ID" />
         <button id="refresh">به‌روزرسانی</button>
       </section>
-      <table>
+      <table class="messages-table">
+        <colgroup>
+          <col style="width:12%" />
+          <col style="width:8%" />
+          <col style="width:8%" />
+          <col style="width:8%" />
+          <col style="width:32%" />
+          <col style="width:8%" />
+          <col style="width:7%" />
+          <col style="width:6%" />
+          <col style="width:6%" />
+          <col style="width:5%" />
+        </colgroup>
         <thead>
           <tr>
             <th>Group Name</th>
@@ -328,7 +340,7 @@ const HTML = `<!doctype html>
           <td class="full-cell">\${esc(row.sender_first_name)}</td>
           <td class="full-cell">\${esc(row.sender_last_name)}</td>
           <td class="full-cell">\${esc(row.sender_username)}</td>
-          <td class="body message-cell">\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 55)}\${row.edited_at_utc ? '<span class="badge">Edited</span>' : ''}</td>
+          <td class="body message-cell">\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 120)}\${row.edited_at_utc ? '<span class="badge">Edited</span>' : ''}</td>
           <td>\${esc(row.sent_jalali_date)}</td>
           <td class="full-cell">\${esc(row.sent_time)}</td>
           <td>\${esc(row.message_id)}</td>
