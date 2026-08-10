@@ -87,7 +87,7 @@ const HTML = `<!doctype html>
     .loading-indicator { display:inline-flex; align-items:center; gap:8px; }
     .spinner { width:18px; height:18px; border-radius:50%; border:2px solid #c9d3d8; border-top-color:var(--accent); animation:spin .75s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }
-    .modal-backdrop { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(23,32,38,.42); z-index:20; }
+    .modal-backdrop { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(23,32,38,.42); z-index:1000; }
     .modal-backdrop.open { display:flex; }
     .modal { width:min(900px, 100%); max-height:min(82vh, 760px); display:flex; flex-direction:column; background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:0 20px 70px rgba(23,32,38,.24); direction:rtl; }
     .modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-bottom:1px solid var(--line); }
