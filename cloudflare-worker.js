@@ -216,16 +216,17 @@ const HTML = `<!doctype html>
       </section>
       <table class="messages-table">
         <colgroup>
-          <col style="width:11%" />
+          <col style="width:10%" />
+          <col style="width:7%" />
+          <col style="width:7%" />
+          <col style="width:7%" />
+          <col style="width:7%" />
+          <col style="width:28%" />
           <col style="width:8%" />
           <col style="width:7%" />
-          <col style="width:7%" />
-          <col style="width:7%" />
-          <col style="width:34%" />
-          <col style="width:8%" />
-          <col style="width:7%" />
+          <col style="width:9%" />
           <col style="width:6%" />
-          <col style="width:5%" />
+          <col style="width:4%" />
         </colgroup>
         <thead>
           <tr>
@@ -237,6 +238,7 @@ const HTML = `<!doctype html>
             <th>Message</th>
             <th>Date (Jalali)</th>
             <th>Time (Tehran)</th>
+            <th>Registered At</th>
             <th>Message ID</th>
             <th>Details</th>
           </tr>
@@ -487,7 +489,7 @@ const HTML = `<!doctype html>
       showPage(firstPage);
     }
     function tehranDisplay(value) {
-      return new Date(value).toLocaleString("fa-IR", { timeZone:"Asia/Tehran", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" });
+      return new Date(value).toLocaleString("fa-IR", { timeZone:"Asia/Tehran", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit" });
     }
     function showLoading(label = "در حال دریافت داده...") {
       loadingToken += 1;
@@ -817,6 +819,10 @@ const HTML = `<!doctype html>
         ["Date (Tehran)", row.sent_date],
         ["Date (Jalali)", row.sent_jalali_date],
         ["Time (Tehran)", row.sent_time],
+        ["Registered At (Tehran)", row.registered_tehran_datetime],
+        ["Registered At (Jalali)", row.registered_jalali_datetime],
+        ["Registered At UTC", row.received_at_utc],
+        ["Receive Delay Seconds", row.receive_delay_seconds],
         ["Type", row.message_type],
         ["Edited At", row.edited_at_utc],
         ["Reply To Message ID", row.reply_to_message_id],
@@ -1113,6 +1119,7 @@ const HTML = `<!doctype html>
             <td class="body message-cell"><div class="message-inner">\${editedBadge(row)}\${mediaBadge(row)}\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 115)}</div></td>
             <td>\${esc(row.sent_jalali_date)}</td>
             <td class="full-cell">\${esc(row.sent_time)}</td>
+            <td class="full-cell">\${esc(row.registered_tehran_datetime)}</td>
             <td>\${esc(row.message_id)}</td>
             <td><button class="details-button" type="button" data-detail-key="detail-\${index}">Details</button></td>
           </tr>\`).join("");
@@ -2457,6 +2464,18 @@ function tehranParts(date) {
   };
 }
 
+function tehranDateTimeDisplay(date) {
+  if (!date) return null;
+  const parts = tehranParts(date);
+  return `${parts.sent_date} ${parts.sent_time}`;
+}
+
+function tehranJalaliDateTimeDisplay(date) {
+  if (!date) return null;
+  const parts = tehranParts(date);
+  return `${parts.sent_jalali_date} ${parts.sent_time}`;
+}
+
 function rowContent(row) {
   return row.body || row.caption || (row.message_type ? `[${row.message_type}]` : "");
 }
@@ -2990,6 +3009,7 @@ async function fetchMessages(request, env) {
     "forward_origin_json",
     "entities_json",
     "raw_payload_json",
+    "received_at_utc",
   ].join(","));
   params.set("order", "sent_at_utc.desc.nullslast,id.desc");
   params.set("limit", "500");
@@ -3031,14 +3051,21 @@ async function fetchMessages(request, env) {
   const rows = await response.json();
   let messages = rows.map((row) => {
     const date = row.sent_at_utc ? new Date(row.sent_at_utc) : null;
+    const registeredDate = row.received_at_utc ? new Date(row.received_at_utc) : null;
     const mappedTopicName = row.message_thread_id
       ? topicByThread.get(`${row.chat_id}:${row.message_thread_id}`)
       : null;
     const payloadTopicName = topicNameFromPayload(row.raw_payload_json);
+    const receiveDelaySeconds = date && registeredDate
+      ? Math.max(0, Math.round((registeredDate.getTime() - date.getTime()) / 1000))
+      : null;
     return {
       ...row,
       topic_name: row.topic_name || mappedTopicName || payloadTopicName || null,
       ...(date ? tehranParts(date) : { sent_date: null, sent_jalali_date: null, sent_time: null, display_timezone: "Asia/Tehran" }),
+      registered_tehran_datetime: tehranDateTimeDisplay(registeredDate),
+      registered_jalali_datetime: tehranJalaliDateTimeDisplay(registeredDate),
+      receive_delay_seconds: receiveDelaySeconds,
     };
   });
   if (topicsFilter.length) {
