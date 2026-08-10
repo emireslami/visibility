@@ -218,7 +218,7 @@ const HTML = `<!doctype html>
         <div id="threadYear" class="multi-filter single-filter"></div>
         <div id="threadMonth" class="multi-filter single-filter"></div>
         <div id="threadDay" class="multi-filter single-filter"></div>
-        <button id="threadRefresh" type="button">فیلتر</button>
+        <button id="threadRefresh" type="button">به‌روزرسانی</button>
       </section>
       <div class="thread-list" id="threadRows"></div>
     </section>
@@ -415,23 +415,52 @@ const HTML = `<!doctype html>
         },
       };
     }
-    const messageGroupFilter = createMultiFilter(groupEl, "همه گروه‌ها", () => { updateMessageTopicOptions(); load(); });
+    const messageGroupFilter = createMultiFilter(groupEl, "همه گروه‌ها", () => { updateMessageTopicOptions(); updateFilterButtons(); load(); });
     const messageTopicFilter = createMultiFilter(topicEl, "همه تاپیک‌ها", () => {
       syncGroupsFromSelectedTopics(messageGroupFilter, messageTopicFilter);
       updateMessageTopicOptions();
+      updateFilterButtons();
       load();
     });
-    const threadGroupFilter = createMultiFilter(threadGroupEl, "همه گروه‌ها", () => { updateThreadTopicOptions(); loadThreads(); });
+    const threadGroupFilter = createMultiFilter(threadGroupEl, "همه گروه‌ها", () => { updateThreadTopicOptions(); updateFilterButtons(); loadThreads(); });
     const threadTopicFilter = createMultiFilter(threadTopicEl, "همه تاپیک‌ها", () => {
       syncGroupsFromSelectedTopics(threadGroupFilter, threadTopicFilter);
       updateThreadTopicOptions();
+      updateFilterButtons();
       loadThreads();
     });
-    const threadYearFilter = createSingleFilter(threadYearEl, "سال", () => { updateThreadDateOptions(); loadThreads(); });
-    const threadMonthFilter = createSingleFilter(threadMonthEl, "ماه", () => { updateThreadDateOptions(); loadThreads(); });
-    const threadDayFilter = createSingleFilter(threadDayEl, "روز", loadThreads);
+    const threadYearFilter = createSingleFilter(threadYearEl, "سال", () => { updateThreadDateOptions(); updateFilterButtons(); loadThreads(); });
+    const threadMonthFilter = createSingleFilter(threadMonthEl, "ماه", () => { updateThreadDateOptions(); updateFilterButtons(); loadThreads(); });
+    const threadDayFilter = createSingleFilter(threadDayEl, "روز", () => { updateFilterButtons(); loadThreads(); });
     function appendFilterValues(params, key, values) {
       values.forEach((value) => params.append(key, value));
+    }
+    function messageFiltersActive() {
+      return Boolean(searchEl.value.trim() || messageGroupFilter.values().length || messageTopicFilter.values().length);
+    }
+    function threadFiltersActive() {
+      return Boolean(threadGroupFilter.values().length || threadTopicFilter.values().length || selectedThreadJalaliDate());
+    }
+    function updateFilterButtons() {
+      refreshEl.textContent = messageFiltersActive() ? "ریست فیلتر" : "به‌روزرسانی";
+      threadRefreshEl.textContent = threadFiltersActive() ? "ریست فیلتر" : "به‌روزرسانی";
+    }
+    function resetMessageFilters() {
+      searchEl.value = "";
+      messageGroupFilter.clear();
+      messageTopicFilter.clear();
+      updateMessageTopicOptions();
+      updateFilterButtons();
+    }
+    function resetThreadFilters() {
+      threadGroupFilter.clear();
+      threadTopicFilter.clear();
+      threadYearFilter.clear();
+      threadMonthFilter.clear();
+      threadDayFilter.clear();
+      updateThreadTopicOptions();
+      updateThreadDateOptions();
+      updateFilterButtons();
     }
     function syncGroupsFromSelectedTopics(groupFilter, topicFilter) {
       const selectedTopics = topicFilter.values();
@@ -490,6 +519,7 @@ const HTML = `<!doctype html>
       updateThreadTopicOptions();
       updateMessageTopicOptions();
       updateThreadDateOptions();
+      updateFilterButtons();
     }
     function linkify(value) {
       const escaped = esc(value);
@@ -805,6 +835,7 @@ const HTML = `<!doctype html>
       }
     }
     async function load() {
+      updateFilterButtons();
       const token = showLoading("در حال دریافت پیام‌ها...");
       try {
         await loadThreadFilterOptions();
@@ -891,6 +922,7 @@ const HTML = `<!doctype html>
       }
     }
     async function loadThreads() {
+      updateFilterButtons();
       const token = showLoading("در حال دریافت تردها...");
       try {
         await loadThreadFilterOptions();
@@ -968,8 +1000,14 @@ const HTML = `<!doctype html>
     modalCloseEl.addEventListener("click", closeModal);
     modalBackdropEl.addEventListener("click", event => { if (event.target === modalBackdropEl) closeModal(); });
     document.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
-    refreshEl.addEventListener("click", load);
-    threadRefreshEl.addEventListener("click", loadThreads);
+    refreshEl.addEventListener("click", () => {
+      if (messageFiltersActive()) resetMessageFilters();
+      load();
+    });
+    threadRefreshEl.addEventListener("click", () => {
+      if (threadFiltersActive()) resetThreadFilters();
+      loadThreads();
+    });
     dashboardNavEl.addEventListener("click", () => showPage("dashboard"));
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
@@ -996,6 +1034,7 @@ const HTML = `<!doctype html>
         accessMessageEl.textContent = "افزودن کاربر انجام نشد";
       }
     });
+    searchEl.addEventListener("input", updateFilterButtons);
     searchEl.addEventListener("keydown", e => { if (e.key === "Enter") load(); });
     document.addEventListener("click", (event) => {
       for (const filter of [messageGroupFilter, messageTopicFilter, threadGroupFilter, threadTopicFilter, threadYearFilter, threadMonthFilter, threadDayFilter]) {
