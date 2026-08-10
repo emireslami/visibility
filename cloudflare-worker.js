@@ -25,8 +25,12 @@ const HTML = `<!doctype html>
     input, select, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
     .multi-filter { position:relative; min-width:0; }
-    .multi-button { width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; background:#fff; color:var(--ink); border-color:var(--line); text-align:right; }
+    .multi-control { position:relative; }
+    .multi-button { width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; background:#fff; color:var(--ink); border-color:var(--line); text-align:right; padding-inline-start:38px; }
     .multi-button::before { content:"⌄"; color:var(--muted); font-size:14px; }
+    .multi-clear { position:absolute; left:7px; top:7px; z-index:2; display:none; width:24px; height:24px; padding:0; border-radius:50%; background:#eef3f4; color:var(--muted); border-color:var(--line); font-size:16px; line-height:1; }
+    .multi-filter.has-value .multi-clear { display:grid; place-items:center; }
+    .multi-clear:hover { background:#dde6e9; color:var(--ink); }
     .multi-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .multi-panel { position:absolute; inset-inline:0; top:calc(100% + 4px); z-index:12; display:none; max-height:260px; overflow:auto; padding:6px; border:1px solid var(--line); border-radius:8px; background:#fff; box-shadow:0 12px 36px rgba(23,32,38,.16); }
     .multi-filter.open .multi-panel { display:grid; gap:2px; }
@@ -276,13 +280,15 @@ const HTML = `<!doctype html>
     }
     function createMultiFilter(root, placeholder, onChange) {
       const state = { options: [], selected: new Set() };
-      root.innerHTML = \`<button class="multi-button" type="button"><span class="multi-label">\${esc(placeholder)}</span></button><div class="multi-panel"></div>\`;
+      root.innerHTML = \`<div class="multi-control"><button class="multi-button" type="button"><span class="multi-label">\${esc(placeholder)}</span></button><button class="multi-clear" type="button" aria-label="پاک کردن فیلتر" title="پاک کردن فیلتر">×</button></div><div class="multi-panel"></div>\`;
       const button = root.querySelector(".multi-button");
+      const clearButton = root.querySelector(".multi-clear");
       const label = root.querySelector(".multi-label");
       const panel = root.querySelector(".multi-panel");
       function syncLabel() {
         const values = [...state.selected];
         label.textContent = values.length === 0 ? placeholder : (values.length === 1 ? values[0] : values.length + " انتخاب");
+        root.classList.toggle("has-value", values.length > 0);
       }
       function render() {
         if (!state.options.length) {
@@ -292,6 +298,13 @@ const HTML = `<!doctype html>
         panel.innerHTML = state.options.map((value) => \`<label class="multi-option"><input type="checkbox" value="\${esc(value)}" \${state.selected.has(value) ? "checked" : ""} /><span>\${esc(value)}</span></label>\`).join("");
       }
       button.addEventListener("click", () => root.classList.toggle("open"));
+      clearButton.addEventListener("click", () => {
+        state.selected.clear();
+        root.classList.remove("open");
+        render();
+        syncLabel();
+        onChange?.();
+      });
       panel.addEventListener("change", (event) => {
         const checkbox = event.target.closest("input[type='checkbox']");
         if (!checkbox) return;
@@ -309,6 +322,11 @@ const HTML = `<!doctype html>
         },
         values() {
           return [...state.selected];
+        },
+        clear() {
+          state.selected.clear();
+          render();
+          syncLabel();
         },
         close() {
           root.classList.remove("open");
