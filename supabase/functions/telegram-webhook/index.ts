@@ -36,9 +36,20 @@ function isoFromUnix(value?: number) {
   return value ? new Date(value * 1000).toISOString() : null;
 }
 
+function findTopicPayload(value: any, key: string): Record<string, any> | null {
+  if (!value || typeof value !== "object") return null;
+  if (value[key]?.name) return value[key];
+  const children = Array.isArray(value) ? value : Object.values(value);
+  for (const child of children) {
+    const found = findTopicPayload(child, key);
+    if (found) return found;
+  }
+  return null;
+}
+
 function topicData(message: Record<string, any>) {
-  const created = message.forum_topic_created;
-  const edited = message.forum_topic_edited;
+  const created = findTopicPayload(message, "forum_topic_created");
+  const edited = findTopicPayload(message, "forum_topic_edited");
   return {
     messageThreadId: message.message_thread_id ?? null,
     isTopicMessage: message.is_topic_message ?? null,

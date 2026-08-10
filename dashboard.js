@@ -44,8 +44,17 @@ function rowContent(row) {
 }
 
 function topicNameFromPayload(payload) {
-  const message = payload?.message || payload?.edited_message || payload?.channel_post || payload?.edited_channel_post || {};
-  return message.forum_topic_created?.name || message.forum_topic_edited?.name || null;
+  return findTopicPayload(payload, "forum_topic_created")?.name || findTopicPayload(payload, "forum_topic_edited")?.name || null;
+}
+
+function findTopicPayload(value, key) {
+  if (!value || typeof value !== "object") return null;
+  if (value[key]?.name) return value[key];
+  for (const child of Array.isArray(value) ? value : Object.values(value)) {
+    const found = findTopicPayload(child, key);
+    if (found) return found;
+  }
+  return null;
 }
 
 function realTopicName(value) {
