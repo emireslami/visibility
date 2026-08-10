@@ -14,6 +14,7 @@ const HTML = `<!doctype html>
     body { margin: 0; font-family: "IRANSans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
     header { position:sticky; top:0; z-index:50; min-height:var(--header-h); padding: 18px 24px; background: var(--panel); border-bottom: 1px solid var(--line); display:flex; gap:16px; align-items:center; justify-content:space-between; }
     .brand { display:flex; gap:14px; align-items:center; }
+    .header-tools { display:flex; align-items:center; gap:12px; }
     h1 { margin: 0; font-size: 20px; }
     nav { display:flex; gap:8px; direction:ltr; }
     .nav-button { height:32px; padding:0 12px; background:#fff; color:var(--ink); border-color:var(--line); }
@@ -84,6 +85,14 @@ const HTML = `<!doctype html>
     td.json { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     td.json .clip { direction:ltr; text-align:left; }
     .meta { min-height:24px; display:flex; align-items:center; gap:8px; color: var(--muted); font-size: 12px; }
+    .user-menu { position:relative; direction:ltr; }
+    .user-trigger { width:38px; height:38px; padding:0; display:grid; place-items:center; border-radius:50%; border:1px solid var(--line); background:#fff; color:var(--ink); overflow:hidden; }
+    .user-avatar { width:100%; height:100%; display:grid; place-items:center; border-radius:50%; background:#eef3f4; color:#36505a; font-weight:800; font-size:13px; object-fit:cover; text-transform:uppercase; }
+    .user-panel { position:absolute; left:0; top:calc(100% + 8px); z-index:80; display:none; min-width:220px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; box-shadow:0 12px 36px rgba(23,32,38,.16); direction:rtl; }
+    .user-menu.open .user-panel { display:grid; gap:6px; }
+    .user-email { padding:8px; color:var(--muted); font-size:12px; direction:ltr; text-align:left; border-bottom:1px solid var(--line); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .user-action { width:100%; height:34px; display:flex; align-items:center; justify-content:flex-start; background:#fff; color:var(--ink); border-color:transparent; text-align:right; }
+    .user-action:hover { background:#f2f6f7; border-color:#f2f6f7; }
     .loading-indicator { display:inline-flex; align-items:center; gap:8px; }
     .spinner { width:18px; height:18px; border-radius:50%; border:2px solid #c9d3d8; border-top-color:var(--accent); animation:spin .75s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }
@@ -147,6 +156,15 @@ const HTML = `<!doctype html>
     .access-log-table th, .access-log-table td { direction:ltr; text-align:left; }
     .access-log-table th { top:var(--header-h); }
     .access-log-table .details-cell { text-align:center; }
+    .profile-panel { max-width:640px; margin:0 auto; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+    .profile-panel h2 { margin:0 0 14px; font-size:18px; }
+    .profile-form { display:grid; gap:14px; }
+    .profile-preview { display:flex; align-items:center; gap:14px; }
+    .profile-avatar-large { width:76px; height:76px; display:grid; place-items:center; border:1px solid var(--line); border-radius:50%; background:#eef3f4; color:#36505a; font-weight:800; font-size:22px; object-fit:cover; overflow:hidden; text-transform:uppercase; }
+    .profile-email { direction:ltr; text-align:left; font-weight:700; }
+    .profile-upload { display:grid; gap:8px; }
+    .profile-upload input { padding:7px 10px; height:auto; }
+    .profile-message { min-height:22px; color:var(--muted); font-size:12px; }
     @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } .access-form, .access-main { grid-template-columns:1fr; } .permission-grid, .access-row .permission-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .access-actions { justify-content:flex-start; } }
   </style>
 </head>
@@ -162,7 +180,19 @@ const HTML = `<!doctype html>
         <button class="nav-button" id="accessNav" type="button">Access</button>
       </nav>
     </div>
-    <div class="meta" id="status">در حال دریافت...</div>
+    <div class="header-tools">
+      <div class="meta" id="status">در حال دریافت...</div>
+      <div class="user-menu" id="userMenu">
+        <button class="user-trigger" id="userMenuButton" type="button" aria-label="حساب کاربری">
+          <span class="user-avatar" id="headerAvatar"></span>
+        </button>
+        <div class="user-panel" id="userPanel">
+          <div class="user-email" id="headerEmail"></div>
+          <button class="user-action" id="profileButton" type="button">پروفایل</button>
+          <button class="user-action" id="logoutButton" type="button">خروج</button>
+        </div>
+      </div>
+    </div>
   </header>
   <main>
     <section class="page" id="dashboardPage" hidden>
@@ -287,6 +317,26 @@ const HTML = `<!doctype html>
         </section>
       </section>
     </section>
+    <section class="page" id="profilePage" hidden>
+      <section class="profile-panel">
+        <h2>پروفایل</h2>
+        <form class="profile-form" id="profileForm">
+          <div class="profile-preview">
+            <span class="profile-avatar-large" id="profileAvatar"></span>
+            <div>
+              <div class="thread-muted">ایمیل</div>
+              <div class="profile-email" id="profileEmail"></div>
+            </div>
+          </div>
+          <label class="profile-upload">
+            <span class="thread-muted">عکس آواتار</span>
+            <input id="profileAvatarInput" type="file" accept="image/*" />
+          </label>
+          <button type="submit">ذخیره پروفایل</button>
+          <div class="profile-message" id="profileMessage"></div>
+        </form>
+      </section>
+    </section>
   </main>
   <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
@@ -328,6 +378,18 @@ const HTML = `<!doctype html>
     const modalTitleEl = document.getElementById("modalTitle");
     const modalBodyEl = document.getElementById("modalBody");
     const modalCloseEl = document.getElementById("modalClose");
+    const userMenuEl = document.getElementById("userMenu");
+    const userMenuButtonEl = document.getElementById("userMenuButton");
+    let headerAvatarEl = document.getElementById("headerAvatar");
+    const headerEmailEl = document.getElementById("headerEmail");
+    const profileButtonEl = document.getElementById("profileButton");
+    const logoutButtonEl = document.getElementById("logoutButton");
+    const profilePageEl = document.getElementById("profilePage");
+    const profileFormEl = document.getElementById("profileForm");
+    let profileAvatarEl = document.getElementById("profileAvatar");
+    const profileEmailEl = document.getElementById("profileEmail");
+    const profileAvatarInputEl = document.getElementById("profileAvatarInput");
+    const profileMessageEl = document.getElementById("profileMessage");
     const accessUsersTabEl = document.getElementById("accessUsersTab");
     const accessLogsTabEl = document.getElementById("accessLogsTab");
     const accessUsersSectionEl = document.getElementById("accessUsersSection");
@@ -340,6 +402,7 @@ const HTML = `<!doctype html>
     const accessLogMessageEl = document.getElementById("accessLogMessage");
     const accessLogRowsEl = document.getElementById("accessLogRows");
     const currentUserPermissions = new Set(__CURRENT_USER_PERMISSIONS__);
+    const currentUser = __CURRENT_USER__;
     const permissionOptions = [
       { key:"access", label:"Access" },
       { key:"threads", label:"Threads" },
@@ -355,6 +418,7 @@ const HTML = `<!doctype html>
     let currentPage = "messages";
     let loadingToken = 0;
     let pendingConfirm = null;
+    let currentAvatarDataUrl = currentUser.avatar_data_url || "";
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
     }
@@ -366,6 +430,21 @@ const HTML = `<!doctype html>
     }
     function isOwnerEmail(email) {
       return String(email || "").trim().toLowerCase() === ownerEmail;
+    }
+    function initialsFromEmail(email) {
+      return String(email || "?").trim().slice(0, 1).toUpperCase() || "?";
+    }
+    function avatarMarkup(value, className, id, email = currentUser.email) {
+      if (value) return \`<img class="\${className}" id="\${id}" src="\${value}" alt="" />\`;
+      return \`<span class="\${className}" id="\${id}">\${esc(initialsFromEmail(email))}</span>\`;
+    }
+    function syncProfileUi() {
+      headerEmailEl.textContent = currentUser.email;
+      profileEmailEl.textContent = currentUser.email;
+      headerAvatarEl.outerHTML = avatarMarkup(currentAvatarDataUrl, "user-avatar", "headerAvatar", currentUser.email);
+      profileAvatarEl.outerHTML = avatarMarkup(currentAvatarDataUrl, "profile-avatar-large", "profileAvatar", currentUser.email);
+      headerAvatarEl = document.getElementById("headerAvatar");
+      profileAvatarEl = document.getElementById("profileAvatar");
     }
     function permissionGridHtml(selected, prefix, disabled = false) {
       const selectedSet = new Set(Array.isArray(selected) ? selected : []);
@@ -928,6 +1007,42 @@ const HTML = `<!doctype html>
       modalBodyEl.innerHTML = "";
       if (confirmResolver) confirmResolver(confirmResult);
     }
+    function loadProfile() {
+      profileMessageEl.textContent = "";
+      profileAvatarInputEl.value = "";
+      syncProfileUi();
+      setStatus(++loadingToken, "پروفایل");
+    }
+    function compressAvatar(file) {
+      return new Promise((resolve, reject) => {
+        if (!file || !file.type.startsWith("image/")) {
+          reject(new Error("فقط فایل عکس قابل آپلود است."));
+          return;
+        }
+        const image = new Image();
+        image.onload = () => {
+          const size = 160;
+          const canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          const context = canvas.getContext("2d");
+          const sourceSize = Math.min(image.width, image.height);
+          const sx = Math.max(0, (image.width - sourceSize) / 2);
+          const sy = Math.max(0, (image.height - sourceSize) / 2);
+          context.drawImage(image, sx, sy, sourceSize, sourceSize, 0, 0, size, size);
+          let quality = 0.58;
+          let dataUrl = canvas.toDataURL("image/jpeg", quality);
+          while (dataUrl.length > 60000 && quality > 0.28) {
+            quality -= 0.08;
+            dataUrl = canvas.toDataURL("image/jpeg", quality);
+          }
+          URL.revokeObjectURL(image.src);
+          resolve(dataUrl);
+        };
+        image.onerror = () => reject(new Error("خواندن عکس انجام نشد."));
+        image.src = URL.createObjectURL(file);
+      });
+    }
     function renderDailyChart(days, groups) {
       if (!Array.isArray(days) || !days.length) {
         dailyChartEl.innerHTML = '<div class="empty-chart">داده‌ای برای نمایش نمودار وجود ندارد</div>';
@@ -1136,19 +1251,21 @@ const HTML = `<!doctype html>
       }
     }
     function showPage(page) {
-      if (!canOpen(page)) return;
+      if (page !== "profile" && !canOpen(page)) return;
       currentPage = page;
       const isDashboard = page === "dashboard";
       const isGroups = page === "groups";
       const isThreads = page === "threads";
       const isAccess = page === "access";
+      const isProfile = page === "profile";
       dashboardPageEl.hidden = !isDashboard;
-      messagesPageEl.hidden = isDashboard || isGroups || isThreads || isAccess;
+      messagesPageEl.hidden = isDashboard || isGroups || isThreads || isAccess || isProfile;
       groupsPageEl.hidden = !isGroups;
       threadsPageEl.hidden = !isThreads;
       accessPageEl.hidden = !isAccess;
+      profilePageEl.hidden = !isProfile;
       dashboardNavEl.classList.toggle("active", isDashboard);
-      messagesNavEl.classList.toggle("active", !isDashboard && !isGroups && !isThreads && !isAccess);
+      messagesNavEl.classList.toggle("active", !isDashboard && !isGroups && !isThreads && !isAccess && !isProfile);
       groupsNavEl.classList.toggle("active", isGroups);
       threadsNavEl.classList.toggle("active", isThreads);
       accessNavEl.classList.toggle("active", isAccess);
@@ -1156,6 +1273,7 @@ const HTML = `<!doctype html>
       else if (isGroups) loadGroups();
       else if (isThreads) loadThreadFilterOptions().then(loadThreads);
       else if (isAccess) showAccessSection(accessLogsSectionEl.hidden ? "users" : "logs");
+      else if (isProfile) loadProfile();
       else loadThreadFilterOptions().then(load);
     }
     rowsEl.addEventListener("click", event => {
@@ -1201,6 +1319,63 @@ const HTML = `<!doctype html>
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
     accessNavEl.addEventListener("click", () => showPage("access"));
+    userMenuButtonEl.addEventListener("click", () => userMenuEl.classList.toggle("open"));
+    profileButtonEl.addEventListener("click", () => {
+      userMenuEl.classList.remove("open");
+      showPage("profile");
+    });
+    logoutButtonEl.addEventListener("click", async () => {
+      userMenuEl.classList.remove("open");
+      const confirmed = await openConfirmModal({
+        title: "تایید خروج",
+        message: "از حساب کاربری خارج شوید؟",
+        confirmText: "خروج",
+        cancelText: "انصراف",
+      });
+      if (confirmed) window.location.href = "/logout";
+    });
+    profileFormEl.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const file = profileAvatarInputEl.files?.[0];
+      if (!file) {
+        profileMessageEl.textContent = "یک عکس انتخاب کنید.";
+        return;
+      }
+      profileMessageEl.textContent = "در حال فشرده‌سازی عکس...";
+      try {
+        const avatarDataUrl = await compressAvatar(file);
+        profileMessageEl.textContent = "در حال ذخیره...";
+        const res = await fetch("/api/me", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ avatar_data_url: avatarDataUrl }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          profileMessageEl.textContent = data.error || "ذخیره پروفایل انجام نشد";
+          return;
+        }
+        currentAvatarDataUrl = data.user?.avatar_data_url || "";
+        profileAvatarInputEl.value = "";
+        syncProfileUi();
+        profileMessageEl.textContent = "پروفایل ذخیره شد.";
+      } catch (error) {
+        profileMessageEl.textContent = error.message || "ذخیره پروفایل انجام نشد";
+      }
+    });
+    profileAvatarInputEl.addEventListener("change", async () => {
+      const file = profileAvatarInputEl.files?.[0];
+      if (!file) return;
+      try {
+        profileMessageEl.textContent = "پیش‌نمایش عکس آماده شد. برای ثبت، ذخیره کنید.";
+        const avatarDataUrl = await compressAvatar(file);
+        profileAvatarEl.outerHTML = avatarMarkup(avatarDataUrl, "profile-avatar-large", "profileAvatar", currentUser.email);
+        profileAvatarEl = document.getElementById("profileAvatar");
+      } catch (error) {
+        profileAvatarInputEl.value = "";
+        profileMessageEl.textContent = error.message || "فقط فایل عکس قابل آپلود است.";
+      }
+    });
     accessUsersTabEl.addEventListener("click", () => showAccessSection("users"));
     accessLogsTabEl.addEventListener("click", () => showAccessSection("logs"));
     accessFormEl.addEventListener("submit", async (event) => {
@@ -1298,12 +1473,14 @@ const HTML = `<!doctype html>
     searchEl.addEventListener("input", updateFilterButtons);
     searchEl.addEventListener("keydown", e => { if (e.key === "Enter") load(); });
     document.addEventListener("click", (event) => {
+      if (!event.target.closest(".user-menu")) userMenuEl.classList.remove("open");
       for (const filter of [messageGroupFilter, messageTopicFilter, threadGroupFilter, threadTopicFilter, threadYearFilter, threadMonthFilter, threadDayFilter]) {
         if (!event.target.closest(".multi-filter")) filter.close();
       }
     });
+    syncProfileUi();
     setupAccessShell();
-    setInterval(() => { if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? loadAccessUsers() : loadAccessLogs()); else if (canOpen("messages")) load(); }, 5000);
+    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? loadAccessUsers() : loadAccessLogs()); else if (canOpen("messages")) load(); }, 5000);
   </script>
 </body>
 </html>`;
@@ -1507,6 +1684,19 @@ function hasAnyAccessPermission(user, permissions) {
   return permissions.some((permission) => hasAccessPermission(user, permission));
 }
 
+function publicUserProfile(user) {
+  return {
+    email: normalizeEmail(user?.email),
+    avatar_data_url: typeof user?.avatar_data_url === "string" ? user.avatar_data_url : "",
+  };
+}
+
+function validAvatarDataUrl(value) {
+  if (value === "") return true;
+  if (typeof value !== "string" || value.length > 80000) return false;
+  return /^data:image\/(?:jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value);
+}
+
 function forbiddenAccess() {
   return json({ error: "Access denied" }, 403);
 }
@@ -1638,7 +1828,7 @@ async function readSupabaseJson(response) {
 
 async function getAccessUserByEmail(env, email) {
   const params = new URLSearchParams({
-    select: "id,email,password_hash,password_salt,must_change_password,is_active,permissions,last_login_at_utc,created_at_utc,updated_at_utc",
+    select: "id,email,password_hash,password_salt,must_change_password,is_active,permissions,avatar_data_url,last_login_at_utc,created_at_utc,updated_at_utc",
     email: `eq.${normalizeEmail(email)}`,
     limit: "1",
   });
@@ -1760,6 +1950,32 @@ async function handleSetPassword(request, env, user) {
       "set-cookie": clearSessionCookie(),
     },
   });
+}
+
+async function fetchCurrentUser(authUser) {
+  return json({ user: publicUserProfile(authUser) });
+}
+
+async function updateCurrentUserProfile(request, env, authUser) {
+  let body = {};
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const avatarDataUrl = String(body.avatar_data_url || "");
+  if (!validAvatarDataUrl(avatarDataUrl)) {
+    return json({ error: "فقط عکس کم‌حجم قابل ذخیره است." }, 400);
+  }
+  try {
+    const user = await patchAccessUser(env, authUser.email, {
+      avatar_data_url: avatarDataUrl,
+      updated_at_utc: new Date().toISOString(),
+    });
+    return json({ user: publicUserProfile(user) });
+  } catch (error) {
+    return json({ error: error.message || "ذخیره پروفایل انجام نشد" }, 500);
+  }
 }
 
 async function fetchAccessUsers(env) {
@@ -2738,10 +2954,14 @@ export default {
       return redirect("/set-password");
     }
     if (url.pathname === "/") {
-      const html = HTML.replace("__CURRENT_USER_PERMISSIONS__", JSON.stringify(accessPermissionsForUser(authUser)));
+      const html = HTML
+        .replace("__CURRENT_USER_PERMISSIONS__", JSON.stringify(accessPermissionsForUser(authUser)))
+        .replace("__CURRENT_USER__", JSON.stringify(publicUserProfile(authUser)));
       return text(html, 200, "text/html; charset=utf-8");
     }
     if (url.pathname === "/api/debug") return text("Not found", 404);
+    if (url.pathname === "/api/me" && request.method === "GET") return fetchCurrentUser(authUser);
+    if (url.pathname === "/api/me" && request.method === "PATCH") return updateCurrentUserProfile(request, env, authUser);
     if (url.pathname === "/api/access-users" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname.startsWith("/api/access-users/") && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname === "/api/access-logs" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();

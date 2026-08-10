@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS public.visibility_access_users (
     password_salt TEXT NOT NULL,
     must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    avatar_data_url TEXT,
     last_login_at_utc TIMESTAMPTZ,
     created_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW(),
