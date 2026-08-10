@@ -441,6 +441,39 @@ function topicData(message) {
   };
 }
 
+function isPrivateChat(message) {
+  return message.chat?.type === "private";
+}
+
+function isBotCommand(message) {
+  const text = message.text || message.caption || "";
+  const entities = message.entities || message.caption_entities || [];
+  return entities.some((entity) => entity.type === "bot_command" && entity.offset === 0) || text.trim().startsWith("/");
+}
+
+async function sendTelegramMessage(env, chatId, textValue) {
+  if (!env.TELEGRAM_BOT_TOKEN || !chatId) return false;
+  const response = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: textValue,
+      disable_notification: true,
+    }),
+  });
+  return response.ok;
+}
+
+async function rejectPrivateUser(env, message) {
+  try {
+    await sendTelegramMessage(env, message.chat?.id, "مجاز به ادامه عملیات نیستید.");
+  } catch {
+    return false;
+  }
+  return true;
+}
+
 function activeMemberStatus(status) {
   return ["member", "administrator", "creator"].includes(status);
 }
@@ -565,6 +598,14 @@ async function handleTelegramWebhook(request, env) {
 
   const { message } = findMessage(update);
   if (!message) return json({ ok: true, ignored: true });
+
+  if (isPrivateChat(message)) {
+    await rejectPrivateUser(env, message);
+    return json({ ok: true, rejected: "private_chat" });
+  }
+  if (isBotCommand(message)) {
+    return json({ ok: true, ignored: "bot_command" });
+  }
 
   await upsertChatFromMessage(env, message, update);
   await upsertTopic(env, message, update);

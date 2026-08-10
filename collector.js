@@ -70,6 +70,24 @@ function topicData(message) {
   };
 }
 
+function isPrivateChat(message) {
+  return message.chat?.type === "private";
+}
+
+function isBotCommand(message) {
+  const text = message.text || message.caption || "";
+  const entities = message.entities || message.caption_entities || [];
+  return entities.some((entity) => entity.type === "bot_command" && entity.offset === 0) || text.trim().startsWith("/");
+}
+
+async function rejectPrivateUser(message) {
+  await telegram("sendMessage", {
+    chat_id: message.chat?.id,
+    text: "مجاز به ادامه عملیات نیستید.",
+    disable_notification: true,
+  });
+}
+
 async function saveTopic(client, message, update) {
   const chat = message.chat || {};
   const topic = topicData(message);
@@ -128,6 +146,11 @@ async function setOffset(client, offset) {
 async function saveUpdate(client, update) {
   const [updateKind, message] = findMessage(update);
   if (!message) return false;
+  if (isPrivateChat(message)) {
+    await rejectPrivateUser(message);
+    return false;
+  }
+  if (isBotCommand(message)) return false;
 
   const chat = message.chat || {};
   const sender = message.from || {};
