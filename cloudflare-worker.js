@@ -92,7 +92,7 @@ const HTML = `<!doctype html>
             <th>Date (Jalali)</th>
             <th>Time (Tehran)</th>
             <th>Message ID</th>
-            <th>Reply To Message ID</th>
+            <th>Reply To</th>
             <th>Details</th>
           </tr>
         </thead>
