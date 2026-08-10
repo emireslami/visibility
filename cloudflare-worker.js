@@ -94,6 +94,11 @@ const HTML = `<!doctype html>
     .modal-head h2 { margin:0; font-size:16px; }
     .modal-close { width:34px; height:34px; padding:0; font-size:20px; line-height:1; }
     .modal-body { padding:16px; overflow:auto; white-space:pre-wrap; line-height:1.8; text-align:right; }
+    .confirm-copy { margin:0; color:var(--ink); white-space:normal; }
+    .confirm-target { display:inline-block; direction:ltr; font-weight:800; }
+    .confirm-actions { display:flex; align-items:center; justify-content:flex-start; gap:10px; margin-top:18px; }
+    .confirm-cancel { background:#fff; color:var(--ink); border-color:var(--line); }
+    .confirm-danger { background:#b42318; color:#fff; border-color:#b42318; }
     .details-grid { display:grid; gap:10px; white-space:normal; }
     .detail-row { display:grid; grid-template-columns: 190px minmax(0, 1fr); gap:10px; padding:10px; border:1px solid var(--line); border-radius:6px; direction:ltr; text-align:left; }
     .detail-label { color:var(--muted); font-size:12px; font-weight:700; }
@@ -288,6 +293,7 @@ const HTML = `<!doctype html>
     let threadFilterOptions = null;
     let currentPage = "messages";
     let loadingToken = 0;
+    let pendingConfirm = null;
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
     }
@@ -790,10 +796,27 @@ const HTML = `<!doctype html>
       modalBodyEl.innerHTML = \`<div class="modal-media"><img class="modal-image" src="\${src}" alt="" /><a class="details-button" href="\${downloadUrl || src}" download>Download Image</a></div>\`;
       modalBackdropEl.classList.add("open");
     }
-    function closeModal() {
+    function openConfirmModal({ title, message, confirmText = "تایید", cancelText = "انصراف" }) {
+      modalTitleEl.textContent = title;
+      modalBodyEl.innerHTML = \`
+        <p class="confirm-copy">\${message}</p>
+        <div class="confirm-actions">
+          <button class="confirm-cancel" type="button" data-confirm-value="cancel">\${esc(cancelText)}</button>
+          <button class="confirm-danger" type="button" data-confirm-value="ok">\${esc(confirmText)}</button>
+        </div>
+      \`;
+      modalBackdropEl.classList.add("open");
+      return new Promise(resolve => {
+        pendingConfirm = resolve;
+      });
+    }
+    function closeModal(confirmResult = false) {
+      const confirmResolver = pendingConfirm;
+      pendingConfirm = null;
       modalBackdropEl.classList.remove("open");
       modalBodyEl.textContent = "";
       modalBodyEl.innerHTML = "";
+      if (confirmResolver) confirmResolver(confirmResult);
     }
     function renderDailyChart(days, groups) {
       if (!Array.isArray(days) || !days.length) {
@@ -1003,9 +1026,14 @@ const HTML = `<!doctype html>
       const detailsButton = event.target.closest("[data-detail-key]");
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "");
     });
-    modalCloseEl.addEventListener("click", closeModal);
+    modalCloseEl.addEventListener("click", () => closeModal());
     modalBackdropEl.addEventListener("click", event => { if (event.target === modalBackdropEl) closeModal(); });
     document.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
+    modalBodyEl.addEventListener("click", event => {
+      const confirmButton = event.target.closest("[data-confirm-value]");
+      if (!confirmButton || !pendingConfirm) return;
+      closeModal(confirmButton.dataset.confirmValue === "ok");
+    });
     refreshEl.addEventListener("click", () => {
       if (messageFiltersActive()) resetMessageFilters();
       load();
@@ -1044,7 +1072,13 @@ const HTML = `<!doctype html>
       const button = event.target.closest("[data-revoke-email]");
       if (!button || button.disabled) return;
       const email = button.dataset.revokeEmail;
-      if (!confirm("دسترسی " + email + " revoke شود؟")) return;
+      const confirmed = await openConfirmModal({
+        title: "تایید Revoke",
+        message: \`دسترسی <span class="confirm-target">\${esc(email)}</span> revoke شود؟\`,
+        confirmText: "Revoke",
+        cancelText: "انصراف",
+      });
+      if (!confirmed) return;
       button.disabled = true;
       accessMessageEl.textContent = "در حال revoke...";
       try {
