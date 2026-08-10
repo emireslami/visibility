@@ -390,7 +390,7 @@ const HTML = `<!doctype html>
       else loadAccessUsers();
     }
     function setupAccessShell() {
-      accessNewPermissionsEl.innerHTML = permissionGridHtml(permissionOptions.map(option => option.key), "new");
+      accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
       const navByPage = { dashboard:dashboardNavEl, messages:messagesNavEl, groups:groupsNavEl, threads:threadsNavEl, access:accessNavEl };
       Object.entries(navByPage).forEach(([page, element]) => { element.hidden = !canOpen(page); });
       const firstPage = ["messages", "threads", "groups", "dashboard", "access"].find(canOpen);
@@ -1197,12 +1197,17 @@ const HTML = `<!doctype html>
     accessLogsTabEl.addEventListener("click", () => showAccessSection("logs"));
     accessFormEl.addEventListener("submit", async (event) => {
       event.preventDefault();
+      const permissions = selectedPermissions(accessNewPermissionsEl);
+      if (!permissions.length) {
+        accessMessageEl.textContent = "حداقل یک دسترسی باید انتخاب شود.";
+        return;
+      }
       accessMessageEl.textContent = "در حال افزودن...";
       try {
         const res = await fetch("/api/access-users", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email: accessEmailEl.value.trim(), permissions: selectedPermissions(accessNewPermissionsEl) }),
+          body: JSON.stringify({ email: accessEmailEl.value.trim(), permissions }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -1210,6 +1215,7 @@ const HTML = `<!doctype html>
           return;
         }
         accessEmailEl.value = "";
+        accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
         accessMessageEl.textContent = "کاربر اضافه شد. پسورد اولیه changeme است.";
         loadAccessUsers();
       } catch (error) {
@@ -1754,10 +1760,12 @@ async function addAccessUser(request, env, authUser) {
   }
   const email = normalizeEmail(body.email);
   if (!validAccessEmail(email)) return json({ error: "ایمیل باید به شکل anything@toman.ir باشد" }, 400);
+  const permissions = normalizeAccessPermissions(body.permissions);
+  if (!permissions.length) return json({ error: "حداقل یک دسترسی باید انتخاب شود" }, 400);
   try {
     const existing = await getAccessUserByEmail(env, email);
     if (existing) return json({ error: "این ایمیل قبلاً اضافه شده است" }, 409);
-    const user = await createAccessUser(env, email, body.permissions);
+    const user = await createAccessUser(env, email, permissions);
     await insertAccessAuditLog(env, {
       actorEmail: authUser?.email,
       targetEmail: user.email,
@@ -1844,6 +1852,7 @@ async function updateAccessUserPermissions(request, env, authUser) {
   const email = normalizeEmail(body.email);
   if (!validAccessEmail(email)) return json({ error: "ایمیل نامعتبر است" }, 400);
   const permissions = normalizeAccessPermissions(body.permissions);
+  if (!permissions.length) return json({ error: "حداقل یک دسترسی باید انتخاب شود" }, 400);
   try {
     const existing = await getAccessUserByEmail(env, email);
     if (!existing) return json({ error: "کاربر پیدا نشد" }, 404);
