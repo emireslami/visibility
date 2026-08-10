@@ -134,10 +134,12 @@ const HTML = `<!doctype html>
     .access-email { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
     .access-state { min-width:0; color:var(--muted); font-size:12px; line-height:1.6; text-align:right; direction:rtl; }
     .access-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; }
+    .owner-badge { min-height:30px; display:inline-flex; align-items:center; padding:0 10px; border:1px solid #9bd6dd; border-radius:6px; color:var(--accent); background:#f0fbfc; font-size:12px; font-weight:700; }
     .permission-grid { grid-column:1 / -1; display:grid; grid-template-columns:repeat(5, minmax(100px, 1fr)); gap:8px; direction:ltr; }
     .access-row .permission-grid { grid-column:1 / -1; grid-template-columns:repeat(5, minmax(120px, 1fr)); }
     .permission-option { min-height:32px; display:flex; align-items:center; justify-content:flex-start; gap:6px; padding:5px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; color:var(--ink); }
     .permission-option input { width:14px; height:14px; flex:0 0 auto; }
+    .permission-option:has(input:disabled) { opacity:.68; background:#f7f8fa; }
     .revoke-button { height:30px; padding:0 10px; background:#fff; color:#b42318; border-color:#f0b8b2; }
     .revoke-button:disabled { cursor:not-allowed; color:var(--muted); border-color:var(--line); background:#f3f5f6; }
     .reactivate-button { height:30px; padding:0 10px; background:#fff; color:var(--accent); border-color:#9bd6dd; }
@@ -348,6 +350,7 @@ const HTML = `<!doctype html>
     const fullTextByKey = new Map();
     const detailByKey = new Map();
     const chartColors = ["#087f8c", "#f25f5c", "#3b82f6", "#f59e0b", "#7c3aed", "#10b981", "#ef476f", "#6b7280", "#06b6d4", "#84cc16"];
+    const ownerEmail = "a.eslami@toman.ir";
     let threadFilterOptions = null;
     let currentPage = "messages";
     let loadingToken = 0;
@@ -361,11 +364,14 @@ const HTML = `<!doctype html>
     function selectedPermissions(root) {
       return [...root.querySelectorAll("input[data-permission]:checked")].map(input => input.dataset.permission);
     }
-    function permissionGridHtml(selected, prefix) {
+    function isOwnerEmail(email) {
+      return String(email || "").trim().toLowerCase() === ownerEmail;
+    }
+    function permissionGridHtml(selected, prefix, disabled = false) {
       const selectedSet = new Set(Array.isArray(selected) ? selected : []);
       return permissionOptions.map(option => \`
         <label class="permission-option">
-          <input type="checkbox" data-permission="\${esc(option.key)}" \${selectedSet.has(option.key) ? "checked" : ""} />
+          <input type="checkbox" data-permission="\${esc(option.key)}" \${selectedSet.has(option.key) ? "checked" : ""} \${disabled ? "disabled" : ""} />
           <span>\${esc(option.label)}</span>
         </label>\`).join("");
     }
@@ -1047,12 +1053,14 @@ const HTML = `<!doctype html>
               <span class="access-email">\${esc(user.email)}</span>
               <span class="access-state">\${!user.is_active ? "Revoked" : (user.must_change_password ? "نیازمند تغییر پسورد" : "فعال")} · \${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</span>
               <span class="access-actions">
-                \${user.is_active
+                \${user.is_owner
+                  ? '<span class="owner-badge">Owner</span>'
+                  : user.is_active
                   ? \`<button class="revoke-button" type="button" data-revoke-email="\${esc(user.email)}">Revoke</button>\`
                   : \`<button class="reactivate-button" type="button" data-reactivate-email="\${esc(user.email)}">Re-Active</button>\`}
               </span>
             </div>
-            <div class="permission-grid" data-permission-email="\${esc(user.email)}">\${permissionGridHtml(user.permissions, "user-" + user.email)}</div>
+            <div class="permission-grid" data-permission-email="\${esc(user.email)}" data-owner="\${user.is_owner ? "true" : "false"}">\${permissionGridHtml(user.permissions, "user-" + user.email, user.is_owner)}</div>
           </div>\`).join("");
         setStatus(token, data.users.length + " کاربر");
       } catch (error) {
@@ -1262,6 +1270,11 @@ const HTML = `<!doctype html>
       const grid = event.target.closest("[data-permission-email]");
       if (!input || !grid) return;
       const email = grid.dataset.permissionEmail;
+      if (grid.dataset.owner === "true" || isOwnerEmail(email)) {
+        accessMessageEl.textContent = "دسترسی owner قابل تغییر نیست.";
+        loadAccessUsers();
+        return;
+      }
       const permissions = selectedPermissions(grid);
       accessMessageEl.textContent = "در حال ذخیره دسترسی‌ها...";
       try {
@@ -1468,6 +1481,11 @@ function validAccessEmail(email) {
 
 const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboard"];
 const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS];
+const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
+
+function isAccessOwnerEmail(email) {
+  return normalizeEmail(email) === ACCESS_OWNER_EMAIL;
+}
 
 function normalizeAccessPermissions(value) {
   const source = Array.isArray(value) ? value : FULL_ACCESS_PERMISSIONS;
@@ -1477,6 +1495,7 @@ function normalizeAccessPermissions(value) {
 }
 
 function accessPermissionsForUser(user) {
+  if (isAccessOwnerEmail(user?.email)) return FULL_ACCESS_PERMISSIONS;
   return normalizeAccessPermissions(user?.permissions);
 }
 
@@ -1565,7 +1584,8 @@ async function dashboardAuthorized(request, env) {
   }
   if (!data.email || !data.exp || Date.now() > data.exp) return null;
   const user = await getAccessUserByEmail(env, data.email);
-  if (!user || !user.is_active || String(user.password_hash || "").slice(0, 16) !== data.ph) return null;
+  if (!user || String(user.password_hash || "").slice(0, 16) !== data.ph) return null;
+  if (!user.is_active && !isAccessOwnerEmail(user.email)) return null;
   return user;
 }
 
@@ -1579,7 +1599,7 @@ async function handleLogin(request, env) {
   if (!user) {
     return text(loginHtml("این ایمیل مجوز دسترسی ندارد.", email), 401, "text/html; charset=utf-8");
   }
-  if (!user.is_active) {
+  if (!user.is_active && !isAccessOwnerEmail(user.email)) {
     return text(loginHtml("دسترسی این ایمیل revoke شده است.", email), 403, "text/html; charset=utf-8");
   }
   if (await hashPassword(password, user.password_salt) !== user.password_hash) {
@@ -1744,7 +1764,14 @@ async function handleSetPassword(request, env, user) {
 
 async function fetchAccessUsers(env) {
   const users = await listAccessUsers(env);
-  return json({ users: users.map((user) => ({ ...user, permissions: accessPermissionsForUser(user) })) });
+  return json({
+    users: users.map((user) => ({
+      ...user,
+      is_owner: isAccessOwnerEmail(user.email),
+      is_active: isAccessOwnerEmail(user.email) ? true : user.is_active,
+      permissions: accessPermissionsForUser(user),
+    })),
+  });
 }
 
 async function fetchAccessAuditLogs(env) {
@@ -1792,6 +1819,7 @@ async function revokeAccessUser(request, env, authUser) {
   }
   const email = normalizeEmail(body.email);
   if (!validAccessEmail(email)) return json({ error: "ایمیل نامعتبر است" }, 400);
+  if (isAccessOwnerEmail(email)) return json({ error: "دسترسی owner قابل revoke نیست" }, 400);
   if (email === normalizeEmail(authUser?.email)) return json({ error: "نمی‌توانید دسترسی اکانت فعلی خودتان را revoke کنید" }, 400);
   try {
     const existing = await getAccessUserByEmail(env, email);
@@ -1851,6 +1879,7 @@ async function updateAccessUserPermissions(request, env, authUser) {
   }
   const email = normalizeEmail(body.email);
   if (!validAccessEmail(email)) return json({ error: "ایمیل نامعتبر است" }, 400);
+  if (isAccessOwnerEmail(email)) return json({ error: "دسترسی owner قابل تغییر نیست" }, 400);
   const permissions = normalizeAccessPermissions(body.permissions);
   if (!permissions.length) return json({ error: "حداقل یک دسترسی باید انتخاب شود" }, 400);
   try {
