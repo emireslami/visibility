@@ -17,9 +17,18 @@ const HTML = `<!doctype html>
     table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:ltr; }
     th, td { padding: 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 13px; }
     th { background: #eef3f4; color: #24343b; position: sticky; top: 0; }
-    td.body { max-width: 420px; white-space: pre-wrap; direction:rtl; text-align:right; }
+    td.body { min-width: 260px; max-width: 360px; direction:rtl; text-align:right; }
+    .clip { display:block; max-width: 320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .more { height: 28px; margin-top: 6px; padding: 0 9px; font-size: 12px; }
     td.json { min-width: 320px; max-width: 560px; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     .meta { color: var(--muted); font-size: 12px; }
+    .modal-backdrop { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(23,32,38,.42); z-index:20; }
+    .modal-backdrop.open { display:flex; }
+    .modal { width:min(760px, 100%); max-height:min(78vh, 720px); display:flex; flex-direction:column; background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:0 20px 70px rgba(23,32,38,.24); direction:rtl; }
+    .modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-bottom:1px solid var(--line); }
+    .modal-head h2 { margin:0; font-size:16px; }
+    .modal-close { width:34px; height:34px; padding:0; font-size:20px; line-height:1; }
+    .modal-body { padding:16px; overflow:auto; white-space:pre-wrap; line-height:1.8; text-align:right; }
     @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } table { display:block; overflow:auto; } }
   </style>
 </head>
@@ -73,6 +82,15 @@ const HTML = `<!doctype html>
       <tbody id="rows"></tbody>
     </table>
   </main>
+  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="modalTitle">متن کامل پیام</h2>
+        <button class="modal-close" id="modalClose" type="button" aria-label="بستن">×</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
   <script>
     const rowsEl = document.getElementById("rows");
     const statusEl = document.getElementById("status");
@@ -82,6 +100,10 @@ const HTML = `<!doctype html>
     const chatEl = document.getElementById("chat");
     const senderEl = document.getElementById("sender");
     const refreshEl = document.getElementById("refresh");
+    const modalBackdropEl = document.getElementById("modalBackdrop");
+    const modalBodyEl = document.getElementById("modalBody");
+    const modalCloseEl = document.getElementById("modalClose");
+    const fullTextByKey = new Map();
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
     }
@@ -91,6 +113,28 @@ const HTML = `<!doctype html>
         try { return JSON.stringify(JSON.parse(value), null, 2); } catch { return value; }
       }
       return JSON.stringify(value, null, 2);
+    }
+    function shouldCollapse(value) {
+      return String(value ?? "").length > 90 || String(value ?? "").includes("\\n");
+    }
+    function shortText(value) {
+      const normalized = String(value ?? "").replace(/\\s+/g, " ").trim();
+      return normalized.length > 90 ? normalized.slice(0, 90) + "..." : normalized;
+    }
+    function textCell(value, key) {
+      const text = String(value ?? "");
+      if (!text) return "";
+      fullTextByKey.set(key, text);
+      const button = shouldCollapse(text) ? \`<button class="more" type="button" data-full-key="\${esc(key)}">مشاهده بیشتر</button>\` : "";
+      return \`<span class="clip">\${esc(shortText(text))}</span>\${button}\`;
+    }
+    function openModal(text) {
+      modalBodyEl.textContent = text;
+      modalBackdropEl.classList.add("open");
+    }
+    function closeModal() {
+      modalBackdropEl.classList.remove("open");
+      modalBodyEl.textContent = "";
     }
     async function load() {
       const params = new URLSearchParams();
@@ -106,7 +150,8 @@ const HTML = `<!doctype html>
         statusEl.textContent = data.detail || data.error || "خطا در دریافت داده";
         return;
       }
-      rowsEl.innerHTML = data.messages.map(row => \`
+      fullTextByKey.clear();
+      rowsEl.innerHTML = data.messages.map((row, index) => \`
         <tr>
           <td>\${esc(row.update_id)}</td>
           <td>\${esc(row.message_id)}</td>
@@ -124,8 +169,8 @@ const HTML = `<!doctype html>
           <td>\${esc(row.sender_is_bot)}</td>
           <td>\${esc(row.sender_chat_id)}</td>
           <td>\${esc(row.sender_chat_title)}</td>
-          <td class="body">\${esc(row.body || row.caption || "[" + row.message_type + "]")}</td>
-          <td class="body">\${esc(row.caption)}</td>
+          <td class="body">\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index)}</td>
+          <td class="body">\${textCell(row.caption, "caption-" + index)}</td>
           <td>\${esc(row.sent_date)}</td>
           <td>\${esc(row.sent_time)}</td>
           <td>\${esc(row.message_type)}</td>
@@ -139,6 +184,14 @@ const HTML = `<!doctype html>
         </tr>\`).join("");
       statusEl.textContent = data.messages.length + " پیام";
     }
+    rowsEl.addEventListener("click", event => {
+      const button = event.target.closest("[data-full-key]");
+      if (!button) return;
+      openModal(fullTextByKey.get(button.dataset.fullKey) || "");
+    });
+    modalCloseEl.addEventListener("click", closeModal);
+    modalBackdropEl.addEventListener("click", event => { if (event.target === modalBackdropEl) closeModal(); });
+    document.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
     refreshEl.addEventListener("click", load);
     [searchEl, groupEl, topicEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
     load();
