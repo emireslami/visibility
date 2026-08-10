@@ -125,10 +125,14 @@ const HTML = `<!doctype html>
     .access-form { display:grid; grid-template-columns:minmax(220px, 1fr) 120px; gap:10px; margin:14px 0; }
     .access-message { min-height:24px; color:var(--muted); font-size:12px; }
     .access-list { display:grid; gap:8px; margin-top:12px; }
-    .access-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; direction:ltr; }
+    .access-row { display:grid; grid-template-columns:minmax(180px, 1fr) minmax(260px, 1.4fr) auto; align-items:center; gap:12px; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; direction:ltr; }
     .access-email { font-weight:700; }
     .access-state { color:var(--muted); font-size:12px; }
     .access-actions { display:flex; align-items:center; gap:10px; }
+    .permission-grid { grid-column:1 / -1; display:grid; grid-template-columns:repeat(5, minmax(100px, 1fr)); gap:8px; direction:ltr; }
+    .access-row .permission-grid { grid-column:auto; }
+    .permission-option { min-height:32px; display:flex; align-items:center; justify-content:flex-start; gap:6px; padding:5px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; color:var(--ink); }
+    .permission-option input { width:14px; height:14px; flex:0 0 auto; }
     .revoke-button { height:30px; padding:0 10px; background:#fff; color:#b42318; border-color:#f0b8b2; }
     .revoke-button:disabled { cursor:not-allowed; color:var(--muted); border-color:var(--line); background:#f3f5f6; }
     .reactivate-button { height:30px; padding:0 10px; background:#fff; color:var(--accent); border-color:#9bd6dd; }
@@ -238,6 +242,7 @@ const HTML = `<!doctype html>
         <form class="access-form" id="accessForm">
           <input id="accessEmail" type="email" placeholder="anything@toman.ir" autocomplete="off" />
           <button type="submit">افزودن</button>
+          <div class="permission-grid" id="accessNewPermissions"></div>
         </form>
         <div class="access-message" id="accessMessage"></div>
         <div class="access-list" id="accessRows"></div>
@@ -286,8 +291,17 @@ const HTML = `<!doctype html>
     const modalCloseEl = document.getElementById("modalClose");
     const accessFormEl = document.getElementById("accessForm");
     const accessEmailEl = document.getElementById("accessEmail");
+    const accessNewPermissionsEl = document.getElementById("accessNewPermissions");
     const accessMessageEl = document.getElementById("accessMessage");
     const accessRowsEl = document.getElementById("accessRows");
+    const currentUserPermissions = new Set(__CURRENT_USER_PERMISSIONS__);
+    const permissionOptions = [
+      { key:"access", label:"Access" },
+      { key:"threads", label:"Threads" },
+      { key:"groups", label:"Groups" },
+      { key:"messages", label:"Messages" },
+      { key:"dashboard", label:"Dashboard" },
+    ];
     const fullTextByKey = new Map();
     const detailByKey = new Map();
     const chartColors = ["#087f8c", "#f25f5c", "#3b82f6", "#f59e0b", "#7c3aed", "#10b981", "#ef476f", "#6b7280", "#06b6d4", "#84cc16"];
@@ -297,6 +311,32 @@ const HTML = `<!doctype html>
     let pendingConfirm = null;
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
+    }
+    function canOpen(page) {
+      return currentUserPermissions.has(page);
+    }
+    function selectedPermissions(root) {
+      return [...root.querySelectorAll("input[data-permission]:checked")].map(input => input.dataset.permission);
+    }
+    function permissionGridHtml(selected, prefix) {
+      const selectedSet = new Set(Array.isArray(selected) ? selected : []);
+      return permissionOptions.map(option => \`
+        <label class="permission-option">
+          <input type="checkbox" data-permission="\${esc(option.key)}" \${selectedSet.has(option.key) ? "checked" : ""} />
+          <span>\${esc(option.label)}</span>
+        </label>\`).join("");
+    }
+    function setupAccessShell() {
+      accessNewPermissionsEl.innerHTML = permissionGridHtml(permissionOptions.map(option => option.key), "new");
+      const navByPage = { dashboard:dashboardNavEl, messages:messagesNavEl, groups:groupsNavEl, threads:threadsNavEl, access:accessNavEl };
+      Object.entries(navByPage).forEach(([page, element]) => { element.hidden = !canOpen(page); });
+      const firstPage = ["messages", "threads", "groups", "dashboard", "access"].find(canOpen);
+      if (!firstPage) {
+        document.querySelector("main").innerHTML = '<section class="empty">برای این حساب هنوز دسترسی به بخشی تعریف نشده است.</section>';
+        setStatus(++loadingToken, "بدون دسترسی");
+        return;
+      }
+      showPage(firstPage);
     }
     function tehranDisplay(value) {
       return new Date(value).toLocaleString("fa-IR", { timeZone:"Asia/Tehran", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" });
@@ -941,6 +981,7 @@ const HTML = `<!doctype html>
         accessRowsEl.innerHTML = data.users.map((user) => \`
           <div class="access-row">
             <span class="access-email">\${esc(user.email)}</span>
+            <div class="permission-grid" data-permission-email="\${esc(user.email)}">\${permissionGridHtml(user.permissions, "user-" + user.email)}</div>
             <span class="access-actions">
               <span class="access-state">\${!user.is_active ? "Revoked" : (user.must_change_password ? "نیازمند تغییر پسورد" : "فعال")} · \${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</span>
               \${user.is_active
@@ -961,6 +1002,7 @@ const HTML = `<!doctype html>
         const params = new URLSearchParams();
         appendFilterValues(params, "group", threadGroupFilter.values());
         appendFilterValues(params, "topic", threadTopicFilter.values());
+        params.set("view", "threads");
         const jalaliDate = selectedThreadJalaliDate();
         if (jalaliDate) params.set("jalali_date", jalaliDate);
         const res = await fetch("/api/messages?" + params);
@@ -990,6 +1032,7 @@ const HTML = `<!doctype html>
       }
     }
     function showPage(page) {
+      if (!canOpen(page)) return;
       currentPage = page;
       const isDashboard = page === "dashboard";
       const isGroups = page === "groups";
@@ -1057,7 +1100,7 @@ const HTML = `<!doctype html>
         const res = await fetch("/api/access-users", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email: accessEmailEl.value.trim() }),
+          body: JSON.stringify({ email: accessEmailEl.value.trim(), permissions: selectedPermissions(accessNewPermissionsEl) }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -1106,6 +1149,31 @@ const HTML = `<!doctype html>
         button.disabled = false;
       }
     });
+    accessRowsEl.addEventListener("change", async (event) => {
+      const input = event.target.closest("input[data-permission]");
+      const grid = event.target.closest("[data-permission-email]");
+      if (!input || !grid) return;
+      const email = grid.dataset.permissionEmail;
+      const permissions = selectedPermissions(grid);
+      accessMessageEl.textContent = "در حال ذخیره دسترسی‌ها...";
+      try {
+        const res = await fetch("/api/access-users/permissions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email, permissions }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          accessMessageEl.textContent = data.error || "ذخیره دسترسی انجام نشد";
+          loadAccessUsers();
+          return;
+        }
+        accessMessageEl.textContent = "دسترسی‌ها ذخیره شد.";
+      } catch (error) {
+        accessMessageEl.textContent = "ذخیره دسترسی انجام نشد";
+        loadAccessUsers();
+      }
+    });
     searchEl.addEventListener("input", updateFilterButtons);
     searchEl.addEventListener("keydown", e => { if (e.key === "Enter") load(); });
     document.addEventListener("click", (event) => {
@@ -1113,8 +1181,8 @@ const HTML = `<!doctype html>
         if (!event.target.closest(".multi-filter")) filter.close();
       }
     });
-    loadThreadFilterOptions().then(load);
-    setInterval(() => { if (currentPage === "dashboard") loadDashboard(); else if (currentPage === "groups") loadGroups(); else if (currentPage === "threads") loadThreads(); else if (currentPage === "access") loadAccessUsers(); else load(); }, 5000);
+    setupAccessShell();
+    setInterval(() => { if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "access" && canOpen("access")) loadAccessUsers(); else if (canOpen("messages")) load(); }, 5000);
   </script>
 </body>
 </html>`;
@@ -1239,6 +1307,32 @@ function normalizeEmail(email) {
 
 function validAccessEmail(email) {
   return /^[^@\s]+@toman\.ir$/.test(normalizeEmail(email));
+}
+
+const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboard"];
+const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS];
+
+function normalizeAccessPermissions(value) {
+  const source = Array.isArray(value) ? value : FULL_ACCESS_PERMISSIONS;
+  const allowed = new Set(ACCESS_PERMISSIONS);
+  const normalized = source.map((item) => String(item || "").trim().toLowerCase()).filter((item) => allowed.has(item));
+  return [...new Set(normalized)];
+}
+
+function accessPermissionsForUser(user) {
+  return normalizeAccessPermissions(user?.permissions);
+}
+
+function hasAccessPermission(user, permission) {
+  return accessPermissionsForUser(user).includes(permission);
+}
+
+function hasAnyAccessPermission(user, permissions) {
+  return permissions.some((permission) => hasAccessPermission(user, permission));
+}
+
+function forbiddenAccess() {
+  return json({ error: "Access denied" }, 403);
 }
 
 function strongPassword(password) {
@@ -1367,7 +1461,7 @@ async function readSupabaseJson(response) {
 
 async function getAccessUserByEmail(env, email) {
   const params = new URLSearchParams({
-    select: "id,email,password_hash,password_salt,must_change_password,is_active,last_login_at_utc,created_at_utc,updated_at_utc",
+    select: "id,email,password_hash,password_salt,must_change_password,is_active,permissions,last_login_at_utc,created_at_utc,updated_at_utc",
     email: `eq.${normalizeEmail(email)}`,
     limit: "1",
   });
@@ -1377,7 +1471,7 @@ async function getAccessUserByEmail(env, email) {
   return rows[0] || null;
 }
 
-async function createAccessUser(env, email) {
+async function createAccessUser(env, email, permissions = FULL_ACCESS_PERMISSIONS) {
   const normalized = normalizeEmail(email);
   if (!validAccessEmail(normalized)) throw new Error("ایمیل باید از دامنه toman.ir باشد");
   const salt = randomHex();
@@ -1387,6 +1481,7 @@ async function createAccessUser(env, email) {
     password_hash: await hashPassword("changeme", salt),
     must_change_password: true,
     is_active: true,
+    permissions: normalizeAccessPermissions(permissions),
     updated_at_utc: new Date().toISOString(),
   };
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_access_users?on_conflict=email`, {
@@ -1412,7 +1507,7 @@ async function patchAccessUser(env, email, row) {
 
 async function listAccessUsers(env) {
   const params = new URLSearchParams({
-    select: "email,must_change_password,is_active,last_login_at_utc,created_at_utc",
+    select: "email,must_change_password,is_active,permissions,last_login_at_utc,created_at_utc",
     order: "created_at_utc.desc",
   });
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_access_users?${params}`, { headers: supabaseHeaders(env) });
@@ -1449,7 +1544,8 @@ async function handleSetPassword(request, env, user) {
 }
 
 async function fetchAccessUsers(env) {
-  return json({ users: await listAccessUsers(env) });
+  const users = await listAccessUsers(env);
+  return json({ users: users.map((user) => ({ ...user, permissions: accessPermissionsForUser(user) })) });
 }
 
 async function addAccessUser(request, env) {
@@ -1464,7 +1560,7 @@ async function addAccessUser(request, env) {
   try {
     const existing = await getAccessUserByEmail(env, email);
     if (existing) return json({ error: "این ایمیل قبلاً اضافه شده است" }, 409);
-    const user = await createAccessUser(env, email);
+    const user = await createAccessUser(env, email, body.permissions);
     return json({ user: { email: user.email, must_change_password: user.must_change_password } }, 201);
   } catch (error) {
     return json({ error: error.message || "ساخت کاربر انجام نشد" }, 500);
@@ -1513,6 +1609,29 @@ async function reactivateAccessUser(request, env) {
     return json({ user: { email: user.email, is_active: user.is_active } });
   } catch (error) {
     return json({ error: error.message || "فعال‌سازی انجام نشد" }, 500);
+  }
+}
+
+async function updateAccessUserPermissions(request, env) {
+  let body = {};
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const email = normalizeEmail(body.email);
+  if (!validAccessEmail(email)) return json({ error: "ایمیل نامعتبر است" }, 400);
+  const permissions = normalizeAccessPermissions(body.permissions);
+  try {
+    const existing = await getAccessUserByEmail(env, email);
+    if (!existing) return json({ error: "کاربر پیدا نشد" }, 404);
+    const user = await patchAccessUser(env, email, {
+      permissions,
+      updated_at_utc: new Date().toISOString(),
+    });
+    return json({ user: { email: user.email, permissions: accessPermissionsForUser(user) } });
+  } catch (error) {
+    return json({ error: error.message || "ذخیره دسترسی انجام نشد" }, 500);
   }
 }
 
@@ -2351,18 +2470,43 @@ export default {
       if (apiPath) return json({ error: "Password change required" }, 403);
       return redirect("/set-password");
     }
-    if (url.pathname === "/") return text(HTML, 200, "text/html; charset=utf-8");
+    if (url.pathname === "/") {
+      const html = HTML.replace("__CURRENT_USER_PERMISSIONS__", JSON.stringify(accessPermissionsForUser(authUser)));
+      return text(html, 200, "text/html; charset=utf-8");
+    }
     if (url.pathname === "/api/debug") return text("Not found", 404);
+    if (url.pathname === "/api/access-users" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
+    if (url.pathname.startsWith("/api/access-users/") && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname === "/api/access-users" && request.method === "GET") return fetchAccessUsers(env);
     if (url.pathname === "/api/access-users" && request.method === "POST") return addAccessUser(request, env);
     if (url.pathname === "/api/access-users/revoke" && request.method === "POST") return revokeAccessUser(request, env, authUser);
     if (url.pathname === "/api/access-users/reactivate" && request.method === "POST") return reactivateAccessUser(request, env);
-    if (url.pathname === "/api/messages") return fetchMessages(request, env);
-    if (url.pathname === "/api/groups") return fetchGroups(request, env);
-    if (url.pathname === "/api/dashboard") return fetchDashboard(request, env);
-    if (url.pathname === "/api/thread-filter-options") return fetchThreadFilterOptions(request, env);
-    if (url.pathname === "/api/profile-photo") return fetchTelegramProfilePhoto(request, env);
-    if (url.pathname === "/api/telegram-file") return fetchTelegramFile(request, env);
+    if (url.pathname === "/api/access-users/permissions" && request.method === "POST") return updateAccessUserPermissions(request, env);
+    if (url.pathname === "/api/messages") {
+      const view = url.searchParams.get("view");
+      if (view === "threads" ? !hasAccessPermission(authUser, "threads") : !hasAccessPermission(authUser, "messages")) return forbiddenAccess();
+      return fetchMessages(request, env);
+    }
+    if (url.pathname === "/api/groups") {
+      if (!hasAccessPermission(authUser, "groups")) return forbiddenAccess();
+      return fetchGroups(request, env);
+    }
+    if (url.pathname === "/api/dashboard") {
+      if (!hasAccessPermission(authUser, "dashboard")) return forbiddenAccess();
+      return fetchDashboard(request, env);
+    }
+    if (url.pathname === "/api/thread-filter-options") {
+      if (!hasAnyAccessPermission(authUser, ["messages", "threads"])) return forbiddenAccess();
+      return fetchThreadFilterOptions(request, env);
+    }
+    if (url.pathname === "/api/profile-photo") {
+      if (!hasAnyAccessPermission(authUser, ["messages", "threads"])) return forbiddenAccess();
+      return fetchTelegramProfilePhoto(request, env);
+    }
+    if (url.pathname === "/api/telegram-file") {
+      if (!hasAnyAccessPermission(authUser, ["messages", "threads"])) return forbiddenAccess();
+      return fetchTelegramFile(request, env);
+    }
     return text("Not found", 404);
   },
 };
