@@ -74,6 +74,7 @@ const HTML = `<!doctype html>
             <th>Username</th>
             <th>Message</th>
             <th>Date (Tehran)</th>
+            <th>Date (Jalali)</th>
             <th>Time (Tehran)</th>
             <th>Edited At</th>
             <th>Group Type</th>
@@ -196,6 +197,7 @@ const HTML = `<!doctype html>
         ["Message", row.body],
         ["Caption", row.caption],
         ["Date (Tehran)", row.sent_date],
+        ["Date (Jalali)", row.sent_jalali_date],
         ["Time (Tehran)", row.sent_time],
         ["Type", row.message_type],
         ["Edited At", row.edited_at_utc],
@@ -246,6 +248,7 @@ const HTML = `<!doctype html>
           <td>\${esc(row.sender_username)}</td>
           <td class="body">\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index)}</td>
           <td>\${esc(row.sent_date)}</td>
+          <td>\${esc(row.sent_jalali_date)}</td>
           <td>\${esc(row.sent_time)}</td>
           <td>\${esc(row.edited_at_utc)}</td>
           <td>\${esc(row.chat_type)}</td>
@@ -465,10 +468,18 @@ function tehranParts(date) {
     second: "2-digit",
     hour12: false,
   }).formatToParts(date);
+  const jalaliParts = new Intl.DateTimeFormat("en-US-u-ca-persian", {
+    timeZone: "Asia/Tehran",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
   const dateMap = Object.fromEntries(dateParts.map((part) => [part.type, part.value]));
   const timeMap = Object.fromEntries(timeParts.map((part) => [part.type, part.value]));
+  const jalaliMap = Object.fromEntries(jalaliParts.map((part) => [part.type, part.value]));
   return {
     sent_date: `${dateMap.year}-${dateMap.month}-${dateMap.day}`,
+    sent_jalali_date: `${jalaliMap.year}-${jalaliMap.month}-${jalaliMap.day}`,
     sent_time: `${timeMap.hour}:${timeMap.minute}:${timeMap.second}`,
     display_timezone: "Asia/Tehran",
   };
@@ -785,7 +796,7 @@ async function fetchMessages(request, env) {
     return {
       ...row,
       topic_name: row.topic_name || mappedTopicName || null,
-      ...(date ? tehranParts(date) : { sent_date: null, sent_time: null, display_timezone: "Asia/Tehran" }),
+      ...(date ? tehranParts(date) : { sent_date: null, sent_jalali_date: null, sent_time: null, display_timezone: "Asia/Tehran" }),
     };
   });
   if (topic) {

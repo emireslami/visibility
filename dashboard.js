@@ -27,6 +27,18 @@ async function query(sql, params = []) {
   }
 }
 
+function jalaliDate(value) {
+  if (!value) return null;
+  const parts = new Intl.DateTimeFormat("en-US-u-ca-persian", {
+    timeZone: "Asia/Tehran",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
 function sendJson(res, value) {
   const body = JSON.stringify(value);
   res.writeHead(200, {
@@ -114,6 +126,7 @@ function sendHtml(res) {
             <th>Username</th>
             <th>Message</th>
             <th>Date (Tehran)</th>
+            <th>Date (Jalali)</th>
             <th>Time (Tehran)</th>
             <th>Edited At</th>
             <th>Group Type</th>
@@ -236,6 +249,7 @@ function sendHtml(res) {
         ["Message", row.body],
         ["Caption", row.caption],
         ["Date (Tehran)", row.sent_date],
+        ["Date (Jalali)", row.sent_jalali_date],
         ["Time (Tehran)", row.sent_time],
         ["Type", row.message_type],
         ["Edited At", row.edited_at_utc],
@@ -281,6 +295,7 @@ function sendHtml(res) {
           <td>\${esc(row.sender_username)}</td>
           <td class="body">\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index)}</td>
           <td>\${esc(row.sent_date)}</td>
+          <td>\${esc(row.sent_jalali_date)}</td>
           <td>\${esc(row.sent_time)}</td>
           <td>\${esc(row.edited_at_utc)}</td>
           <td>\${esc(row.chat_type)}</td>
@@ -412,6 +427,7 @@ async function handle(req, res) {
              m.sender_chat_id, m.sender_chat_title,
              m.body, m.caption, m.message_type, m.edited_at_utc, m.reply_to_message_id,
              m.media_file_id, m.media_group_id, m.forward_origin_json, m.entities_json, m.raw_payload_json,
+             m.sent_at_utc,
              to_char(m.sent_at_utc at time zone 'Asia/Tehran', 'YYYY-MM-DD') as sent_date,
              to_char(m.sent_at_utc at time zone 'Asia/Tehran', 'HH24:MI:SS') as sent_time
       from public.telegram_messages m
@@ -421,7 +437,7 @@ async function handle(req, res) {
       order by m.sent_at_utc desc nulls last, m.id desc
       limit 500
     `, params);
-    return sendJson(res, { messages });
+    return sendJson(res, { messages: messages.map((row) => ({ ...row, sent_jalali_date: jalaliDate(row.sent_at_utc) })) });
   }
   res.writeHead(404);
   res.end("Not found");
