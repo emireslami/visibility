@@ -18,6 +18,7 @@ const HTML = `<!doctype html>
     th, td { padding: 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 13px; }
     th { background: #eef3f4; color: #24343b; position: sticky; top: 0; }
     td.body { max-width: 420px; white-space: pre-wrap; direction:rtl; text-align:right; }
+    td.json { min-width: 320px; max-width: 560px; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     .meta { color: var(--muted); font-size: 12px; }
     @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } table { display:block; overflow:auto; } }
   </style>
@@ -38,15 +39,34 @@ const HTML = `<!doctype html>
     <table>
       <thead>
         <tr>
+          <th>Update ID</th>
+          <th>Message ID</th>
           <th>Group ID</th>
           <th>Group Name</th>
+          <th>Group Username</th>
+          <th>Group Type</th>
           <th>Topic</th>
+          <th>Topic ID</th>
+          <th>Is Topic</th>
           <th>Username</th>
           <th>Sender ID</th>
+          <th>Sender First Name</th>
+          <th>Sender Last Name</th>
+          <th>Sender Is Bot</th>
+          <th>Sender Chat ID</th>
+          <th>Sender Chat Title</th>
           <th>Message</th>
+          <th>Caption</th>
           <th>Date (Tehran)</th>
           <th>Time (Tehran)</th>
           <th>Type</th>
+          <th>Edited At</th>
+          <th>Reply To Message ID</th>
+          <th>Media File ID</th>
+          <th>Media Group ID</th>
+          <th>Forward Origin</th>
+          <th>Entities</th>
+          <th>Raw Telegram Payload</th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
@@ -63,6 +83,13 @@ const HTML = `<!doctype html>
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
     }
+    function jsonText(value) {
+      if (value == null) return "";
+      if (typeof value === "string") {
+        try { return JSON.stringify(JSON.parse(value), null, 2); } catch { return value; }
+      }
+      return JSON.stringify(value, null, 2);
+    }
     async function load() {
       const params = new URLSearchParams();
       if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
@@ -78,15 +105,34 @@ const HTML = `<!doctype html>
       }
       rowsEl.innerHTML = data.messages.map(row => \`
         <tr>
+          <td>\${esc(row.update_id)}</td>
+          <td>\${esc(row.message_id)}</td>
           <td>\${esc(row.chat_id)}</td>
           <td>\${esc(row.chat_title)}</td>
+          <td>\${esc(row.chat_username)}</td>
+          <td>\${esc(row.chat_type)}</td>
           <td>\${esc(row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : ""))}</td>
+          <td>\${esc(row.message_thread_id)}</td>
+          <td>\${esc(row.is_topic_message)}</td>
           <td>\${esc(row.sender_username)}</td>
           <td>\${esc(row.sender_id)}</td>
+          <td>\${esc(row.sender_first_name)}</td>
+          <td>\${esc(row.sender_last_name)}</td>
+          <td>\${esc(row.sender_is_bot)}</td>
+          <td>\${esc(row.sender_chat_id)}</td>
+          <td>\${esc(row.sender_chat_title)}</td>
           <td class="body">\${esc(row.body || row.caption || "[" + row.message_type + "]")}</td>
+          <td class="body">\${esc(row.caption)}</td>
           <td>\${esc(row.sent_date)}</td>
           <td>\${esc(row.sent_time)}</td>
           <td>\${esc(row.message_type)}</td>
+          <td>\${esc(row.edited_at_utc)}</td>
+          <td>\${esc(row.reply_to_message_id)}</td>
+          <td>\${esc(row.media_file_id)}</td>
+          <td>\${esc(row.media_group_id)}</td>
+          <td class="json">\${esc(jsonText(row.forward_origin_json))}</td>
+          <td class="json">\${esc(jsonText(row.entities_json))}</td>
+          <td class="json">\${esc(jsonText(row.raw_payload_json))}</td>
         </tr>\`).join("");
       statusEl.textContent = data.messages.length + " پیام";
     }
@@ -95,6 +141,34 @@ const HTML = `<!doctype html>
     load();
     setInterval(load, 5000);
   </script>
+</body>
+</html>`;
+
+const LOGIN_HTML = `<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Visibility Login</title>
+  <style>
+    :root { color-scheme: light; --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); }
+    form { width:min(380px, calc(100vw - 32px)); background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:22px; }
+    h1 { margin:0 0 16px; font-size:20px; }
+    label { display:block; margin-bottom:8px; color:var(--muted); font-size:13px; }
+    input, button { width:100%; height:40px; border-radius:6px; font:inherit; }
+    input { border:1px solid var(--line); padding:0 10px; }
+    button { margin-top:12px; border:0; background:var(--accent); color:#fff; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <form method="post" action="/login">
+    <h1>Visibility</h1>
+    <label for="password">رمز ورود داشبورد</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" autofocus />
+    <button type="submit">ورود</button>
+  </form>
 </body>
 </html>`;
 
@@ -117,6 +191,35 @@ function text(value, status = 200, contentType = "text/plain; charset=utf-8") {
     headers: {
       "content-type": contentType,
       "cache-control": "no-store",
+    },
+  });
+}
+
+function redirect(location) {
+  return new Response(null, {
+    status: 303,
+    headers: { location },
+  });
+}
+
+function dashboardAuthorized(request, env) {
+  if (!env.DASHBOARD_PASSWORD) return false;
+  const cookie = request.headers.get("cookie") || "";
+  return cookie.split(";").some((part) => part.trim() === `visibility_session=${env.DASHBOARD_PASSWORD}`);
+}
+
+async function handleLogin(request, env) {
+  if (request.method !== "POST") return text(LOGIN_HTML, 200, "text/html; charset=utf-8");
+  if (!env.DASHBOARD_PASSWORD) return text("Dashboard password is not configured", 503);
+  const form = await request.formData();
+  if (form.get("password") !== env.DASHBOARD_PASSWORD) {
+    return text(LOGIN_HTML, 401, "text/html; charset=utf-8");
+  }
+  return new Response(null, {
+    status: 303,
+    headers: {
+      location: "/",
+      "set-cookie": `visibility_session=${env.DASHBOARD_PASSWORD}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
     },
   });
 }
@@ -295,7 +398,35 @@ async function handleTelegramWebhook(request, env) {
 async function fetchMessages(request, env) {
   const url = new URL(request.url);
   const params = new URLSearchParams();
-  params.set("select", "update_id,message_id,chat_id,chat_title,message_thread_id,topic_name,sender_username,sender_id,body,caption,message_type,sent_at_utc");
+  params.set("select", [
+    "update_id",
+    "message_id",
+    "chat_id",
+    "chat_title",
+    "chat_username",
+    "chat_type",
+    "message_thread_id",
+    "is_topic_message",
+    "topic_name",
+    "sender_id",
+    "sender_username",
+    "sender_first_name",
+    "sender_last_name",
+    "sender_is_bot",
+    "sender_chat_id",
+    "sender_chat_title",
+    "body",
+    "caption",
+    "message_type",
+    "sent_at_utc",
+    "edited_at_utc",
+    "reply_to_message_id",
+    "media_file_id",
+    "media_group_id",
+    "forward_origin_json",
+    "entities_json",
+    "raw_payload_json",
+  ].join(","));
   params.set("order", "sent_at_utc.desc.nullslast,id.desc");
   params.set("limit", "500");
 
@@ -350,10 +481,24 @@ async function fetchMessages(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/telegram-webhook") return handleTelegramWebhook(request, env);
+    if (url.pathname === "/login") return handleLogin(request, env);
+    if (url.pathname === "/logout") {
+      return new Response(null, {
+        status: 303,
+        headers: {
+          location: "/login",
+          "set-cookie": "visibility_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0",
+        },
+      });
+    }
+    if (!dashboardAuthorized(request, env)) {
+      if (url.pathname === "/api/messages") return json({ error: "Unauthorized" }, 401);
+      return text(LOGIN_HTML, 200, "text/html; charset=utf-8");
+    }
     if (url.pathname === "/") return text(HTML, 200, "text/html; charset=utf-8");
     if (url.pathname === "/api/debug") return text("Not found", 404);
     if (url.pathname === "/api/messages") return fetchMessages(request, env);
-    if (url.pathname === "/telegram-webhook") return handleTelegramWebhook(request, env);
     return text("Not found", 404);
   },
 };

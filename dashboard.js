@@ -58,6 +58,7 @@ function sendHtml(res) {
     th, td { padding: 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 13px; }
     th { background: #eef3f4; color: #24343b; position: sticky; top: 0; }
     td.body { max-width: 420px; white-space: pre-wrap; direction:rtl; text-align:right; }
+    td.json { min-width: 320px; max-width: 560px; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     .meta { color: var(--muted); font-size: 12px; }
     @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } table { display:block; overflow:auto; } }
   </style>
@@ -78,15 +79,34 @@ function sendHtml(res) {
     <table>
       <thead>
         <tr>
+          <th>Update ID</th>
+          <th>Message ID</th>
           <th>Group ID</th>
           <th>Group Name</th>
+          <th>Group Username</th>
+          <th>Group Type</th>
           <th>Topic</th>
+          <th>Topic ID</th>
+          <th>Is Topic</th>
           <th>Username</th>
           <th>Sender ID</th>
+          <th>Sender First Name</th>
+          <th>Sender Last Name</th>
+          <th>Sender Is Bot</th>
+          <th>Sender Chat ID</th>
+          <th>Sender Chat Title</th>
           <th>Message</th>
+          <th>Caption</th>
           <th>Date (Tehran)</th>
           <th>Time (Tehran)</th>
           <th>Type</th>
+          <th>Edited At</th>
+          <th>Reply To Message ID</th>
+          <th>Media File ID</th>
+          <th>Media Group ID</th>
+          <th>Forward Origin</th>
+          <th>Entities</th>
+          <th>Raw Telegram Payload</th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
@@ -103,6 +123,13 @@ function sendHtml(res) {
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
     }
+    function jsonText(value) {
+      if (value == null) return "";
+      if (typeof value === "string") {
+        try { return JSON.stringify(JSON.parse(value), null, 2); } catch { return value; }
+      }
+      return JSON.stringify(value, null, 2);
+    }
     async function load() {
       const params = new URLSearchParams();
       if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
@@ -113,15 +140,34 @@ function sendHtml(res) {
       const data = await res.json();
       rowsEl.innerHTML = data.messages.map(row => \`
         <tr>
+          <td>\${esc(row.update_id)}</td>
+          <td>\${esc(row.message_id)}</td>
           <td>\${esc(row.chat_id)}</td>
           <td>\${esc(row.chat_title)}</td>
+          <td>\${esc(row.chat_username)}</td>
+          <td>\${esc(row.chat_type)}</td>
           <td>\${esc(row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : ""))}</td>
+          <td>\${esc(row.message_thread_id)}</td>
+          <td>\${esc(row.is_topic_message)}</td>
           <td>\${esc(row.sender_username)}</td>
           <td>\${esc(row.sender_id)}</td>
+          <td>\${esc(row.sender_first_name)}</td>
+          <td>\${esc(row.sender_last_name)}</td>
+          <td>\${esc(row.sender_is_bot)}</td>
+          <td>\${esc(row.sender_chat_id)}</td>
+          <td>\${esc(row.sender_chat_title)}</td>
           <td class="body">\${esc(row.body || row.caption || "[" + row.message_type + "]")}</td>
+          <td class="body">\${esc(row.caption)}</td>
           <td>\${esc(row.sent_date)}</td>
           <td>\${esc(row.sent_time)}</td>
           <td>\${esc(row.message_type)}</td>
+          <td>\${esc(row.edited_at_utc)}</td>
+          <td>\${esc(row.reply_to_message_id)}</td>
+          <td>\${esc(row.media_file_id)}</td>
+          <td>\${esc(row.media_group_id)}</td>
+          <td class="json">\${esc(jsonText(row.forward_origin_json))}</td>
+          <td class="json">\${esc(jsonText(row.entities_json))}</td>
+          <td class="json">\${esc(jsonText(row.raw_payload_json))}</td>
         </tr>\`).join("");
       statusEl.textContent = data.messages.length + " پیام";
     }
@@ -162,8 +208,12 @@ async function handle(req, res) {
     }
     const where = clauses.length ? `where ${clauses.join(" and ")}` : "";
     const messages = await query(`
-      select update_id, message_id, chat_id, chat_title, message_thread_id, topic_name, sender_username, sender_id,
-             body, caption, message_type,
+      select update_id, message_id, chat_id, chat_title, chat_username, chat_type,
+             message_thread_id, is_topic_message, topic_name,
+             sender_username, sender_id, sender_first_name, sender_last_name, sender_is_bot,
+             sender_chat_id, sender_chat_title,
+             body, caption, message_type, edited_at_utc, reply_to_message_id,
+             media_file_id, media_group_id, forward_origin_json, entities_json, raw_payload_json,
              to_char(sent_at_utc at time zone 'Asia/Tehran', 'YYYY-MM-DD') as sent_date,
              to_char(sent_at_utc at time zone 'Asia/Tehran', 'HH24:MI:SS') as sent_time
       from public.telegram_messages
