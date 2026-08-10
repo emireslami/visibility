@@ -849,7 +849,7 @@ function sendHtml(res) {
           const count = Number(day.groups?.[group] || 0);
           if (!count) return "";
           const segmentHeight = Math.max(2, (count / total) * height);
-          return \`<div class="bar-segment" style="height:\${segmentHeight}px;background:\${colorByGroup.get(group)}" title="\${esc(group)}: \${count} پیام در \${esc(day.date)}"></div>\`;
+          return \`<div class="bar-segment" style="height:\${segmentHeight}px;background:\${colorByGroup.get(group)}" title="\${esc(group)}: \${count}"></div>\`;
         }).join("");
         return \`<div class="day-bar">
           <div class="bar-total">\${total}</div>
