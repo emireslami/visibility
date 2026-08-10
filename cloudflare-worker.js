@@ -1487,7 +1487,7 @@ const HTML = `<!doctype html>
 
 const AUTH_FONT_FACE = HTML.match(/@font-face\s*\{[^}]+\}/)?.[0] || "";
 
-function loginHtml(error = "", email = "") {
+function loginHtml(error = "", email = "", message = "") {
   return `<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
@@ -1512,13 +1512,17 @@ function loginHtml(error = "", email = "") {
     .password-wrap input { padding-left:48px; direction:ltr; }
     .password-toggle { position:absolute; left:6px; top:6px; width:34px; height:28px; margin:0; padding:0; display:grid; place-items:center; border:1px solid var(--line); background:#fff; color:var(--muted); }
     .password-toggle svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; }
+    .auth-link { display:block; margin-top:12px; color:var(--accent); font-size:12px; text-align:center; text-decoration:none; }
+    .auth-link:hover { text-decoration:underline; }
     .error { min-height:22px; margin-bottom:10px; color:#b42318; font-size:12px; line-height:1.7; }
+    .message { min-height:22px; margin-bottom:10px; color:#087f5b; font-size:12px; line-height:1.7; }
   </style>
 </head>
 <body>
   <form method="post" action="/login">
     <h1>Visibility</h1>
     <div class="error">${htmlEscape(error)}</div>
+    <div class="message">${htmlEscape(message)}</div>
     <label for="email">ایمیل</label>
     <input id="email" name="email" type="email" autocomplete="username" placeholder="anything@toman.ir" value="${htmlEscape(email)}" autofocus />
     <label for="password">پسورد</label>
@@ -1529,6 +1533,7 @@ function loginHtml(error = "", email = "") {
       </button>
     </div>
     <button type="submit">ورود</button>
+    <a class="auth-link" href="/forgot-password">فراموشی رمز عبور؟</a>
   </form>
   <script>
     document.querySelectorAll("[data-toggle-password]").forEach((button) => {
@@ -1597,6 +1602,122 @@ function passwordPageHtml(error = "") {
     <button type="submit">ذخیره پسورد</button>
   </form>
   <script>
+    document.querySelectorAll("[data-toggle-password]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const input = document.getElementById(button.dataset.togglePassword);
+        input.type = input.type === "password" ? "text" : "password";
+      });
+    });
+  </script>
+</body>
+</html>`;
+}
+
+function forgotPasswordHtml({ error = "", email = "", message = "" } = {}) {
+  return `<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Forgot Password</title>
+  <style>
+    ${AUTH_FONT_FACE}
+    :root { --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; --error:#b42318; --ok:#087f5b; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; font-family:"IRANSans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); }
+    form { width:min(420px, calc(100vw - 32px)); background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:22px; }
+    h1 { margin:0 0 8px; font-size:20px; }
+    p { margin:0 0 16px; color:var(--muted); font-size:13px; line-height:1.8; }
+    label { display:block; margin:10px 0 8px; color:var(--muted); font-size:13px; }
+    input, button { width:100%; height:40px; border-radius:6px; font:inherit; }
+    input { border:1px solid var(--line); padding:0 10px; direction:ltr; }
+    button { margin-top:14px; border:0; background:var(--accent); color:#fff; cursor:pointer; }
+    .error { min-height:22px; color:var(--error); font-size:12px; line-height:1.7; }
+    .message { min-height:22px; color:var(--ok); font-size:12px; line-height:1.7; }
+    .auth-link { display:block; margin-top:12px; color:var(--accent); font-size:12px; text-align:center; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <form method="post" action="/forgot-password">
+    <h1>فراموشی رمز عبور</h1>
+    <p>ایمیل سازمانی خود را وارد کنید. اگر دسترسی فعال داشته باشید، ایمیل بازیابی Supabase برایتان ارسال می‌شود.</p>
+    <div class="error">${htmlEscape(error)}</div>
+    <div class="message">${htmlEscape(message)}</div>
+    <label for="email">ایمیل</label>
+    <input id="email" name="email" type="email" autocomplete="username" placeholder="anything@toman.ir" value="${htmlEscape(email)}" autofocus />
+    <button type="submit">ارسال ایمیل بازیابی</button>
+    <a class="auth-link" href="/login">بازگشت به ورود</a>
+  </form>
+</body>
+</html>`;
+}
+
+function recoveryPasswordHtml(error = "", accessToken = "") {
+  return `<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reset Password</title>
+  <style>
+    ${AUTH_FONT_FACE}
+    :root { --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; --error:#b42318; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; font-family:"IRANSans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); }
+    form { width:min(420px, calc(100vw - 32px)); background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:22px; }
+    h1 { margin:0 0 8px; font-size:20px; }
+    p { margin:0 0 16px; color:var(--muted); font-size:13px; line-height:1.8; }
+    label { display:block; margin:10px 0 8px; color:var(--muted); font-size:13px; }
+    input, button { width:100%; height:40px; border-radius:6px; font:inherit; }
+    input { border:1px solid var(--line); padding:0 10px; direction:ltr; }
+    button { margin-top:14px; border:0; background:var(--accent); color:#fff; cursor:pointer; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    .password-wrap { position:relative; }
+    .password-wrap input { padding-left:48px; }
+    .password-toggle { position:absolute; left:6px; top:6px; width:34px; height:28px; margin:0; padding:0; display:grid; place-items:center; border:1px solid var(--line); background:#fff; color:var(--muted); }
+    .password-toggle svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; }
+    .error { min-height:22px; color:var(--error); font-size:12px; line-height:1.7; }
+    .auth-link { display:block; margin-top:12px; color:var(--accent); font-size:12px; text-align:center; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <form method="post" action="/recovery" id="recoveryForm">
+    <h1>ثبت رمز عبور جدید</h1>
+    <p>پسورد جدید باید حداقل ۱۰ کاراکتر و شامل حروف بزرگ، حروف کوچک، عدد و علامت باشد.</p>
+    <div class="error" id="pageError">${htmlEscape(error)}</div>
+    <input id="access_token" name="access_token" type="hidden" value="${htmlEscape(accessToken)}" />
+    <label for="new_password">پسورد جدید</label>
+    <div class="password-wrap">
+      <input id="new_password" name="new_password" type="password" autocomplete="new-password" />
+      <button class="password-toggle" type="button" data-toggle-password="new_password" aria-label="نمایش پسورد جدید">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+    <label for="new_password_confirm">تکرار پسورد جدید</label>
+    <div class="password-wrap">
+      <input id="new_password_confirm" name="new_password_confirm" type="password" autocomplete="new-password" />
+      <button class="password-toggle" type="button" data-toggle-password="new_password_confirm" aria-label="نمایش تکرار پسورد جدید">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+    <button id="submitButton" type="submit">ذخیره رمز جدید</button>
+    <a class="auth-link" href="/login">بازگشت به ورود</a>
+  </form>
+  <script>
+    const params = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : location.search.slice(1));
+    const hiddenToken = document.getElementById("access_token");
+    const token = params.get("access_token") || hiddenToken.value;
+    const error = params.get("error_description") || params.get("error");
+    const pageError = document.getElementById("pageError");
+    const submitButton = document.getElementById("submitButton");
+    if (error) pageError.textContent = decodeURIComponent(error);
+    if (token) {
+      hiddenToken.value = token;
+      history.replaceState(null, "", "/recovery");
+    } else if (!pageError.textContent) {
+      pageError.textContent = "لینک بازیابی نامعتبر یا منقضی شده است.";
+      submitButton.disabled = true;
+    }
     document.querySelectorAll("[data-toggle-password]").forEach((button) => {
       button.addEventListener("click", () => {
         const input = document.getElementById(button.dataset.togglePassword);
@@ -1780,7 +1901,10 @@ async function dashboardAuthorized(request, env) {
 }
 
 async function handleLogin(request, env) {
-  if (request.method !== "POST") return text(loginHtml(), 200, "text/html; charset=utf-8");
+  if (request.method !== "POST") {
+    const recovered = new URL(request.url).searchParams.get("recovered") === "1";
+    return text(loginHtml("", "", recovered ? "پسورد جدید ذخیره شد. حالا وارد شوید." : ""), 200, "text/html; charset=utf-8");
+  }
   const form = await request.formData();
   const email = normalizeEmail(form.get("email"));
   const password = String(form.get("password") || "");
@@ -1814,6 +1938,27 @@ function supabaseHeaders(env, prefer) {
   };
   if (prefer) headers.prefer = prefer;
   return headers;
+}
+
+function supabasePublishableKey(env) {
+  return env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY || "";
+}
+
+function supabaseAuthPublicHeaders(env) {
+  const key = supabasePublishableKey(env);
+  return {
+    apikey: key,
+    authorization: `Bearer ${key}`,
+    "content-type": "application/json",
+  };
+}
+
+function supabaseAuthAdminHeaders(env) {
+  return {
+    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+    authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    "content-type": "application/json",
+  };
 }
 
 async function readSupabaseJson(response) {
@@ -1950,6 +2095,128 @@ async function handleSetPassword(request, env, user) {
       "set-cookie": clearSessionCookie(),
     },
   });
+}
+
+async function ensureSupabaseAuthMirrorUser(env, email) {
+  const response = await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users`, {
+    method: "POST",
+    headers: supabaseAuthAdminHeaders(env),
+    body: JSON.stringify({
+      email,
+      password: `${randomHex(24)}Aa1!`,
+      email_confirm: true,
+      user_metadata: { visibility_access: true },
+    }),
+  });
+  if (response.ok) return;
+  const body = await readSupabaseJson(response);
+  const message = String(body?.msg || body?.message || body?.error_description || "");
+  if (response.status === 400 || response.status === 422) {
+    if (/already|registered|exists|duplicate/i.test(message)) return;
+  }
+  throw new Error(message || "ساخت mirror کاربر در Supabase Auth انجام نشد");
+}
+
+async function sendSupabaseRecoveryEmail(env, email, redirectTo) {
+  const key = supabasePublishableKey(env);
+  if (!key) throw new Error("SUPABASE_PUBLISHABLE_KEY روی Worker تنظیم نشده است");
+  const url = new URL(`${env.SUPABASE_URL}/auth/v1/recover`);
+  url.searchParams.set("redirect_to", redirectTo);
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: supabaseAuthPublicHeaders(env),
+    body: JSON.stringify({ email }),
+  });
+  if (response.ok) return;
+  const body = await readSupabaseJson(response);
+  const message = body?.msg || body?.message || body?.error_description || "ارسال ایمیل بازیابی انجام نشد";
+  throw new Error(message);
+}
+
+async function getSupabaseRecoveryUser(env, accessToken) {
+  const key = supabasePublishableKey(env);
+  if (!key) throw new Error("SUPABASE_PUBLISHABLE_KEY روی Worker تنظیم نشده است");
+  const response = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      apikey: key,
+      authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const body = await readSupabaseJson(response);
+  if (!response.ok || !body?.email) {
+    throw new Error(body?.msg || body?.message || "لینک بازیابی نامعتبر یا منقضی شده است");
+  }
+  return body;
+}
+
+async function handleForgotPassword(request, env) {
+  if (request.method !== "POST") return text(forgotPasswordHtml(), 200, "text/html; charset=utf-8");
+  const form = await request.formData();
+  const email = normalizeEmail(form.get("email"));
+  if (!validAccessEmail(email)) {
+    return text(forgotPasswordHtml({ error: "ایمیل باید به شکل anything@toman.ir باشد.", email }), 400, "text/html; charset=utf-8");
+  }
+  const user = await getAccessUserByEmail(env, email);
+  if (!user || (!user.is_active && !isAccessOwnerEmail(user.email))) {
+    return text(forgotPasswordHtml({ error: "این ایمیل دسترسی فعال ندارد.", email }), 403, "text/html; charset=utf-8");
+  }
+  try {
+    await ensureSupabaseAuthMirrorUser(env, email);
+    await sendSupabaseRecoveryEmail(env, email, `${new URL(request.url).origin}/recovery`);
+    return text(forgotPasswordHtml({
+      email,
+      message: "ایمیل بازیابی ارسال شد. لطفاً inbox یا spam را بررسی کنید.",
+    }), 200, "text/html; charset=utf-8");
+  } catch (error) {
+    return text(forgotPasswordHtml({ error: error.message || "ارسال ایمیل بازیابی انجام نشد", email }), 500, "text/html; charset=utf-8");
+  }
+}
+
+async function handleRecoveryPassword(request, env) {
+  if (request.method !== "POST") return text(recoveryPasswordHtml(), 200, "text/html; charset=utf-8");
+  const form = await request.formData();
+  const accessToken = String(form.get("access_token") || "");
+  const newPassword = String(form.get("new_password") || "");
+  const newPasswordConfirm = String(form.get("new_password_confirm") || "");
+  if (!accessToken) return text(recoveryPasswordHtml("لینک بازیابی نامعتبر یا منقضی شده است."), 400, "text/html; charset=utf-8");
+  if (newPassword !== newPasswordConfirm) {
+    return text(recoveryPasswordHtml("پسورد جدید و تکرار آن یکسان نیستند.", accessToken), 400, "text/html; charset=utf-8");
+  }
+  if (!strongPassword(newPassword)) {
+    return text(recoveryPasswordHtml("پسورد باید حداقل ۱۰ کاراکتر و شامل حروف بزرگ، حروف کوچک، عدد و علامت باشد.", accessToken), 400, "text/html; charset=utf-8");
+  }
+  try {
+    const recoveryUser = await getSupabaseRecoveryUser(env, accessToken);
+    const email = normalizeEmail(recoveryUser.email);
+    const accessUser = await getAccessUserByEmail(env, email);
+    if (!accessUser || (!accessUser.is_active && !isAccessOwnerEmail(accessUser.email))) {
+      return text(recoveryPasswordHtml("این ایمیل دسترسی فعال ندارد.", accessToken), 403, "text/html; charset=utf-8");
+    }
+    const salt = randomHex();
+    await patchAccessUser(env, email, {
+      password_salt: salt,
+      password_hash: await hashPassword(newPassword, salt),
+      must_change_password: false,
+      updated_at_utc: new Date().toISOString(),
+    });
+    await insertAccessAuditLog(env, {
+      actorEmail: email,
+      targetEmail: email,
+      action: "password_recovery",
+      oldValues: { must_change_password: accessUser.must_change_password },
+      newValues: { must_change_password: false },
+      metadata: { provider: "supabase_auth_recovery" },
+    });
+    return new Response(null, {
+      status: 303,
+      headers: {
+        location: "/login?recovered=1",
+        "set-cookie": clearSessionCookie(),
+      },
+    });
+  } catch (error) {
+    return text(recoveryPasswordHtml(error.message || "تغییر پسورد انجام نشد", accessToken), 400, "text/html; charset=utf-8");
+  }
 }
 
 async function fetchCurrentUser(authUser) {
@@ -2933,6 +3200,8 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/telegram-webhook") return handleTelegramWebhook(request, env);
     if (url.pathname === "/login") return handleLogin(request, env);
+    if (url.pathname === "/forgot-password") return handleForgotPassword(request, env);
+    if (url.pathname === "/recovery") return handleRecoveryPassword(request, env);
     if (url.pathname === "/logout") {
       return new Response(null, {
         status: 303,
