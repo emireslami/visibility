@@ -483,25 +483,40 @@ function sendHtml(res) {
           latestByMessage.set(key, row);
         }
       }
-      const repliesByParent = new Map();
-      for (const row of latestByMessage.values()) {
-        if (!row.reply_to_message_id || !row.chat_id) continue;
-        if (isTopicRootReply(row)) continue;
-        const parentKey = row.chat_id + ":" + row.reply_to_message_id;
-        const list = repliesByParent.get(parentKey) || [];
-        list.push(row);
-        repliesByParent.set(parentKey, list);
+      function parentKeyFor(row) {
+        if (!row.reply_to_message_id || !row.chat_id || isTopicRootReply(row)) return null;
+        return row.chat_id + ":" + row.reply_to_message_id;
       }
+      function rootKeyFor(row) {
+        let current = row;
+        const seen = new Set();
+        while (current) {
+          const currentKey = current.chat_id + ":" + current.message_id;
+          if (seen.has(currentKey)) return currentKey;
+          seen.add(currentKey);
+          const parentKey = parentKeyFor(current);
+          if (!parentKey) return currentKey;
+          const parent = latestByMessage.get(parentKey);
+          if (!parent) return parentKey;
+          current = parent;
+        }
+        return row.chat_id + ":" + row.message_id;
+      }
+      const repliesByRoot = new Map();
       const rootKeys = new Set();
-      for (const [key, row] of latestByMessage.entries()) {
-        if (!row.reply_to_message_id || isTopicRootReply(row) || repliesByParent.has(key)) rootKeys.add(key);
-      }
-      for (const parentKey of repliesByParent.keys()) {
-        if (!latestByMessage.has(parentKey)) rootKeys.add(parentKey);
+      for (const row of latestByMessage.values()) {
+        const rowKey = row.chat_id + ":" + row.message_id;
+        const rootKey = rootKeyFor(row);
+        rootKeys.add(rootKey);
+        if (rootKey !== rowKey) {
+          const list = repliesByRoot.get(rootKey) || [];
+          list.push(row);
+          repliesByRoot.set(rootKey, list);
+        }
       }
       return [...rootKeys].map((key) => {
         const root = latestByMessage.get(key) || { missing: true, chat_id: key.split(":")[0], message_id: key.split(":")[1] };
-        const replies = (repliesByParent.get(key) || []).sort((a, b) => Number(a.message_id || 0) - Number(b.message_id || 0));
+        const replies = (repliesByRoot.get(key) || []).sort((a, b) => Number(a.message_id || 0) - Number(b.message_id || 0));
         return { root, replies };
       }).sort((a, b) => {
         const aTime = Date.parse(a.root.sent_at_utc || a.replies[0]?.sent_at_utc || 0);
