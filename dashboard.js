@@ -48,6 +48,11 @@ function topicNameFromPayload(payload) {
   return message.forum_topic_created?.name || message.forum_topic_edited?.name || null;
 }
 
+function realTopicName(value) {
+  const topicName = String(value || "").trim();
+  return topicName && !/^#\d+$/.test(topicName) ? topicName : "";
+}
+
 function withEditHistory(messages, historyRows = messages) {
   const byMessage = new Map();
   for (const row of historyRows) {
@@ -827,7 +832,7 @@ async function handle(req, res) {
       select
         c.chat_id,
         c.chat_title,
-        string_agg(distinct coalesce(t.topic_name, '#' || t.message_thread_id::text), ', ') as topic_names,
+        string_agg(distinct t.topic_name, ', ') filter (where t.topic_name is not null and t.topic_name <> '' and t.topic_name !~ '^#[0-9]+$') as topic_names,
         c.chat_username,
         c.chat_type,
         count(distinct m.id)::bigint as message_count,
@@ -865,11 +870,7 @@ async function handle(req, res) {
       select t.chat_id, c.chat_title, coalesce(t.topic_name, '#' || t.message_thread_id::text) as topic_name, t.message_thread_id
       from public.telegram_topics t
       join public.telegram_chats c on c.chat_id = t.chat_id
-      where c.chat_title is not null
-      union
-      select chat_id, chat_title, coalesce(topic_name, '#' || message_thread_id::text) as topic_name, message_thread_id
-      from public.telegram_messages
-      where chat_title is not null and message_thread_id is not null
+      where c.chat_title is not null and t.topic_name is not null and t.topic_name <> '' and t.topic_name !~ '^#[0-9]+$'
       order by chat_title asc, topic_name asc
       limit 10000
     `);
@@ -895,7 +896,7 @@ async function handle(req, res) {
     }
     if (topic) {
       params.push(`%${topic}%`);
-      clauses.push(`coalesce(m.topic_name, t.topic_name, '#' || m.message_thread_id::text) ilike $${params.length}`);
+      clauses.push(`coalesce(m.topic_name, t.topic_name) ilike $${params.length}`);
     }
     if (chatId) {
       params.push(chatId);

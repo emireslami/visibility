@@ -890,6 +890,11 @@ function topicNameFromPayload(payload) {
   return message.forum_topic_created?.name || message.forum_topic_edited?.name || null;
 }
 
+function realTopicName(value) {
+  const topicName = String(value || "").trim();
+  return topicName && !/^#\d+$/.test(topicName) ? topicName : "";
+}
+
 function reactionType(reaction) {
   return reaction?.type || "unknown";
 }
@@ -1440,7 +1445,7 @@ async function fetchGroups(request, env) {
   }
   const topicsByChat = new Map();
   for (const topic of await topicsResponse.json()) {
-    const topicName = topic.topic_name || (topic.message_thread_id ? "#" + topic.message_thread_id : "");
+    const topicName = realTopicName(topic.topic_name);
     if (!topic.chat_id || !topicName) continue;
     const list = topicsByChat.get(String(topic.chat_id)) || [];
     if (!list.includes(topicName)) list.push(topicName);
@@ -1497,35 +1502,16 @@ async function fetchThreadFilterOptions(request, env) {
   if (!topicsResponse.ok) {
     return json({ error: "Supabase topics request failed", detail: await topicsResponse.text() }, 500);
   }
-  const messageTopicsParams = new URLSearchParams();
-  messageTopicsParams.set("select", "chat_id,chat_title,topic_name,message_thread_id");
-  messageTopicsParams.set("message_thread_id", "not.is.null");
-  messageTopicsParams.set("limit", "10000");
-  const messageTopicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${messageTopicsParams}`, { headers });
-  if (!messageTopicsResponse.ok) {
-    return json({ error: "Supabase message topics request failed", detail: await messageTopicsResponse.text() }, 500);
-  }
-
   const groups = (await groupsResponse.json()).filter((group) => group.chat_title);
   const groupTitleById = new Map(groups.map((group) => [String(group.chat_id), group.chat_title]));
   const topicsByKey = new Map();
   for (const topic of await topicsResponse.json()) {
-    const topicName = topic.topic_name || (topic.message_thread_id ? "#" + topic.message_thread_id : "");
+    const topicName = realTopicName(topic.topic_name);
     const chatTitle = groupTitleById.get(String(topic.chat_id)) || "";
     if (!chatTitle || !topicName) continue;
     topicsByKey.set(`${topic.chat_id}:${topic.message_thread_id || topicName}`, {
       chat_id: topic.chat_id,
       chat_title: chatTitle,
-      topic_name: topicName,
-      message_thread_id: topic.message_thread_id,
-    });
-  }
-  for (const topic of await messageTopicsResponse.json()) {
-    const topicName = topic.topic_name || (topic.message_thread_id ? "#" + topic.message_thread_id : "");
-    if (!topic.chat_title || !topicName) continue;
-    topicsByKey.set(`${topic.chat_id}:${topic.message_thread_id || topicName}`, {
-      chat_id: topic.chat_id,
-      chat_title: topic.chat_title,
       topic_name: topicName,
       message_thread_id: topic.message_thread_id,
     });
