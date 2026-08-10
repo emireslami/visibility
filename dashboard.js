@@ -129,8 +129,8 @@ function sendHtml(res) {
     main { padding: 18px 24px; }
     .page[hidden] { display:none; }
     .filters { display:grid; grid-template-columns: 1fr 170px 170px 170px 170px 110px; gap:10px; margin-bottom:14px; }
-    .thread-filters { grid-template-columns: minmax(220px, 1fr) 180px 110px; max-width:980px; margin:0 auto 14px; }
-    input, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
+    .thread-filters { grid-template-columns: minmax(220px, 1fr) 120px 120px 120px 110px; max-width:980px; margin:0 auto 14px; }
+    input, select, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
     table { width: 100%; table-layout: fixed; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:rtl; }
     th, td { padding: 6px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; font-size: 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -247,8 +247,10 @@ function sendHtml(res) {
     </section>
     <section class="page" id="threadsPage" hidden>
       <section class="filters thread-filters">
-        <input id="threadGroup" placeholder="Group Name" />
-        <input id="threadJalaliDate" placeholder="تاریخ شمسی، مثلا 1405-05-19" />
+        <select id="threadGroup"><option value="">همه گروه‌ها</option></select>
+        <select id="threadYear"><option value="">سال</option></select>
+        <select id="threadMonth"><option value="">ماه</option></select>
+        <select id="threadDay"><option value="">روز</option></select>
         <button id="threadRefresh" type="button">فیلتر</button>
       </section>
       <div class="thread-list" id="threadRows"></div>
@@ -281,7 +283,9 @@ function sendHtml(res) {
     const senderEl = document.getElementById("sender");
     const refreshEl = document.getElementById("refresh");
     const threadGroupEl = document.getElementById("threadGroup");
-    const threadJalaliDateEl = document.getElementById("threadJalaliDate");
+    const threadYearEl = document.getElementById("threadYear");
+    const threadMonthEl = document.getElementById("threadMonth");
+    const threadDayEl = document.getElementById("threadDay");
     const threadRefreshEl = document.getElementById("threadRefresh");
     const modalBackdropEl = document.getElementById("modalBackdrop");
     const modalTitleEl = document.getElementById("modalTitle");
@@ -289,9 +293,45 @@ function sendHtml(res) {
     const modalCloseEl = document.getElementById("modalClose");
     const fullTextByKey = new Map();
     const detailByKey = new Map();
+    let threadFilterOptions = null;
     let currentPage = "messages";
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
+    }
+    function optionHtml(value, label) {
+      return \`<option value="\${esc(value)}">\${esc(label ?? value)}</option>\`;
+    }
+    function setSelectOptions(select, values, placeholder) {
+      const current = select.value;
+      select.innerHTML = optionHtml("", placeholder) + values.map((value) => optionHtml(value, value)).join("");
+      select.value = values.includes(current) ? current : "";
+    }
+    function updateThreadDateOptions() {
+      const dates = threadFilterOptions?.jalali_dates || [];
+      const years = [...new Set(dates.map((date) => date.split("-")[0]))].sort().reverse();
+      setSelectOptions(threadYearEl, years, "سال");
+      const months = [...new Set(dates
+        .filter((date) => !threadYearEl.value || date.startsWith(threadYearEl.value + "-"))
+        .map((date) => date.split("-")[1]))].sort();
+      setSelectOptions(threadMonthEl, months, "ماه");
+      const days = [...new Set(dates
+        .filter((date) => (!threadYearEl.value || date.startsWith(threadYearEl.value + "-")) && (!threadMonthEl.value || date.split("-")[1] === threadMonthEl.value))
+        .map((date) => date.split("-")[2]))].sort();
+      setSelectOptions(threadDayEl, days, "روز");
+    }
+    function selectedThreadJalaliDate() {
+      if (!threadYearEl.value || !threadMonthEl.value || !threadDayEl.value) return "";
+      return \`\${threadYearEl.value}-\${threadMonthEl.value}-\${threadDayEl.value}\`;
+    }
+    async function loadThreadFilterOptions() {
+      if (threadFilterOptions) return;
+      const res = await fetch("/api/thread-filter-options");
+      const data = await res.json();
+      if (!res.ok) return;
+      threadFilterOptions = data;
+      const groups = (data.groups || []).map((group) => group.chat_title).filter(Boolean);
+      setSelectOptions(threadGroupEl, groups, "همه گروه‌ها");
+      updateThreadDateOptions();
     }
     function linkify(value) {
       const escaped = esc(value);
@@ -523,9 +563,11 @@ function sendHtml(res) {
       statusEl.textContent = data.groups.length + " گروه";
     }
     async function loadThreads() {
+      await loadThreadFilterOptions();
       const params = new URLSearchParams();
       if (threadGroupEl.value.trim()) params.set("group", threadGroupEl.value.trim());
-      if (threadJalaliDateEl.value.trim()) params.set("jalali_date", threadJalaliDateEl.value.trim());
+      const jalaliDate = selectedThreadJalaliDate();
+      if (jalaliDate) params.set("jalali_date", jalaliDate);
       const res = await fetch("/api/messages?" + params);
       const data = await res.json();
       if (!res.ok || !Array.isArray(data.messages)) {
@@ -560,7 +602,7 @@ function sendHtml(res) {
       groupsNavEl.classList.toggle("active", isGroups);
       threadsNavEl.classList.toggle("active", isThreads);
       if (isGroups) loadGroups();
-      else if (isThreads) loadThreads();
+      else if (isThreads) loadThreadFilterOptions().then(loadThreads);
       else load();
     }
     rowsEl.addEventListener("click", event => {
@@ -585,7 +627,10 @@ function sendHtml(res) {
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
     [searchEl, groupEl, topicEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
-    [threadGroupEl, threadJalaliDateEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") loadThreads(); }));
+    threadGroupEl.addEventListener("change", loadThreads);
+    threadYearEl.addEventListener("change", () => { updateThreadDateOptions(); loadThreads(); });
+    threadMonthEl.addEventListener("change", () => { updateThreadDateOptions(); loadThreads(); });
+    threadDayEl.addEventListener("change", loadThreads);
     load();
     setInterval(() => { if (currentPage === "groups") loadGroups(); else if (currentPage === "threads") loadThreads(); else load(); }, 5000);
   </script>
@@ -618,6 +663,24 @@ async function handle(req, res) {
       limit 1000
     `);
     return sendJson(res, { groups });
+  }
+  if (url.pathname === "/api/thread-filter-options") {
+    const groups = await query(`
+      select chat_title, message_count, last_seen_at_utc
+      from public.telegram_group_stats
+      where chat_title is not null
+      order by message_count desc, last_seen_at_utc desc
+      limit 1000
+    `);
+    const dateRows = await query(`
+      select sent_at_utc
+      from public.telegram_messages
+      where sent_at_utc is not null
+      order by sent_at_utc desc
+      limit 10000
+    `);
+    const jalaliDates = [...new Set(dateRows.map((row) => jalaliDate(row.sent_at_utc)).filter(Boolean))].sort().reverse();
+    return sendJson(res, { groups, jalali_dates: jalaliDates });
   }
   if (url.pathname === "/api/messages") {
     const clauses = [];
