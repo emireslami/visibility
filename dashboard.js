@@ -266,8 +266,8 @@ function sendHtml(res) {
     <section class="page" id="messagesPage">
       <section class="filters">
         <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
-        <input id="group" placeholder="Group Name" />
-        <input id="topic" placeholder="Topic Name" />
+        <select id="group"><option value="">همه گروه‌ها</option></select>
+        <select id="topic"><option value="">همه تاپیک‌ها</option></select>
         <input id="chat" placeholder="Chat ID" />
         <input id="sender" placeholder="Sender ID" />
         <button id="refresh">به‌روزرسانی</button>
@@ -406,6 +406,13 @@ function sendHtml(res) {
         .filter(Boolean);
       setSelectOptions(threadTopicEl, [...new Set(topics)].sort(), "همه تاپیک‌ها");
     }
+    function updateMessageTopicOptions() {
+      const topics = (threadFilterOptions?.topics || [])
+        .filter((topic) => !groupEl.value || topic.chat_title === groupEl.value)
+        .map((topic) => topic.topic_name)
+        .filter(Boolean);
+      setSelectOptions(topicEl, [...new Set(topics)].sort(), "همه تاپیک‌ها");
+    }
     function selectedThreadJalaliDate() {
       if (!threadYearEl.value || !threadMonthEl.value || !threadDayEl.value) return "";
       return \`\${threadYearEl.value}-\${threadMonthEl.value}-\${threadDayEl.value}\`;
@@ -418,7 +425,9 @@ function sendHtml(res) {
       threadFilterOptions = data;
       const groups = (data.groups || []).map((group) => group.chat_title).filter(Boolean);
       setSelectOptions(threadGroupEl, groups, "همه گروه‌ها");
+      setSelectOptions(groupEl, groups, "همه گروه‌ها");
       updateThreadTopicOptions();
+      updateMessageTopicOptions();
       updateThreadDateOptions();
     }
     function linkify(value) {
@@ -693,6 +702,7 @@ function sendHtml(res) {
       modalBodyEl.innerHTML = "";
     }
     async function load() {
+      await loadThreadFilterOptions();
       const params = new URLSearchParams();
       if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
       if (groupEl.value.trim()) params.set("group", groupEl.value.trim());
@@ -781,7 +791,7 @@ function sendHtml(res) {
       threadsNavEl.classList.toggle("active", isThreads);
       if (isGroups) loadGroups();
       else if (isThreads) loadThreadFilterOptions().then(loadThreads);
-      else load();
+      else loadThreadFilterOptions().then(load);
     }
     rowsEl.addEventListener("click", event => {
       const button = event.target.closest("[data-full-key]");
@@ -809,13 +819,15 @@ function sendHtml(res) {
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
-    [searchEl, groupEl, topicEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
+    [searchEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
+    groupEl.addEventListener("change", () => { updateMessageTopicOptions(); load(); });
+    topicEl.addEventListener("change", load);
     threadGroupEl.addEventListener("change", () => { updateThreadTopicOptions(); loadThreads(); });
     threadTopicEl.addEventListener("change", loadThreads);
     threadYearEl.addEventListener("change", () => { updateThreadDateOptions(); loadThreads(); });
     threadMonthEl.addEventListener("change", () => { updateThreadDateOptions(); loadThreads(); });
     threadDayEl.addEventListener("change", loadThreads);
-    load();
+    loadThreadFilterOptions().then(load);
     setInterval(() => { if (currentPage === "groups") loadGroups(); else if (currentPage === "threads") loadThreads(); else load(); }, 5000);
   </script>
 </body>
