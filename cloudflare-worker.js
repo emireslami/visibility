@@ -25,7 +25,8 @@ const HTML = `<!doctype html>
     td.body { min-width: 260px; max-width: 360px; direction:rtl; text-align:right; }
     .clip { display:block; max-width: 320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .more { height: 28px; margin-top: 6px; padding: 0 9px; font-size: 12px; }
-    td.json { min-width: 320px; max-width: 560px; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    td.json { min-width: 260px; max-width: 360px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    td.json .clip { direction:ltr; text-align:left; }
     .meta { color: var(--muted); font-size: 12px; }
     .modal-backdrop { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(23,32,38,.42); z-index:20; }
     .modal-backdrop.open { display:flex; }
@@ -217,9 +218,9 @@ const HTML = `<!doctype html>
           <td>\${esc(row.reply_to_message_id)}</td>
           <td>\${esc(row.media_file_id)}</td>
           <td>\${esc(row.media_group_id)}</td>
-          <td class="json">\${esc(jsonText(row.forward_origin_json))}</td>
-          <td class="json">\${esc(jsonText(row.entities_json))}</td>
-          <td class="json">\${esc(jsonText(row.raw_payload_json))}</td>
+          <td class="json">\${textCell(jsonText(row.forward_origin_json), "forward-" + index)}</td>
+          <td class="json">\${textCell(jsonText(row.entities_json), "entities-" + index)}</td>
+          <td class="json">\${textCell(jsonText(row.raw_payload_json), "raw-" + index)}</td>
         </tr>\`).join("");
       statusEl.textContent = data.messages.length + " پیام";
     }
