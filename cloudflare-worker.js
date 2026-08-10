@@ -128,13 +128,14 @@ const HTML = `<!doctype html>
     .access-section[hidden] { display:none; }
     .access-form { display:grid; grid-template-columns:minmax(220px, 1fr) 120px; gap:10px; margin:14px 0; }
     .access-message { min-height:24px; color:var(--muted); font-size:12px; }
-    .access-list { display:grid; gap:8px; margin-top:12px; }
-    .access-row { display:grid; grid-template-columns:minmax(180px, 1fr) minmax(260px, 1.4fr) auto; align-items:center; gap:12px; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; direction:ltr; }
-    .access-email { font-weight:700; }
-    .access-state { color:var(--muted); font-size:12px; }
-    .access-actions { display:flex; align-items:center; gap:10px; }
+    .access-list { display:grid; gap:10px; margin-top:12px; }
+    .access-row { display:grid; gap:10px; padding:12px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; direction:ltr; }
+    .access-main { display:grid; grid-template-columns:minmax(220px, 1fr) minmax(180px, auto) auto; align-items:center; gap:12px; }
+    .access-email { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
+    .access-state { min-width:0; color:var(--muted); font-size:12px; line-height:1.6; text-align:right; direction:rtl; }
+    .access-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; }
     .permission-grid { grid-column:1 / -1; display:grid; grid-template-columns:repeat(5, minmax(100px, 1fr)); gap:8px; direction:ltr; }
-    .access-row .permission-grid { grid-column:auto; }
+    .access-row .permission-grid { grid-column:1 / -1; grid-template-columns:repeat(5, minmax(120px, 1fr)); }
     .permission-option { min-height:32px; display:flex; align-items:center; justify-content:flex-start; gap:6px; padding:5px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; color:var(--ink); }
     .permission-option input { width:14px; height:14px; flex:0 0 auto; }
     .revoke-button { height:30px; padding:0 10px; background:#fff; color:#b42318; border-color:#f0b8b2; }
@@ -144,7 +145,7 @@ const HTML = `<!doctype html>
     .access-log-row { display:grid; grid-template-columns:140px 1fr 1fr 130px 86px; gap:10px; align-items:center; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; direction:ltr; }
     .access-log-action { font-weight:800; color:var(--ink); }
     .access-log-meta { color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } }
+    @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } .access-form, .access-main { grid-template-columns:1fr; } .permission-grid, .access-row .permission-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .access-actions { justify-content:flex-start; } }
   </style>
 </head>
 <body>
@@ -1024,14 +1025,16 @@ const HTML = `<!doctype html>
         }
         accessRowsEl.innerHTML = data.users.map((user) => \`
           <div class="access-row">
-            <span class="access-email">\${esc(user.email)}</span>
-            <div class="permission-grid" data-permission-email="\${esc(user.email)}">\${permissionGridHtml(user.permissions, "user-" + user.email)}</div>
-            <span class="access-actions">
+            <div class="access-main">
+              <span class="access-email">\${esc(user.email)}</span>
               <span class="access-state">\${!user.is_active ? "Revoked" : (user.must_change_password ? "نیازمند تغییر پسورد" : "فعال")} · \${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</span>
-              \${user.is_active
-                ? \`<button class="revoke-button" type="button" data-revoke-email="\${esc(user.email)}">Revoke</button>\`
-                : \`<button class="reactivate-button" type="button" data-reactivate-email="\${esc(user.email)}">Re-Active</button>\`}
-            </span>
+              <span class="access-actions">
+                \${user.is_active
+                  ? \`<button class="revoke-button" type="button" data-revoke-email="\${esc(user.email)}">Revoke</button>\`
+                  : \`<button class="reactivate-button" type="button" data-reactivate-email="\${esc(user.email)}">Re-Active</button>\`}
+              </span>
+            </div>
+            <div class="permission-grid" data-permission-email="\${esc(user.email)}">\${permissionGridHtml(user.permissions, "user-" + user.email)}</div>
           </div>\`).join("");
         setStatus(token, data.users.length + " کاربر");
       } catch (error) {
