@@ -75,6 +75,8 @@ function sendHtml(res) {
     th, td { padding: 8px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; font-size: 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     th { background: #eef3f4; color: #24343b; position: sticky; top: 0; }
     td.body { direction:rtl; text-align:right; }
+    .full-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.45; }
+    .message-cell .clip { max-width:100%; }
     .clip { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .more { height: 28px; margin-top: 6px; padding: 0 9px; font-size: 12px; }
     .details-button { height: 30px; padding: 0 10px; font-size: 12px; }
@@ -207,19 +209,19 @@ function sendHtml(res) {
       }
       return JSON.stringify(value, null, 2);
     }
-    function shouldCollapse(value) {
-      return String(value ?? "").length > 90 || String(value ?? "").includes("\\n");
+    function shouldCollapse(value, limit = 90) {
+      return String(value ?? "").length > limit || String(value ?? "").includes("\\n");
     }
-    function shortText(value) {
+    function shortText(value, limit = 90) {
       const normalized = String(value ?? "").replace(/\\s+/g, " ").trim();
-      return normalized.length > 90 ? normalized.slice(0, 90) + "..." : normalized;
+      return normalized.length > limit ? normalized.slice(0, limit) + "..." : normalized;
     }
-    function textCell(value, key) {
+    function textCell(value, key, limit = 90) {
       const text = String(value ?? "");
       if (!text) return "";
       fullTextByKey.set(key, text);
-      const button = shouldCollapse(text) ? \`<button class="more" type="button" data-full-key="\${esc(key)}">مشاهده بیشتر</button>\` : "";
-      return \`<span class="clip">\${esc(shortText(text))}</span>\${button}\`;
+      const button = shouldCollapse(text, limit) ? \`<button class="more" type="button" data-full-key="\${esc(key)}">مشاهده بیشتر</button>\` : "";
+      return \`<span class="clip">\${esc(shortText(text, limit))}</span>\${button}\`;
     }
     function detailValue(value) {
       const text = typeof value === "object" && value !== null ? jsonText(value) : String(value ?? "");
@@ -289,15 +291,15 @@ function sendHtml(res) {
       detailByKey.clear();
       rowsEl.innerHTML = data.messages.map((row, index) => \`
         <tr>
-          <td>\${esc(row.chat_title)}</td>
-          <td>\${esc(row.sender_first_name)}</td>
-          <td>\${esc(row.sender_last_name)}</td>
-          <td>\${esc(row.sender_username)}</td>
-          <td class="body">\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index)}</td>
-          <td>\${esc(row.sent_date)}</td>
+          <td class="full-cell">\${esc(row.chat_title)}</td>
+          <td class="full-cell">\${esc(row.sender_first_name)}</td>
+          <td class="full-cell">\${esc(row.sender_last_name)}</td>
+          <td class="full-cell">\${esc(row.sender_username)}</td>
+          <td class="body message-cell">\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 55)}</td>
+          <td class="full-cell">\${esc(row.sent_date)}</td>
           <td>\${esc(row.sent_jalali_date)}</td>
-          <td>\${esc(row.sent_time)}</td>
-          <td>\${esc(row.edited_at_utc)}</td>
+          <td class="full-cell">\${esc(row.sent_time)}</td>
+          <td class="full-cell">\${esc(row.edited_at_utc)}</td>
           <td>\${esc(row.chat_type)}</td>
           <td>\${esc(row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : ""))}</td>
           <td>\${esc(row.message_thread_id)}</td>
