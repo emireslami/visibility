@@ -74,8 +74,9 @@ const HTML = `<!doctype html>
     .reaction-chip { display:inline-flex; align-items:center; gap:4px; min-height:24px; padding:2px 6px; border:1px solid var(--line); border-radius:999px; background:#f7f8fa; }
     .reaction-emoji { font-size:15px; line-height:1; }
     .reaction-avatar { width:18px; height:18px; border-radius:50%; border:1px solid var(--line); background:#eef3f4; color:#36505a; display:grid; place-items:center; font-size:10px; font-weight:800; object-fit:cover; direction:ltr; }
-    .thread-media { clear:both; width:100%; margin-top:12px; margin-bottom:4px; display:flex; justify-content:flex-end; }
-    .thread-photo { width:min(280px, 100%); aspect-ratio:16/9; max-height:220px; border:1px solid var(--line); border-radius:8px; object-fit:cover; display:block; background:#f7f8fa; }
+    .thread-media { clear:both; width:100%; margin-top:12px; margin-bottom:4px; display:flex; justify-content:flex-end; align-items:flex-start; }
+    .media-open.thread-photo-frame { width:180px; height:180px; max-width:100%; padding:0; border:1px solid var(--line); border-radius:8px; background:#f7f8fa; overflow:hidden; display:grid; place-items:center; cursor:zoom-in; }
+    .thread-photo { width:100%; height:100%; object-fit:contain; display:block; background:#f7f8fa; }
     .thread-file { display:inline-flex; align-items:center; gap:8px; min-height:34px; padding:0 10px; border:1px solid var(--line); border-radius:8px; background:#f7f8fa; color:var(--ink); text-decoration:none; direction:rtl; }
     .media-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
     .media-preview { max-width:260px; max-height:220px; border:1px solid var(--line); border-radius:8px; object-fit:contain; display:block; background:#f7f8fa; }
@@ -165,7 +166,7 @@ const HTML = `<!doctype html>
     .profile-upload { display:grid; gap:8px; }
     .profile-upload input { padding:7px 10px; height:auto; }
     .profile-message { min-height:22px; color:var(--muted); font-size:12px; }
-    @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } .access-form, .access-main { grid-template-columns:1fr; } .permission-grid, .access-row .permission-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .access-actions { justify-content:flex-start; } }
+    @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } .access-form, .access-main { grid-template-columns:1fr; } .permission-grid, .access-row .permission-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .access-actions { justify-content:flex-start; } .media-open.thread-photo-frame { width:148px; height:148px; } }
   </style>
 </head>
 <body>
@@ -852,7 +853,7 @@ const HTML = `<!doctype html>
     }
     function threadMedia(row) {
       if (isPhoto(row)) {
-        return \`<div class="thread-media"><button class="media-open" type="button" data-media-src="\${fileUrl(row)}" data-media-download="\${fileUrl(row, true)}" aria-label="مشاهده عکس"><img class="thread-photo" src="\${fileUrl(row)}" width="280" height="158" alt="" loading="lazy" /></button></div>\`;
+        return \`<div class="thread-media"><button class="media-open thread-photo-frame" type="button" data-media-src="\${fileUrl(row)}" data-media-download="\${fileUrl(row, true)}" aria-label="مشاهده عکس"><img class="thread-photo" src="\${fileUrl(row)}" width="180" height="180" alt="" loading="lazy" /></button></div>\`;
       }
       if (isDownloadableFile(row)) {
         return \`<div class="thread-media"><a class="thread-file" href="\${fileUrl(row, true)}" download><span>فایل</span><strong>\${esc(mediaFileName(row))}</strong></a></div>\`;
