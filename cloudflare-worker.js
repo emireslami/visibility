@@ -222,11 +222,10 @@ const HTML = `<!doctype html>
           <col style="width:7%" />
           <col style="width:7%" />
           <col style="width:7%" />
-          <col style="width:28%" />
+          <col style="width:31%" />
           <col style="width:8%" />
           <col style="width:7%" />
-          <col style="width:9%" />
-          <col style="width:6%" />
+          <col style="width:10%" />
           <col style="width:4%" />
         </colgroup>
         <thead>
@@ -240,7 +239,6 @@ const HTML = `<!doctype html>
             <th>Date (Jalali)</th>
             <th>Time (Tehran)</th>
             <th>Registered At</th>
-            <th>Message ID</th>
             <th>Details</th>
           </tr>
         </thead>
@@ -1121,7 +1119,6 @@ const HTML = `<!doctype html>
             <td>\${esc(row.sent_jalali_date)}</td>
             <td class="full-cell">\${esc(row.sent_time)}</td>
             <td class="full-cell">\${esc(row.registered_tehran_datetime)}</td>
-            <td>\${esc(row.message_id)}</td>
             <td><button class="details-button" type="button" data-detail-key="detail-\${index}">Details</button></td>
           </tr>\`).join("");
         data.messages.forEach((row, index) => detailByKey.set("detail-" + index, detailHtml(row)));
