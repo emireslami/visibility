@@ -125,6 +125,7 @@ function sendHtml(res) {
     main { padding: 18px 24px; }
     .page[hidden] { display:none; }
     .filters { display:grid; grid-template-columns: 1fr 170px 170px 170px 170px 110px; gap:10px; margin-bottom:14px; }
+    .thread-filters { grid-template-columns: minmax(220px, 1fr) 180px 110px; max-width:980px; margin:0 auto 14px; }
     input, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
     table { width: 100%; table-layout: fixed; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:rtl; }
@@ -241,6 +242,11 @@ function sendHtml(res) {
       </table>
     </section>
     <section class="page" id="threadsPage" hidden>
+      <section class="filters thread-filters">
+        <input id="threadGroup" placeholder="Group Name" />
+        <input id="threadJalaliDate" placeholder="تاریخ شمسی، مثلا 1405-05-19" />
+        <button id="threadRefresh" type="button">فیلتر</button>
+      </section>
       <div class="thread-list" id="threadRows"></div>
     </section>
   </main>
@@ -270,6 +276,9 @@ function sendHtml(res) {
     const chatEl = document.getElementById("chat");
     const senderEl = document.getElementById("sender");
     const refreshEl = document.getElementById("refresh");
+    const threadGroupEl = document.getElementById("threadGroup");
+    const threadJalaliDateEl = document.getElementById("threadJalaliDate");
+    const threadRefreshEl = document.getElementById("threadRefresh");
     const modalBackdropEl = document.getElementById("modalBackdrop");
     const modalTitleEl = document.getElementById("modalTitle");
     const modalBodyEl = document.getElementById("modalBody");
@@ -490,7 +499,10 @@ function sendHtml(res) {
       statusEl.textContent = data.groups.length + " گروه";
     }
     async function loadThreads() {
-      const res = await fetch("/api/messages");
+      const params = new URLSearchParams();
+      if (threadGroupEl.value.trim()) params.set("group", threadGroupEl.value.trim());
+      if (threadJalaliDateEl.value.trim()) params.set("jalali_date", threadJalaliDateEl.value.trim());
+      const res = await fetch("/api/messages?" + params);
       const data = await res.json();
       if (!res.ok || !Array.isArray(data.messages)) {
         threadRowsEl.innerHTML = "";
@@ -544,10 +556,12 @@ function sendHtml(res) {
     modalBackdropEl.addEventListener("click", event => { if (event.target === modalBackdropEl) closeModal(); });
     document.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
     refreshEl.addEventListener("click", load);
+    threadRefreshEl.addEventListener("click", loadThreads);
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
     [searchEl, groupEl, topicEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
+    [threadGroupEl, threadJalaliDateEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") loadThreads(); }));
     load();
     setInterval(() => { if (currentPage === "groups") loadGroups(); else if (currentPage === "threads") loadThreads(); else load(); }, 5000);
   </script>
@@ -587,6 +601,7 @@ async function handle(req, res) {
     const q = url.searchParams.get("q");
     const group = url.searchParams.get("group");
     const topic = url.searchParams.get("topic");
+    const jalaliDateFilter = url.searchParams.get("jalali_date");
     const chatId = url.searchParams.get("chat_id");
     const senderId = url.searchParams.get("sender_id");
     if (q) {
@@ -628,7 +643,10 @@ async function handle(req, res) {
       order by m.sent_at_utc desc nulls last, m.id desc
       limit 500
     `, params);
-    const enrichedMessages = messages.map((row) => ({ ...row, sent_jalali_date: jalaliDate(row.sent_at_utc) }));
+    let enrichedMessages = messages.map((row) => ({ ...row, sent_jalali_date: jalaliDate(row.sent_at_utc) }));
+    if (jalaliDateFilter) {
+      enrichedMessages = enrichedMessages.filter((row) => String(row.sent_jalali_date || "") === jalaliDateFilter);
+    }
     const editedKeys = [...new Set(
       enrichedMessages
         .filter((row) => row.edited_at_utc && row.chat_id && row.message_id)
