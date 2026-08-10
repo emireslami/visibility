@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS public.telegram_messages (
     sender_first_name TEXT,
     sender_last_name TEXT,
     sender_is_bot BOOLEAN,
+    sender_photo_file_id TEXT,
+    sender_photo_file_unique_id TEXT,
     sender_chat_id BIGINT,
     sender_chat_title TEXT,
     body TEXT,
@@ -65,7 +67,9 @@ ALTER TABLE public.telegram_messages
     ADD COLUMN IF NOT EXISTS is_topic_message BOOLEAN,
     ADD COLUMN IF NOT EXISTS topic_name TEXT,
     ADD COLUMN IF NOT EXISTS topic_icon_color BIGINT,
-    ADD COLUMN IF NOT EXISTS topic_icon_custom_emoji_id TEXT;
+    ADD COLUMN IF NOT EXISTS topic_icon_custom_emoji_id TEXT,
+    ADD COLUMN IF NOT EXISTS sender_photo_file_id TEXT,
+    ADD COLUMN IF NOT EXISTS sender_photo_file_unique_id TEXT;
 
 CREATE INDEX IF NOT EXISTS telegram_messages_chat_id_idx
     ON public.telegram_messages(chat_id);

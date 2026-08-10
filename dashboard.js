@@ -78,6 +78,32 @@ function sendJson(res, value) {
   res.end(body);
 }
 
+function sendText(res, status, value, contentType = "text/plain; charset=utf-8") {
+  res.writeHead(status, {
+    "content-type": contentType,
+    "cache-control": "no-store",
+  });
+  res.end(value);
+}
+
+async function sendTelegramProfilePhoto(res, fileId) {
+  if (!process.env.TELEGRAM_BOT_TOKEN) return sendText(res, 503, "Telegram token is not configured");
+  if (!fileId) return sendText(res, 400, "Missing file_id");
+  const fileResponse = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${encodeURIComponent(fileId)}`);
+  if (!fileResponse.ok) return sendText(res, 502, "Profile photo lookup failed");
+  const fileData = await fileResponse.json();
+  const filePath = fileData?.result?.file_path;
+  if (!filePath) return sendText(res, 404, "Profile photo not found");
+  const imageResponse = await fetch(`https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${filePath}`);
+  if (!imageResponse.ok) return sendText(res, 502, "Profile photo fetch failed");
+  const buffer = Buffer.from(await imageResponse.arrayBuffer());
+  res.writeHead(200, {
+    "content-type": imageResponse.headers.get("content-type") || "image/jpeg",
+    "cache-control": "private, max-age=86400",
+  });
+  res.end(buffer);
+}
+
 function sendHtml(res) {
   res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
   res.end(`<!doctype html>
@@ -118,6 +144,9 @@ function sendHtml(res) {
     .thread-reply { position:relative; margin-right:28px; border-right:2px solid var(--line); }
     .thread-reply + .thread-reply { border-top:1px solid var(--line); }
     .thread-missing { color:var(--muted); background:#fbfcfd; }
+    .thread-item { display:grid; grid-template-columns:42px minmax(0, 1fr); gap:10px; align-items:start; }
+    .thread-content { min-width:0; }
+    .thread-avatar { width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:#eef3f4; color:#36505a; display:grid; place-items:center; font-weight:800; font-size:13px; direction:ltr; object-fit:cover; }
     .thread-head { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:8px; }
     .thread-author { font-weight:700; color:var(--ink); }
     .thread-muted { color:var(--muted); font-size:12px; }
@@ -295,6 +324,8 @@ function sendHtml(res) {
         ["Sender First Name", row.sender_first_name],
         ["Sender Last Name", row.sender_last_name],
         ["Sender Is Bot", row.sender_is_bot],
+        ["Sender Photo File ID", row.sender_photo_file_id],
+        ["Sender Photo File Unique ID", row.sender_photo_file_unique_id],
         ["Sender Chat ID", row.sender_chat_id],
         ["Sender Chat Title", row.sender_chat_title],
         ["Message", row.body],
@@ -324,6 +355,16 @@ function sendHtml(res) {
       const text = messageContent(row);
       return text ? esc(text) : '<span class="thread-muted">بدون متن</span>';
     }
+    function initials(row) {
+      const source = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "?";
+      return source.trim().slice(0, 1).toUpperCase() || "?";
+    }
+    function avatar(row) {
+      if (row.sender_photo_file_id) {
+        return \`<img class="thread-avatar" src="/api/profile-photo?file_id=\${encodeURIComponent(row.sender_photo_file_id)}" alt="" loading="lazy" />\`;
+      }
+      return \`<span class="thread-avatar">\${esc(initials(row))}</span>\`;
+    }
     function threadNode(row, kind, index) {
       if (row.missing) {
         return \`<article class="thread-missing">
@@ -335,17 +376,22 @@ function sendHtml(res) {
       }
       const author = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "Unknown";
       return \`<article class="\${kind}">
-        <div class="thread-head">
-          <span class="thread-author">\${esc(author)}</span>
-          <span class="thread-muted">\${esc(row.sender_username ? "@" + row.sender_username : "")}</span>
-          <span class="thread-muted">\${esc(row.chat_title)}</span>
-          <span class="thread-pill">Message ID: \${esc(row.message_id)}</span>
-          \${row.reply_to_message_id ? \`<span class="thread-pill">Reply To: \${esc(row.reply_to_message_id)}</span>\` : ""}
-          <span class="thread-muted">\${esc(row.sent_jalali_date || "")} \${esc(row.sent_time || "")}</span>
-          \${row.edited_at_utc ? '<span class="badge">Edited</span>' : ''}
-          <button class="details-button" type="button" data-detail-key="thread-detail-\${index}">Details</button>
+        <div class="thread-item">
+          \${avatar(row)}
+          <div class="thread-content">
+            <div class="thread-head">
+              <span class="thread-author">\${esc(author)}</span>
+              <span class="thread-muted">\${esc(row.sender_username ? "@" + row.sender_username : "")}</span>
+              <span class="thread-muted">\${esc(row.chat_title)}</span>
+              <span class="thread-pill">Message ID: \${esc(row.message_id)}</span>
+              \${row.reply_to_message_id ? \`<span class="thread-pill">Reply To: \${esc(row.reply_to_message_id)}</span>\` : ""}
+              <span class="thread-muted">\${esc(row.sent_jalali_date || "")} \${esc(row.sent_time || "")}</span>
+              \${row.edited_at_utc ? '<span class="badge">Edited</span>' : ''}
+              <button class="details-button" type="button" data-detail-key="thread-detail-\${index}">Details</button>
+            </div>
+            <div class="thread-message">\${compactMessage(row)}</div>
+          </div>
         </div>
-        <div class="thread-message">\${compactMessage(row)}</div>
       </article>\`;
     }
     function buildThreads(messages) {
@@ -511,6 +557,7 @@ function sendHtml(res) {
 
 async function handle(req, res) {
   const url = new URL(req.url, "http://localhost");
+  if (url.pathname === "/api/profile-photo") return sendTelegramProfilePhoto(res, url.searchParams.get("file_id"));
   if (url.pathname === "/") return sendHtml(res);
   if (url.pathname === "/api/groups") {
     const groups = await query(`
@@ -567,6 +614,7 @@ async function handle(req, res) {
       select m.update_id, m.message_id, m.chat_id, m.chat_title, m.chat_username, m.chat_type,
              m.message_thread_id, m.is_topic_message, coalesce(m.topic_name, t.topic_name) as topic_name,
              m.sender_username, m.sender_id, m.sender_first_name, m.sender_last_name, m.sender_is_bot,
+             m.sender_photo_file_id, m.sender_photo_file_unique_id,
              m.sender_chat_id, m.sender_chat_title,
              m.body, m.caption, m.message_type, m.edited_at_utc, m.reply_to_message_id,
              m.media_file_id, m.media_group_id, m.forward_origin_json, m.entities_json, m.raw_payload_json,

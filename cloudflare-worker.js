@@ -36,6 +36,9 @@ const HTML = `<!doctype html>
     .thread-reply { position:relative; margin-right:28px; border-right:2px solid var(--line); }
     .thread-reply + .thread-reply { border-top:1px solid var(--line); }
     .thread-missing { color:var(--muted); background:#fbfcfd; }
+    .thread-item { display:grid; grid-template-columns:42px minmax(0, 1fr); gap:10px; align-items:start; }
+    .thread-content { min-width:0; }
+    .thread-avatar { width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:#eef3f4; color:#36505a; display:grid; place-items:center; font-weight:800; font-size:13px; direction:ltr; object-fit:cover; }
     .thread-head { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:8px; }
     .thread-author { font-weight:700; color:var(--ink); }
     .thread-muted { color:var(--muted); font-size:12px; }
@@ -213,6 +216,8 @@ const HTML = `<!doctype html>
         ["Sender First Name", row.sender_first_name],
         ["Sender Last Name", row.sender_last_name],
         ["Sender Is Bot", row.sender_is_bot],
+        ["Sender Photo File ID", row.sender_photo_file_id],
+        ["Sender Photo File Unique ID", row.sender_photo_file_unique_id],
         ["Sender Chat ID", row.sender_chat_id],
         ["Sender Chat Title", row.sender_chat_title],
         ["Message", row.body],
@@ -242,6 +247,16 @@ const HTML = `<!doctype html>
       const text = messageContent(row);
       return text ? esc(text) : '<span class="thread-muted">بدون متن</span>';
     }
+    function initials(row) {
+      const source = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "?";
+      return source.trim().slice(0, 1).toUpperCase() || "?";
+    }
+    function avatar(row) {
+      if (row.sender_photo_file_id) {
+        return \`<img class="thread-avatar" src="/api/profile-photo?file_id=\${encodeURIComponent(row.sender_photo_file_id)}" alt="" loading="lazy" />\`;
+      }
+      return \`<span class="thread-avatar">\${esc(initials(row))}</span>\`;
+    }
     function threadNode(row, kind, index) {
       if (row.missing) {
         return \`<article class="thread-missing">
@@ -253,17 +268,22 @@ const HTML = `<!doctype html>
       }
       const author = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "Unknown";
       return \`<article class="\${kind}">
-        <div class="thread-head">
-          <span class="thread-author">\${esc(author)}</span>
-          <span class="thread-muted">\${esc(row.sender_username ? "@" + row.sender_username : "")}</span>
-          <span class="thread-muted">\${esc(row.chat_title)}</span>
-          <span class="thread-pill">Message ID: \${esc(row.message_id)}</span>
-          \${row.reply_to_message_id ? \`<span class="thread-pill">Reply To: \${esc(row.reply_to_message_id)}</span>\` : ""}
-          <span class="thread-muted">\${esc(row.sent_jalali_date || "")} \${esc(row.sent_time || "")}</span>
-          \${row.edited_at_utc ? '<span class="badge">Edited</span>' : ''}
-          <button class="details-button" type="button" data-detail-key="thread-detail-\${index}">Details</button>
+        <div class="thread-item">
+          \${avatar(row)}
+          <div class="thread-content">
+            <div class="thread-head">
+              <span class="thread-author">\${esc(author)}</span>
+              <span class="thread-muted">\${esc(row.sender_username ? "@" + row.sender_username : "")}</span>
+              <span class="thread-muted">\${esc(row.chat_title)}</span>
+              <span class="thread-pill">Message ID: \${esc(row.message_id)}</span>
+              \${row.reply_to_message_id ? \`<span class="thread-pill">Reply To: \${esc(row.reply_to_message_id)}</span>\` : ""}
+              <span class="thread-muted">\${esc(row.sent_jalali_date || "")} \${esc(row.sent_time || "")}</span>
+              \${row.edited_at_utc ? '<span class="badge">Edited</span>' : ''}
+              <button class="details-button" type="button" data-detail-key="thread-detail-\${index}">Details</button>
+            </div>
+            <div class="thread-message">\${compactMessage(row)}</div>
+          </div>
         </div>
-        <div class="thread-message">\${compactMessage(row)}</div>
       </article>\`;
     }
     function buildThreads(messages) {
@@ -664,6 +684,50 @@ async function sendTelegramMessage(env, chatId, textValue) {
   return response.ok;
 }
 
+async function fetchSenderProfilePhoto(env, senderId) {
+  if (!env.TELEGRAM_BOT_TOKEN || !senderId) return {};
+  try {
+    const url = new URL(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getUserProfilePhotos`);
+    url.searchParams.set("user_id", senderId);
+    url.searchParams.set("limit", "1");
+    const response = await fetch(url, { signal: AbortSignal.timeout(2500) });
+    if (!response.ok) return {};
+    const data = await response.json();
+    const sizes = data?.result?.photos?.[0];
+    if (!Array.isArray(sizes) || !sizes.length) return {};
+    const smallest = [...sizes].sort((a, b) => Number(a.file_size || 0) - Number(b.file_size || 0))[0];
+    return {
+      sender_photo_file_id: smallest?.file_id ?? null,
+      sender_photo_file_unique_id: smallest?.file_unique_id ?? null,
+    };
+  } catch {
+    return {};
+  }
+}
+
+async function fetchTelegramProfilePhoto(request, env) {
+  if (!env.TELEGRAM_BOT_TOKEN) return text("Telegram token is not configured", 503);
+  const url = new URL(request.url);
+  const fileId = url.searchParams.get("file_id");
+  if (!fileId) return text("Missing file_id", 400);
+
+  const fileResponse = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${encodeURIComponent(fileId)}`);
+  if (!fileResponse.ok) return text("Profile photo lookup failed", 502);
+  const fileData = await fileResponse.json();
+  const filePath = fileData?.result?.file_path;
+  if (!filePath) return text("Profile photo not found", 404);
+
+  const imageResponse = await fetch(`https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${filePath}`);
+  if (!imageResponse.ok || !imageResponse.body) return text("Profile photo fetch failed", 502);
+  return new Response(imageResponse.body, {
+    status: 200,
+    headers: {
+      "content-type": imageResponse.headers.get("content-type") || "image/jpeg",
+      "cache-control": "private, max-age=86400",
+    },
+  });
+}
+
 async function rejectPrivateUser(env, message) {
   try {
     await sendTelegramMessage(env, message.chat?.id, "مجاز به ادامه عملیات نیستید.");
@@ -815,6 +879,7 @@ async function handleTelegramWebhook(request, env) {
   const sentAt = isoFromUnix(message.date);
   const editedAt = isoFromUnix(message.edit_date);
   const topic = topicData(message);
+  const senderPhoto = await fetchSenderProfilePhoto(env, sender.id);
 
   const row = {
     update_id: update.update_id,
@@ -833,6 +898,8 @@ async function handleTelegramWebhook(request, env) {
     sender_first_name: sender.first_name ?? null,
     sender_last_name: sender.last_name ?? null,
     sender_is_bot: sender.is_bot ?? null,
+    sender_photo_file_id: senderPhoto.sender_photo_file_id ?? null,
+    sender_photo_file_unique_id: senderPhoto.sender_photo_file_unique_id ?? null,
     sender_chat_id: senderChat.id ?? null,
     sender_chat_title: senderChat.title ?? null,
     body: message.text ?? null,
@@ -879,6 +946,8 @@ async function fetchMessages(request, env) {
     "sender_first_name",
     "sender_last_name",
     "sender_is_bot",
+    "sender_photo_file_id",
+    "sender_photo_file_unique_id",
     "sender_chat_id",
     "sender_chat_title",
     "body",
@@ -1019,13 +1088,14 @@ export default {
       });
     }
     if (!dashboardAuthorized(request, env)) {
-      if (url.pathname === "/api/messages" || url.pathname === "/api/groups") return json({ error: "Unauthorized" }, 401);
+      if (url.pathname === "/api/messages" || url.pathname === "/api/groups" || url.pathname === "/api/profile-photo") return json({ error: "Unauthorized" }, 401);
       return text(LOGIN_HTML, 200, "text/html; charset=utf-8");
     }
     if (url.pathname === "/") return text(HTML, 200, "text/html; charset=utf-8");
     if (url.pathname === "/api/debug") return text("Not found", 404);
     if (url.pathname === "/api/messages") return fetchMessages(request, env);
     if (url.pathname === "/api/groups") return fetchGroups(request, env);
+    if (url.pathname === "/api/profile-photo") return fetchTelegramProfilePhoto(request, env);
     return text("Not found", 404);
   },
 };
