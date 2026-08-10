@@ -21,7 +21,7 @@ const HTML = `<!doctype html>
     main { padding: 18px 24px; }
     .page[hidden] { display:none; }
     .filters { display:grid; grid-template-columns: 1fr 170px 170px 170px 170px 110px; gap:10px; margin-bottom:14px; }
-    .thread-filters { grid-template-columns: minmax(220px, 1fr) 120px 120px 120px 110px; max-width:980px; margin:0 auto 14px; }
+    .thread-filters { grid-template-columns: minmax(200px, 1fr) minmax(170px, .8fr) 105px 105px 105px 110px; max-width:980px; margin:0 auto 14px; }
     input, select, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
     table { width: 100%; table-layout: fixed; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); direction:rtl; }
@@ -144,6 +144,7 @@ const HTML = `<!doctype html>
     <section class="page" id="threadsPage" hidden>
       <section class="filters thread-filters">
         <select id="threadGroup"><option value="">همه گروه‌ها</option></select>
+        <select id="threadTopic"><option value="">همه تاپیک‌ها</option></select>
         <select id="threadYear"><option value="">سال</option></select>
         <select id="threadMonth"><option value="">ماه</option></select>
         <select id="threadDay"><option value="">روز</option></select>
@@ -179,6 +180,7 @@ const HTML = `<!doctype html>
     const senderEl = document.getElementById("sender");
     const refreshEl = document.getElementById("refresh");
     const threadGroupEl = document.getElementById("threadGroup");
+    const threadTopicEl = document.getElementById("threadTopic");
     const threadYearEl = document.getElementById("threadYear");
     const threadMonthEl = document.getElementById("threadMonth");
     const threadDayEl = document.getElementById("threadDay");
@@ -215,6 +217,13 @@ const HTML = `<!doctype html>
         .map((date) => date.split("-")[2]))].sort();
       setSelectOptions(threadDayEl, days, "روز");
     }
+    function updateThreadTopicOptions() {
+      const topics = (threadFilterOptions?.topics || [])
+        .filter((topic) => !threadGroupEl.value || topic.chat_title === threadGroupEl.value)
+        .map((topic) => topic.topic_name)
+        .filter(Boolean);
+      setSelectOptions(threadTopicEl, [...new Set(topics)].sort(), "همه تاپیک‌ها");
+    }
     function selectedThreadJalaliDate() {
       if (!threadYearEl.value || !threadMonthEl.value || !threadDayEl.value) return "";
       return \`\${threadYearEl.value}-\${threadMonthEl.value}-\${threadDayEl.value}\`;
@@ -227,6 +236,7 @@ const HTML = `<!doctype html>
       threadFilterOptions = data;
       const groups = (data.groups || []).map((group) => group.chat_title).filter(Boolean);
       setSelectOptions(threadGroupEl, groups, "همه گروه‌ها");
+      updateThreadTopicOptions();
       updateThreadDateOptions();
     }
     function linkify(value) {
@@ -493,6 +503,7 @@ const HTML = `<!doctype html>
       await loadThreadFilterOptions();
       const params = new URLSearchParams();
       if (threadGroupEl.value.trim()) params.set("group", threadGroupEl.value.trim());
+      if (threadTopicEl.value.trim()) params.set("topic", threadTopicEl.value.trim());
       const jalaliDate = selectedThreadJalaliDate();
       if (jalaliDate) params.set("jalali_date", jalaliDate);
       const res = await fetch("/api/messages?" + params);
@@ -554,7 +565,8 @@ const HTML = `<!doctype html>
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
     [searchEl, groupEl, topicEl, chatEl, senderEl].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter") load(); }));
-    threadGroupEl.addEventListener("change", loadThreads);
+    threadGroupEl.addEventListener("change", () => { updateThreadTopicOptions(); loadThreads(); });
+    threadTopicEl.addEventListener("change", loadThreads);
     threadYearEl.addEventListener("change", () => { updateThreadDateOptions(); loadThreads(); });
     threadMonthEl.addEventListener("change", () => { updateThreadDateOptions(); loadThreads(); });
     threadDayEl.addEventListener("change", loadThreads);
@@ -1126,7 +1138,7 @@ async function fetchMessages(request, env) {
   });
   if (topic) {
     const normalizedTopic = topic.toLowerCase();
-    messages = messages.filter((row) => String(row.topic_name || "").toLowerCase().includes(normalizedTopic));
+    messages = messages.filter((row) => String(row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : "")).toLowerCase().includes(normalizedTopic));
   }
   if (jalaliDateFilter) {
     messages = messages.filter((row) => String(row.sent_jalali_date || "") === jalaliDateFilter);
@@ -1205,7 +1217,7 @@ async function fetchGroups(request, env) {
 async function fetchThreadFilterOptions(request, env) {
   const headers = supabaseHeaders(env);
   const groupParams = new URLSearchParams();
-  groupParams.set("select", "chat_title,message_count,last_seen_at_utc");
+  groupParams.set("select", "chat_id,chat_title,message_count,last_seen_at_utc");
   groupParams.set("order", "message_count.desc,last_seen_at_utc.desc");
   groupParams.set("limit", "1000");
   const groupsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${groupParams}`, { headers });
@@ -1223,12 +1235,52 @@ async function fetchThreadFilterOptions(request, env) {
     return json({ error: "Supabase dates request failed", detail: await datesResponse.text() }, 500);
   }
 
+  const topicsParams = new URLSearchParams();
+  topicsParams.set("select", "chat_id,topic_name,message_thread_id");
+  topicsParams.set("limit", "10000");
+  const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?${topicsParams}`, { headers });
+  if (!topicsResponse.ok) {
+    return json({ error: "Supabase topics request failed", detail: await topicsResponse.text() }, 500);
+  }
+  const messageTopicsParams = new URLSearchParams();
+  messageTopicsParams.set("select", "chat_id,chat_title,topic_name,message_thread_id");
+  messageTopicsParams.set("message_thread_id", "not.is.null");
+  messageTopicsParams.set("limit", "10000");
+  const messageTopicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${messageTopicsParams}`, { headers });
+  if (!messageTopicsResponse.ok) {
+    return json({ error: "Supabase message topics request failed", detail: await messageTopicsResponse.text() }, 500);
+  }
+
   const groups = (await groupsResponse.json()).filter((group) => group.chat_title);
+  const groupTitleById = new Map(groups.map((group) => [String(group.chat_id), group.chat_title]));
+  const topicsByKey = new Map();
+  for (const topic of await topicsResponse.json()) {
+    const topicName = topic.topic_name || (topic.message_thread_id ? "#" + topic.message_thread_id : "");
+    const chatTitle = groupTitleById.get(String(topic.chat_id)) || "";
+    if (!chatTitle || !topicName) continue;
+    topicsByKey.set(`${topic.chat_id}:${topic.message_thread_id || topicName}`, {
+      chat_id: topic.chat_id,
+      chat_title: chatTitle,
+      topic_name: topicName,
+      message_thread_id: topic.message_thread_id,
+    });
+  }
+  for (const topic of await messageTopicsResponse.json()) {
+    const topicName = topic.topic_name || (topic.message_thread_id ? "#" + topic.message_thread_id : "");
+    if (!topic.chat_title || !topicName) continue;
+    topicsByKey.set(`${topic.chat_id}:${topic.message_thread_id || topicName}`, {
+      chat_id: topic.chat_id,
+      chat_title: topic.chat_title,
+      topic_name: topicName,
+      message_thread_id: topic.message_thread_id,
+    });
+  }
+  const topics = [...topicsByKey.values()].sort((a, b) => a.chat_title.localeCompare(b.chat_title) || a.topic_name.localeCompare(b.topic_name));
   const dateRows = await datesResponse.json();
   const jalaliDates = [...new Set(dateRows
     .map((row) => row.sent_at_utc ? tehranParts(new Date(row.sent_at_utc)).sent_jalali_date : null)
     .filter(Boolean))].sort().reverse();
-  return json({ groups, jalali_dates: jalaliDates });
+  return json({ groups, topics, jalali_dates: jalaliDates });
 }
 
 export default {
