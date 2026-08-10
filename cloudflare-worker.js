@@ -329,7 +329,7 @@ const HTML = `<!doctype html>
         ["Group Name", row.chat_title],
         ["Group Username", row.chat_username],
         ["Group Type", row.chat_type],
-        ["Topic", row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : "")],
+        ["Topic Name", row.topic_name],
         ["Topic ID", row.message_thread_id],
         ["Is Topic", row.is_topic_message],
         ["Username", row.sender_username],
@@ -365,7 +365,7 @@ const HTML = `<!doctype html>
       return row.body || row.caption || (row.message_type ? "[" + row.message_type + "]" : "");
     }
     function topicLabel(row) {
-      return row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : "");
+      return row.topic_name || "";
     }
     function compactMessage(row) {
       const text = messageContent(row);
@@ -388,9 +388,7 @@ const HTML = `<!doctype html>
     }
     function isTopicRootReply(row) {
       if (!row.reply_to_message_id || !row.message_thread_id) return false;
-      if (String(row.reply_to_message_id) !== String(row.message_thread_id)) return false;
-      const topic = String(row.topic_name || "").trim();
-      return !topic || topic === "#" + row.message_thread_id;
+      return String(row.reply_to_message_id) === String(row.message_thread_id);
     }
     function initials(row) {
       const source = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "?";
@@ -887,6 +885,11 @@ function topicData(message) {
   };
 }
 
+function topicNameFromPayload(payload) {
+  const message = payload?.message || payload?.edited_message || payload?.channel_post || payload?.edited_channel_post || {};
+  return message.forum_topic_created?.name || message.forum_topic_edited?.name || null;
+}
+
 function reactionType(reaction) {
   return reaction?.type || "unknown";
 }
@@ -1346,15 +1349,16 @@ async function fetchMessages(request, env) {
     const mappedTopicName = row.message_thread_id
       ? topicByThread.get(`${row.chat_id}:${row.message_thread_id}`)
       : null;
+    const payloadTopicName = topicNameFromPayload(row.raw_payload_json);
     return {
       ...row,
-      topic_name: row.topic_name || mappedTopicName || null,
+      topic_name: row.topic_name || mappedTopicName || payloadTopicName || null,
       ...(date ? tehranParts(date) : { sent_date: null, sent_jalali_date: null, sent_time: null, display_timezone: "Asia/Tehran" }),
     };
   });
   if (topic) {
     const normalizedTopic = topic.toLowerCase();
-    messages = messages.filter((row) => String(row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : "")).toLowerCase().includes(normalizedTopic));
+    messages = messages.filter((row) => String(row.topic_name || "").toLowerCase().includes(normalizedTopic));
   }
   if (jalaliDateFilter) {
     messages = messages.filter((row) => String(row.sent_jalali_date || "") === jalaliDateFilter);

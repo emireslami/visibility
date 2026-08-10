@@ -43,6 +43,11 @@ function rowContent(row) {
   return row.body || row.caption || (row.message_type ? `[${row.message_type}]` : "");
 }
 
+function topicNameFromPayload(payload) {
+  const message = payload?.message || payload?.edited_message || payload?.channel_post || payload?.edited_channel_post || {};
+  return message.forum_topic_created?.name || message.forum_topic_edited?.name || null;
+}
+
 function withEditHistory(messages, historyRows = messages) {
   const byMessage = new Map();
   for (const row of historyRows) {
@@ -488,7 +493,7 @@ function sendHtml(res) {
         ["Group Name", row.chat_title],
         ["Group Username", row.chat_username],
         ["Group Type", row.chat_type],
-        ["Topic", row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : "")],
+        ["Topic Name", row.topic_name],
         ["Topic ID", row.message_thread_id],
         ["Is Topic", row.is_topic_message],
         ["Username", row.sender_username],
@@ -524,7 +529,7 @@ function sendHtml(res) {
       return row.body || row.caption || (row.message_type ? "[" + row.message_type + "]" : "");
     }
     function topicLabel(row) {
-      return row.topic_name || (row.message_thread_id ? "#" + row.message_thread_id : "");
+      return row.topic_name || "";
     }
     function compactMessage(row) {
       const text = messageContent(row);
@@ -547,9 +552,7 @@ function sendHtml(res) {
     }
     function isTopicRootReply(row) {
       if (!row.reply_to_message_id || !row.message_thread_id) return false;
-      if (String(row.reply_to_message_id) !== String(row.message_thread_id)) return false;
-      const topic = String(row.topic_name || "").trim();
-      return !topic || topic === "#" + row.message_thread_id;
+      return String(row.reply_to_message_id) === String(row.message_thread_id);
     }
     function initials(row) {
       const source = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "?";
@@ -921,7 +924,11 @@ async function handle(req, res) {
       order by m.sent_at_utc desc nulls last, m.id desc
       limit 500
     `, params);
-    let enrichedMessages = messages.map((row) => ({ ...row, sent_jalali_date: jalaliDate(row.sent_at_utc) }));
+    let enrichedMessages = messages.map((row) => ({
+      ...row,
+      topic_name: row.topic_name || topicNameFromPayload(row.raw_payload_json) || null,
+      sent_jalali_date: jalaliDate(row.sent_at_utc),
+    }));
     if (jalaliDateFilter) {
       enrichedMessages = enrichedMessages.filter((row) => String(row.sent_jalali_date || "") === jalaliDateFilter);
     }
