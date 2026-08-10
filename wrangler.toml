@@ -1,6 +1,7 @@
 name = "visibility"
 main = "cloudflare-worker.js"
 compatibility_date = "2026-08-10"
+account_id = "ceb0a7c3780264e0cc09139603db2f6c"
 
 [vars]
 SUPABASE_URL = "https://dniaincbngeeqnjzvfjs.supabase.co"
