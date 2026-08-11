@@ -1567,7 +1567,7 @@ const HTML = `<!doctype html>
     });
     syncProfileUi();
     setupAccessShell();
-    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? loadAccessUsers() : loadAccessLogs()); else if (canOpen("messages")) load(); }, 5000);
+    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? loadAccessUsers() : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
   </script>
 </body>
 </html>`;
@@ -1863,6 +1863,9 @@ function validAccessEmail(email) {
 const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboard"];
 const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS];
 const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
+const API_CACHE_TTL_MS = 60 * 1000;
+let dashboardApiCache = null;
+let threadFilterOptionsApiCache = null;
 
 function isAccessOwnerEmail(email) {
   return normalizeEmail(email) === ACCESS_OWNER_EMAIL;
@@ -2509,32 +2512,46 @@ function isoFromUnix(value) {
   return value ? new Date(value * 1000).toISOString() : null;
 }
 
+const TEHRAN_DATE_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Tehran",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const TEHRAN_TIME_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Tehran",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
+const TEHRAN_JALALI_DATE_FORMATTER = new Intl.DateTimeFormat("en-US-u-ca-persian", {
+  timeZone: "Asia/Tehran",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const TEHRAN_OFFSET_MS = 3.5 * 60 * 60 * 1000;
+
+function partsMap(parts) {
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+}
+
+function tehranIsoDateFast(date) {
+  return new Date(date.getTime() + TEHRAN_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+function jalaliDateFast(date) {
+  const jalaliMap = partsMap(TEHRAN_JALALI_DATE_FORMATTER.formatToParts(date));
+  return `${jalaliMap.year}-${jalaliMap.month}-${jalaliMap.day}`;
+}
+
 function tehranParts(date) {
-  const dateParts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Tehran",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const timeParts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Tehran",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(date);
-  const jalaliParts = new Intl.DateTimeFormat("en-US-u-ca-persian", {
-    timeZone: "Asia/Tehran",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const dateMap = Object.fromEntries(dateParts.map((part) => [part.type, part.value]));
-  const timeMap = Object.fromEntries(timeParts.map((part) => [part.type, part.value]));
-  const jalaliMap = Object.fromEntries(jalaliParts.map((part) => [part.type, part.value]));
+  const dateMap = partsMap(TEHRAN_DATE_FORMATTER.formatToParts(date));
+  const timeMap = partsMap(TEHRAN_TIME_FORMATTER.formatToParts(date));
   return {
     sent_date: `${dateMap.year}-${dateMap.month}-${dateMap.day}`,
-    sent_jalali_date: `${jalaliMap.year}-${jalaliMap.month}-${jalaliMap.day}`,
+    sent_jalali_date: jalaliDateFast(date),
     sent_time: `${timeMap.hour}:${timeMap.minute}:${timeMap.second}`,
     display_timezone: "Asia/Tehran",
   };
@@ -3262,6 +3279,9 @@ async function fetchGroups(request, env) {
 }
 
 async function fetchDashboard(request, env) {
+  if (dashboardApiCache && Date.now() - dashboardApiCache.createdAt < API_CACHE_TTL_MS) {
+    return json(dashboardApiCache.data);
+  }
   const params = new URLSearchParams();
   params.set("select", "sent_at_utc,chat_title");
   params.set("sent_at_utc", "not.is.null");
@@ -3278,21 +3298,28 @@ async function fetchDashboard(request, env) {
   let totalMessages = 0;
   for (const row of await response.json()) {
     if (!row.sent_at_utc) continue;
-    const parts = tehranParts(new Date(row.sent_at_utc));
+    const sentDate = new Date(row.sent_at_utc);
+    const tehranDate = tehranIsoDateFast(sentDate);
     const group = row.chat_title || "بدون نام";
-    const day = byDate.get(parts.sent_date) || { date: parts.sent_date, jalali_date: parts.sent_jalali_date, total: 0, groups: {} };
+    const day = byDate.get(tehranDate) || { date: tehranDate, jalali_date: null, total: 0, groups: {} };
+    if (!day.jalali_date) day.jalali_date = jalaliDateFast(sentDate);
     day.total += 1;
     day.groups[group] = (day.groups[group] || 0) + 1;
-    byDate.set(parts.sent_date, day);
+    byDate.set(tehranDate, day);
     groupTotals.set(group, (groupTotals.get(group) || 0) + 1);
     totalMessages += 1;
   }
   const days = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
   const groups = [...groupTotals.entries()].sort((a, b) => b[1] - a[1]).map(([group]) => group);
-  return json({ days, groups, total_messages: totalMessages, display_timezone: "Asia/Tehran" });
+  const data = { days, groups, total_messages: totalMessages, display_timezone: "Asia/Tehran" };
+  dashboardApiCache = { createdAt: Date.now(), data };
+  return json(data);
 }
 
 async function fetchThreadFilterOptions(request, env) {
+  if (threadFilterOptionsApiCache && Date.now() - threadFilterOptionsApiCache.createdAt < API_CACHE_TTL_MS) {
+    return json(threadFilterOptionsApiCache.data);
+  }
   const headers = supabaseHeaders(env);
   const groupParams = new URLSearchParams();
   groupParams.set("select", "chat_id,chat_title,message_count,last_seen_at_utc");
@@ -3334,11 +3361,19 @@ async function fetchThreadFilterOptions(request, env) {
     });
   }
   const topics = [...topicsByKey.values()].sort((a, b) => a.chat_title.localeCompare(b.chat_title) || a.topic_name.localeCompare(b.topic_name));
-  const dateRows = await datesResponse.json();
-  const jalaliDates = [...new Set(dateRows
-    .map((row) => row.sent_at_utc ? tehranParts(new Date(row.sent_at_utc)).sent_jalali_date : null)
-    .filter(Boolean))].sort().reverse();
-  return json({ groups, topics, jalali_dates: jalaliDates });
+  const dateByTehranDay = new Map();
+  for (const row of await datesResponse.json()) {
+    if (!row.sent_at_utc) continue;
+    const sentDate = new Date(row.sent_at_utc);
+    const tehranDate = tehranIsoDateFast(sentDate);
+    if (!dateByTehranDay.has(tehranDate)) dateByTehranDay.set(tehranDate, sentDate);
+  }
+  const jalaliDates = [...dateByTehranDay.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([, date]) => jalaliDateFast(date));
+  const data = { groups, topics, jalali_dates: jalaliDates };
+  threadFilterOptionsApiCache = { createdAt: Date.now(), data };
+  return json(data);
 }
 
 export default {
