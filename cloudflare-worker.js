@@ -164,6 +164,11 @@ const HTML = `<!doctype html>
     .profile-email { direction:ltr; text-align:left; font-weight:700; }
     .profile-upload { display:grid; gap:8px; }
     .profile-upload input { padding:7px 10px; height:auto; }
+    .telegram-input-wrap { min-height:40px; display:flex; align-items:center; border:1px solid var(--line); border-radius:6px; background:#fff; direction:ltr; overflow:hidden; }
+    .telegram-input-wrap:focus-within { outline:2px solid var(--accent); outline-offset:-2px; }
+    .telegram-input-prefix { flex:0 0 auto; padding:0 0 0 10px; color:var(--muted); font-weight:800; direction:ltr; }
+    .telegram-input-wrap input { min-width:0; flex:1 1 auto; height:38px; border:0; padding:0 10px 0 2px; direction:ltr; text-align:left; }
+    .telegram-input-wrap input:focus { outline:0; }
     .profile-message { min-height:22px; color:var(--muted); font-size:12px; }
     :root {
       --ink:#161616;
@@ -418,7 +423,10 @@ const HTML = `<!doctype html>
           </label>
           <label class="profile-upload">
             <span class="thread-muted">یوزرنیم تلگرام</span>
-            <input id="profileTelegramUsername" type="text" inputmode="latin" autocomplete="off" placeholder="@username" />
+            <span class="telegram-input-wrap">
+              <span class="telegram-input-prefix">@</span>
+              <input id="profileTelegramUsername" type="text" inputmode="latin" autocomplete="off" placeholder="username" />
+            </span>
           </label>
           <button type="submit">ذخیره پروفایل</button>
           <div class="profile-message" id="profileMessage"></div>
@@ -511,6 +519,9 @@ const HTML = `<!doctype html>
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
     }
+    function telegramUsernameLocal(value) {
+      return String(value || "").trim().replace(/^@+/, "");
+    }
     function canOpen(page) {
       return currentUserPermissions.has(page);
     }
@@ -530,7 +541,7 @@ const HTML = `<!doctype html>
     function syncProfileUi() {
       headerEmailEl.textContent = currentUser.email;
       profileEmailEl.textContent = currentUser.email;
-      profileTelegramUsernameEl.value = currentUser.telegram_username || "";
+      profileTelegramUsernameEl.value = telegramUsernameLocal(currentUser.telegram_username);
       headerAvatarEl.outerHTML = avatarMarkup(currentAvatarDataUrl, "user-avatar", "headerAvatar", currentUser.email);
       profileAvatarEl.outerHTML = avatarMarkup(currentAvatarDataUrl, "profile-avatar-large", "profileAvatar", currentUser.email);
       headerAvatarEl = document.getElementById("headerAvatar");
@@ -1662,6 +1673,11 @@ function passwordPageHtml(error = "", telegramUsername = "") {
     .password-wrap input { padding-left:48px; }
     .password-toggle { position:absolute; left:6px; top:6px; width:34px; height:28px; margin:0; padding:0; display:grid; place-items:center; border:1px solid var(--line); background:#fff; color:var(--muted); }
     .password-toggle svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; }
+    .telegram-input-wrap { width:100%; height:40px; display:flex; align-items:center; border:1px solid var(--line); border-radius:6px; background:#fff; direction:ltr; overflow:hidden; }
+    .telegram-input-wrap:focus-within { outline:2px solid var(--accent); outline-offset:-2px; }
+    .telegram-input-prefix { flex:0 0 auto; padding:0 0 0 10px; color:var(--muted); font-weight:800; direction:ltr; }
+    .telegram-input-wrap input { min-width:0; flex:1 1 auto; height:38px; border:0; padding:0 10px 0 2px; direction:ltr; text-align:left; }
+    .telegram-input-wrap input:focus { outline:0; }
     .error { min-height:22px; color:var(--error); font-size:12px; }
   </style>
 </head>
@@ -1671,7 +1687,10 @@ function passwordPageHtml(error = "", telegramUsername = "") {
     <p>برای ادامه باید پسورد قوی انتخاب کنید. بعد از ذخیره، خودکار خارج می‌شوید و باید با پسورد جدید وارد شوید.</p>
     <div class="error">${htmlEscape(error)}</div>
     <label for="telegram_username">یوزرنیم تلگرام</label>
-    <input id="telegram_username" name="telegram_username" type="text" inputmode="latin" autocomplete="off" placeholder="@username" value="${htmlEscape(telegramUsername)}" />
+    <div class="telegram-input-wrap">
+      <span class="telegram-input-prefix">@</span>
+      <input id="telegram_username" name="telegram_username" type="text" inputmode="latin" autocomplete="off" placeholder="username" value="${htmlEscape(telegramUsernameLocal(telegramUsername))}" />
+    </div>
     <label for="current_password">پسورد فعلی</label>
     <div class="password-wrap">
       <input id="current_password" name="current_password" type="password" autocomplete="current-password" autofocus />
@@ -1872,15 +1891,17 @@ function validAccessEmail(email) {
 }
 
 function normalizeTelegramUsername(value) {
-  const trimmed = String(value || "").trim();
-  if (!trimmed) return "";
-  const withoutAt = trimmed.startsWith("@") ? trimmed.slice(1) : trimmed;
-  return `@${withoutAt.toLowerCase()}`;
+  const local = telegramUsernameLocal(value);
+  return local ? `@${local.toLowerCase()}` : "";
+}
+
+function telegramUsernameLocal(value) {
+  return String(value || "").trim().replace(/^@+/, "");
 }
 
 function validTelegramUsername(value) {
-  const trimmed = String(value || "").trim();
-  return /^@[A-Za-z][A-Za-z0-9_]{4,31}$/.test(trimmed);
+  const local = telegramUsernameLocal(value);
+  return /^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(local);
 }
 
 const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboard"];
@@ -2209,7 +2230,7 @@ async function handleSetPassword(request, env, user) {
   const newPasswordConfirm = String(form.get("new_password_confirm") || "");
   const rawTelegramUsername = String(form.get("telegram_username") || "").trim();
   if (!validTelegramUsername(rawTelegramUsername)) {
-    return text(passwordPageHtml("یوزرنیم تلگرام باید با @ شروع شود، ۵ تا ۳۲ کاراکتر باشد و فقط شامل حروف انگلیسی، عدد و _ باشد.", rawTelegramUsername), 400, "text/html; charset=utf-8");
+    return text(passwordPageHtml("یوزرنیم تلگرام باید بعد از @ با حرف انگلیسی شروع شود، ۵ تا ۳۲ کاراکتر باشد و فقط شامل حروف انگلیسی، عدد و _ باشد.", rawTelegramUsername), 400, "text/html; charset=utf-8");
   }
   const telegramUsername = normalizeTelegramUsername(rawTelegramUsername);
   if (await hashPassword(currentPassword, user.password_salt) !== user.password_hash) {
@@ -2384,7 +2405,7 @@ async function updateCurrentUserProfile(request, env, authUser) {
   }
   const rawTelegramUsername = String(body.telegram_username || "").trim();
   if (!validTelegramUsername(rawTelegramUsername)) {
-    return json({ error: "یوزرنیم تلگرام باید با @ شروع شود، ۵ تا ۳۲ کاراکتر باشد و فقط شامل حروف انگلیسی، عدد و _ باشد." }, 400);
+    return json({ error: "یوزرنیم تلگرام باید بعد از @ با حرف انگلیسی شروع شود، ۵ تا ۳۲ کاراکتر باشد و فقط شامل حروف انگلیسی، عدد و _ باشد." }, 400);
   }
   const telegramUsername = normalizeTelegramUsername(rawTelegramUsername);
   try {
