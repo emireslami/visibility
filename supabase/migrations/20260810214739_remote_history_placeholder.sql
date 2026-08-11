@@ -1,0 +1,2 @@
+-- Placeholder for a migration version already recorded in the remote Supabase
+-- history before this local migrations directory was synchronized.

@@ -416,6 +416,10 @@ const HTML = `<!doctype html>
             <span class="thread-muted">عکس آواتار</span>
             <input id="profileAvatarInput" type="file" accept="image/*" />
           </label>
+          <label class="profile-upload">
+            <span class="thread-muted">یوزرنیم تلگرام</span>
+            <input id="profileTelegramUsername" type="text" inputmode="latin" autocomplete="off" placeholder="@username" />
+          </label>
           <button type="submit">ذخیره پروفایل</button>
           <div class="profile-message" id="profileMessage"></div>
         </form>
@@ -473,6 +477,7 @@ const HTML = `<!doctype html>
     let profileAvatarEl = document.getElementById("profileAvatar");
     const profileEmailEl = document.getElementById("profileEmail");
     const profileAvatarInputEl = document.getElementById("profileAvatarInput");
+    const profileTelegramUsernameEl = document.getElementById("profileTelegramUsername");
     const profileMessageEl = document.getElementById("profileMessage");
     const accessUsersTabEl = document.getElementById("accessUsersTab");
     const accessLogsTabEl = document.getElementById("accessLogsTab");
@@ -525,6 +530,7 @@ const HTML = `<!doctype html>
     function syncProfileUi() {
       headerEmailEl.textContent = currentUser.email;
       profileEmailEl.textContent = currentUser.email;
+      profileTelegramUsernameEl.value = currentUser.telegram_username || "";
       headerAvatarEl.outerHTML = avatarMarkup(currentAvatarDataUrl, "user-avatar", "headerAvatar", currentUser.email);
       profileAvatarEl.outerHTML = avatarMarkup(currentAvatarDataUrl, "profile-avatar-large", "profileAvatar", currentUser.email);
       headerAvatarEl = document.getElementById("headerAvatar");
@@ -1424,18 +1430,15 @@ const HTML = `<!doctype html>
     profileFormEl.addEventListener("submit", async (event) => {
       event.preventDefault();
       const file = profileAvatarInputEl.files?.[0];
-      if (!file) {
-        profileMessageEl.textContent = "یک عکس انتخاب کنید.";
-        return;
-      }
-      profileMessageEl.textContent = "در حال فشرده‌سازی عکس...";
+      const telegramUsername = profileTelegramUsernameEl.value.trim();
+      profileMessageEl.textContent = file ? "در حال فشرده‌سازی عکس..." : "در حال ذخیره...";
       try {
-        const avatarDataUrl = await compressAvatar(file);
+        const avatarDataUrl = file ? await compressAvatar(file) : currentAvatarDataUrl;
         profileMessageEl.textContent = "در حال ذخیره...";
         const res = await fetch("/api/me", {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ avatar_data_url: avatarDataUrl }),
+          body: JSON.stringify({ avatar_data_url: avatarDataUrl, telegram_username: telegramUsername }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -1443,6 +1446,7 @@ const HTML = `<!doctype html>
           return;
         }
         currentAvatarDataUrl = data.user?.avatar_data_url || "";
+        currentUser.telegram_username = data.user?.telegram_username || "";
         profileAvatarInputEl.value = "";
         syncProfileUi();
         profileMessageEl.textContent = "پروفایل ذخیره شد.";
@@ -1630,7 +1634,7 @@ function loginHtml(error = "", email = "", message = "") {
 </html>`;
 }
 
-function passwordPageHtml(error = "") {
+function passwordPageHtml(error = "", telegramUsername = "") {
   return `<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
@@ -1661,6 +1665,8 @@ function passwordPageHtml(error = "") {
     <h1>تنظیم پسورد جدید</h1>
     <p>برای ادامه باید پسورد قوی انتخاب کنید. بعد از ذخیره، خودکار خارج می‌شوید و باید با پسورد جدید وارد شوید.</p>
     <div class="error">${htmlEscape(error)}</div>
+    <label for="telegram_username">یوزرنیم تلگرام</label>
+    <input id="telegram_username" name="telegram_username" type="text" inputmode="latin" autocomplete="off" placeholder="@username" value="${htmlEscape(telegramUsername)}" />
     <label for="current_password">پسورد فعلی</label>
     <div class="password-wrap">
       <input id="current_password" name="current_password" type="password" autocomplete="current-password" autofocus />
@@ -1860,6 +1866,18 @@ function validAccessEmail(email) {
   return /^[^@\s]+@toman\.ir$/.test(normalizeEmail(email));
 }
 
+function normalizeTelegramUsername(value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  const withoutAt = trimmed.startsWith("@") ? trimmed.slice(1) : trimmed;
+  return `@${withoutAt.toLowerCase()}`;
+}
+
+function validTelegramUsername(value) {
+  const trimmed = String(value || "").trim();
+  return /^@[A-Za-z][A-Za-z0-9_]{4,31}$/.test(trimmed);
+}
+
 const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboard"];
 const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS];
 const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
@@ -1894,6 +1912,7 @@ function hasAnyAccessPermission(user, permissions) {
 function publicUserProfile(user) {
   return {
     email: normalizeEmail(user?.email),
+    telegram_username: normalizeTelegramUsername(user?.telegram_username),
     avatar_data_url: typeof user?.avatar_data_url === "string" ? user.avatar_data_url : "",
   };
 }
@@ -2059,7 +2078,7 @@ async function readSupabaseJson(response) {
 
 async function getAccessUserByEmail(env, email) {
   const params = new URLSearchParams({
-    select: "id,email,password_hash,password_salt,must_change_password,is_active,permissions,avatar_data_url,last_login_at_utc,created_at_utc,updated_at_utc",
+    select: "id,email,password_hash,password_salt,must_change_password,is_active,permissions,telegram_username,avatar_data_url,last_login_at_utc,created_at_utc,updated_at_utc",
     email: `eq.${normalizeEmail(email)}`,
     limit: "1",
   });
@@ -2105,7 +2124,7 @@ async function patchAccessUser(env, email, row) {
 
 async function listAccessUsers(env) {
   const params = new URLSearchParams({
-    select: "email,must_change_password,is_active,permissions,last_login_at_utc,created_at_utc",
+    select: "email,must_change_password,is_active,permissions,telegram_username,last_login_at_utc,created_at_utc",
     order: "created_at_utc.desc",
   });
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_access_users?${params}`, { headers: supabaseHeaders(env) });
@@ -2151,20 +2170,26 @@ async function handleSetPassword(request, env, user) {
   const currentPassword = String(form.get("current_password") || "");
   const newPassword = String(form.get("new_password") || "");
   const newPasswordConfirm = String(form.get("new_password_confirm") || "");
+  const rawTelegramUsername = String(form.get("telegram_username") || "").trim();
+  if (!validTelegramUsername(rawTelegramUsername)) {
+    return text(passwordPageHtml("یوزرنیم تلگرام باید با @ شروع شود، ۵ تا ۳۲ کاراکتر باشد و فقط شامل حروف انگلیسی، عدد و _ باشد.", rawTelegramUsername), 400, "text/html; charset=utf-8");
+  }
+  const telegramUsername = normalizeTelegramUsername(rawTelegramUsername);
   if (await hashPassword(currentPassword, user.password_salt) !== user.password_hash) {
-    return text(passwordPageHtml("پسورد فعلی درست نیست."), 401, "text/html; charset=utf-8");
+    return text(passwordPageHtml("پسورد فعلی درست نیست.", telegramUsername), 401, "text/html; charset=utf-8");
   }
   if (newPassword !== newPasswordConfirm) {
-    return text(passwordPageHtml("پسورد جدید و تکرار آن یکسان نیستند."), 400, "text/html; charset=utf-8");
+    return text(passwordPageHtml("پسورد جدید و تکرار آن یکسان نیستند.", telegramUsername), 400, "text/html; charset=utf-8");
   }
   if (!strongPassword(newPassword)) {
-    return text(passwordPageHtml("پسورد باید حداقل ۱۰ کاراکتر و شامل حروف بزرگ، حروف کوچک، عدد و علامت باشد."), 400, "text/html; charset=utf-8");
+    return text(passwordPageHtml("پسورد باید حداقل ۱۰ کاراکتر و شامل حروف بزرگ، حروف کوچک، عدد و علامت باشد.", telegramUsername), 400, "text/html; charset=utf-8");
   }
   const salt = randomHex();
   await patchAccessUser(env, user.email, {
     password_salt: salt,
     password_hash: await hashPassword(newPassword, salt),
     must_change_password: false,
+    telegram_username: telegramUsername,
     updated_at_utc: new Date().toISOString(),
   });
   await insertAccessAuditLog(env, {
@@ -2172,7 +2197,7 @@ async function handleSetPassword(request, env, user) {
     targetEmail: user.email,
     action: "password_change",
     oldValues: { must_change_password: user.must_change_password },
-    newValues: { must_change_password: false },
+    newValues: { must_change_password: false, telegram_username: telegramUsername },
   });
   return new Response(null, {
     status: 303,
@@ -2320,9 +2345,15 @@ async function updateCurrentUserProfile(request, env, authUser) {
   if (!validAvatarDataUrl(avatarDataUrl)) {
     return json({ error: "فقط عکس کم‌حجم قابل ذخیره است." }, 400);
   }
+  const rawTelegramUsername = String(body.telegram_username || "").trim();
+  if (!validTelegramUsername(rawTelegramUsername)) {
+    return json({ error: "یوزرنیم تلگرام باید با @ شروع شود، ۵ تا ۳۲ کاراکتر باشد و فقط شامل حروف انگلیسی، عدد و _ باشد." }, 400);
+  }
+  const telegramUsername = normalizeTelegramUsername(rawTelegramUsername);
   try {
     const user = await patchAccessUser(env, authUser.email, {
       avatar_data_url: avatarDataUrl,
+      telegram_username: telegramUsername,
       updated_at_utc: new Date().toISOString(),
     });
     return json({ user: publicUserProfile(user) });
