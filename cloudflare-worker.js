@@ -928,6 +928,9 @@ const HTML = `<!doctype html>
     function topicLabel(row) {
       return row.topic_name || "";
     }
+    function isSyntheticTopicName(row) {
+      return /^#\\d+$/.test(String(topicLabel(row) || "").trim());
+    }
     function compactMessage(row) {
       const text = messageContent(row);
       return text ? linkify(text) : '<span class="thread-muted">بدون متن</span>';
@@ -949,7 +952,9 @@ const HTML = `<!doctype html>
     }
     function isTopicRootReply(row) {
       if (!row.reply_to_message_id || !row.message_thread_id) return false;
-      return String(row.reply_to_message_id) === String(row.message_thread_id);
+      return Boolean(row.is_topic_message)
+        && String(row.reply_to_message_id) === String(row.message_thread_id)
+        && isSyntheticTopicName(row);
     }
     function initials(row) {
       const source = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "?";
@@ -1884,6 +1889,38 @@ const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
 const API_CACHE_TTL_MS = 60 * 1000;
 let dashboardApiCache = null;
 let threadFilterOptionsApiCache = null;
+const TELEGRAM_MESSAGE_SELECT = [
+  "update_id",
+  "message_id",
+  "chat_id",
+  "chat_title",
+  "chat_username",
+  "chat_type",
+  "message_thread_id",
+  "is_topic_message",
+  "topic_name",
+  "sender_id",
+  "sender_username",
+  "sender_first_name",
+  "sender_last_name",
+  "sender_is_bot",
+  "sender_photo_file_id",
+  "sender_photo_file_unique_id",
+  "sender_chat_id",
+  "sender_chat_title",
+  "body",
+  "caption",
+  "message_type",
+  "sent_at_utc",
+  "edited_at_utc",
+  "reply_to_message_id",
+  "media_file_id",
+  "media_group_id",
+  "forward_origin_json",
+  "entities_json",
+  "raw_payload_json",
+  "received_at_utc",
+].join(",");
 
 function isAccessOwnerEmail(email) {
   return normalizeEmail(email) === ACCESS_OWNER_EMAIL;
@@ -2661,6 +2698,97 @@ function topicNameFromPayload(payload) {
   return findTopicPayload(payload, "forum_topic_created")?.name || findTopicPayload(payload, "forum_topic_edited")?.name || null;
 }
 
+function isTopicRootReplyRow(row) {
+  if (!row?.reply_to_message_id || !row?.message_thread_id) return false;
+  return Boolean(row.is_topic_message)
+    && String(row.reply_to_message_id) === String(row.message_thread_id)
+    && /^#\d+$/.test(String(row.topic_name || "").trim());
+}
+
+function threadParentKey(row) {
+  if (!row?.chat_id || !row?.reply_to_message_id || isTopicRootReplyRow(row)) return null;
+  return `${row.chat_id}:${row.reply_to_message_id}`;
+}
+
+function latestRowScore(row) {
+  return Date.parse(row?.edited_at_utc || row?.sent_at_utc || row?.received_at_utc || 0) || Number(row?.update_id || 0) || 0;
+}
+
+function latestMessageMap(rows) {
+  const byKey = new Map();
+  for (const row of rows) {
+    if (!row?.chat_id || !row?.message_id) continue;
+    const key = `${row.chat_id}:${row.message_id}`;
+    const existing = byKey.get(key);
+    if (!existing || latestRowScore(row) >= latestRowScore(existing)) byKey.set(key, row);
+  }
+  return byKey;
+}
+
+function enrichMessageRows(rows, topicByThread) {
+  return rows.map((row) => {
+    const date = row.sent_at_utc ? new Date(row.sent_at_utc) : null;
+    const registeredDate = row.received_at_utc ? new Date(row.received_at_utc) : null;
+    const mappedTopicName = row.message_thread_id
+      ? topicByThread.get(`${row.chat_id}:${row.message_thread_id}`)
+      : null;
+    const payloadTopicName = topicNameFromPayload(row.raw_payload_json);
+    const receiveDelaySeconds = date && registeredDate
+      ? Math.max(0, Math.round((registeredDate.getTime() - date.getTime()) / 1000))
+      : null;
+    return {
+      ...row,
+      topic_name: row.topic_name || mappedTopicName || payloadTopicName || null,
+      ...(date ? tehranParts(date) : { sent_date: null, sent_jalali_date: null, sent_time: null, display_timezone: "Asia/Tehran" }),
+      registered_tehran_datetime: tehranDateTimeDisplay(registeredDate),
+      registered_jalali_datetime: tehranJalaliDateTimeDisplay(registeredDate),
+      receive_delay_seconds: receiveDelaySeconds,
+    };
+  });
+}
+
+async function fetchMessageRowsByKeys(env, headers, keys) {
+  const rows = [];
+  const chunks = [];
+  for (let index = 0; index < keys.length; index += 40) chunks.push(keys.slice(index, index + 40));
+  for (const chunk of chunks) {
+    const params = new URLSearchParams();
+    params.set("select", TELEGRAM_MESSAGE_SELECT);
+    params.set("order", "edited_at_utc.desc.nullslast,sent_at_utc.desc.nullslast,update_id.desc");
+    params.set("limit", "10000");
+    params.set("or", `(${chunk.map((key) => {
+      const [chatId, messageId] = key.split(":");
+      return `and(chat_id.eq.${chatId},message_id.eq.${messageId})`;
+    }).join(",")})`);
+    const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers });
+    if (!response.ok) throw new Error(await response.text());
+    rows.push(...await response.json());
+  }
+  return rows;
+}
+
+async function withThreadAncestors(env, headers, messages, topicByThread) {
+  const allRows = [...messages];
+  const baseKeys = new Set(messages.filter((row) => row.chat_id && row.message_id).map((row) => `${row.chat_id}:${row.message_id}`));
+  for (let depth = 0; depth < 12; depth += 1) {
+    const latest = latestMessageMap(allRows);
+    const missingParentKeys = [...new Set([...latest.values()]
+      .map(threadParentKey)
+      .filter((key) => key && !latest.has(key)))];
+    if (!missingParentKeys.length) break;
+    const parentRows = await fetchMessageRowsByKeys(env, headers, missingParentKeys);
+    const newRows = enrichMessageRows(parentRows, topicByThread).filter((row) => {
+      const key = `${row.chat_id}:${row.message_id}`;
+      if (baseKeys.has(key)) return false;
+      baseKeys.add(key);
+      return true;
+    });
+    if (!newRows.length) break;
+    allRows.push(...newRows);
+  }
+  return allRows;
+}
+
 function findTopicPayload(value, key) {
   if (!value || typeof value !== "object") return null;
   if (value[key]?.name) return value[key];
@@ -3103,38 +3231,7 @@ async function handleTelegramWebhook(request, env) {
 async function fetchMessages(request, env) {
   const url = new URL(request.url);
   const params = new URLSearchParams();
-  params.set("select", [
-    "update_id",
-    "message_id",
-    "chat_id",
-    "chat_title",
-    "chat_username",
-    "chat_type",
-    "message_thread_id",
-    "is_topic_message",
-    "topic_name",
-    "sender_id",
-    "sender_username",
-    "sender_first_name",
-    "sender_last_name",
-    "sender_is_bot",
-    "sender_photo_file_id",
-    "sender_photo_file_unique_id",
-    "sender_chat_id",
-    "sender_chat_title",
-    "body",
-    "caption",
-    "message_type",
-    "sent_at_utc",
-    "edited_at_utc",
-    "reply_to_message_id",
-    "media_file_id",
-    "media_group_id",
-    "forward_origin_json",
-    "entities_json",
-    "raw_payload_json",
-    "received_at_utc",
-  ].join(","));
+  params.set("select", TELEGRAM_MESSAGE_SELECT);
   params.set("order", "sent_at_utc.desc.nullslast,id.desc");
   params.set("limit", "500");
 
@@ -3145,6 +3242,7 @@ async function fetchMessages(request, env) {
   const jalaliDateFilter = url.searchParams.get("jalali_date");
   const chatId = url.searchParams.get("chat_id");
   const senderId = url.searchParams.get("sender_id");
+  const view = url.searchParams.get("view");
   if (q) {
     const pattern = `*${q.replace(/[%*]/g, "")}*`;
     filters.push(`body.ilike.${pattern},caption.ilike.${pattern},chat_title.ilike.${pattern},topic_name.ilike.${pattern},sender_username.ilike.${pattern}`);
@@ -3173,25 +3271,7 @@ async function fetchMessages(request, env) {
     topics.map((topicRow) => [`${topicRow.chat_id}:${topicRow.message_thread_id}`, topicRow.topic_name])
   );
   const rows = await response.json();
-  let messages = rows.map((row) => {
-    const date = row.sent_at_utc ? new Date(row.sent_at_utc) : null;
-    const registeredDate = row.received_at_utc ? new Date(row.received_at_utc) : null;
-    const mappedTopicName = row.message_thread_id
-      ? topicByThread.get(`${row.chat_id}:${row.message_thread_id}`)
-      : null;
-    const payloadTopicName = topicNameFromPayload(row.raw_payload_json);
-    const receiveDelaySeconds = date && registeredDate
-      ? Math.max(0, Math.round((registeredDate.getTime() - date.getTime()) / 1000))
-      : null;
-    return {
-      ...row,
-      topic_name: row.topic_name || mappedTopicName || payloadTopicName || null,
-      ...(date ? tehranParts(date) : { sent_date: null, sent_jalali_date: null, sent_time: null, display_timezone: "Asia/Tehran" }),
-      registered_tehran_datetime: tehranDateTimeDisplay(registeredDate),
-      registered_jalali_datetime: tehranJalaliDateTimeDisplay(registeredDate),
-      receive_delay_seconds: receiveDelaySeconds,
-    };
-  });
+  let messages = enrichMessageRows(rows, topicByThread);
   if (topicsFilter.length) {
     const normalizedTopics = topicsFilter.map((value) => value.toLowerCase());
     messages = messages.filter((row) => normalizedTopics.includes(String(row.topic_name || "").toLowerCase()));
@@ -3202,6 +3282,13 @@ async function fetchMessages(request, env) {
   }
   if (jalaliDateFilter) {
     messages = messages.filter((row) => String(row.sent_jalali_date || "") === jalaliDateFilter);
+  }
+  if (view === "threads") {
+    try {
+      messages = await withThreadAncestors(env, headers, messages, topicByThread);
+    } catch (error) {
+      return json({ error: "Supabase thread ancestors request failed", detail: String(error?.message || error) }, 500);
+    }
   }
   let historyRows = messages;
   const editedKeys = [...new Set(
