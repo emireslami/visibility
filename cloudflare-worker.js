@@ -282,7 +282,102 @@ const HTML = `<!doctype html>
     .user-action { border-radius:0; }
     .user-action:hover { background:var(--accent-soft); border-color:var(--accent-soft); }
     .spinner { border-color:#d0e2ff; border-top-color:var(--accent); }
-    @media (max-width: 900px) { .filters { width:calc(100% + 28px); margin-inline:-14px; padding-inline:14px; grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } .access-form, .access-main { grid-template-columns:1fr; } .permission-grid, .access-row .permission-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .access-actions { justify-content:flex-start; } .media-open.thread-photo-frame { width:148px; height:148px; } .media-gallery { grid-template-columns:repeat(auto-fit, minmax(112px, 148px)); } }
+    @media (max-width: 900px) {
+      :root { --header-h:0px; --filters-h:246px; }
+      header { position:static; display:grid; grid-template-columns:1fr auto; align-items:start; gap:10px; padding:12px 14px; }
+      .brand { min-width:0; display:grid; gap:10px; }
+      h1 { font-size:20px; }
+      nav { width:100%; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px; direction:rtl; }
+      .nav-button { min-width:0; width:100%; padding:0 6px; font-size:12px; }
+      .header-tools { align-items:start; gap:8px; }
+      .meta { max-width:80px; min-height:38px; justify-content:flex-end; font-size:11px; text-align:left; }
+      main { padding:12px 14px 22px; }
+      .filters { top:0; width:calc(100% + 28px); margin-inline:-14px; padding:10px 14px; grid-template-columns:1fr; gap:8px; align-items:stretch; }
+      .thread-filters { grid-template-columns:1fr 1fr; }
+      .thread-filters button { grid-column:1 / -1; }
+      .multi-panel { position:fixed; inset-inline:14px; top:auto; max-height:45vh; z-index:1200; }
+      .messages-table, .groups-table, .bots-table, .access-log-table { display:block; border:0; background:transparent; box-shadow:none; }
+      .messages-table colgroup, .groups-table colgroup, .bots-table colgroup, .access-log-table colgroup,
+      .messages-table thead, .groups-table thead, .bots-table thead, .access-log-table thead { display:none; }
+      .messages-table tbody, .groups-table tbody, .bots-table tbody, .access-log-table tbody { display:grid; gap:10px; }
+      .messages-table tr, .groups-table tr, .bots-table tr, .access-log-table tr {
+        display:grid;
+        gap:8px;
+        padding:12px;
+        border:1px solid var(--line);
+        background:#fff;
+        box-shadow:0 1px 2px rgba(9,30,66,.08);
+      }
+      .messages-table td, .groups-table td, .bots-table td, .access-log-table td {
+        min-height:0;
+        height:auto;
+        display:grid;
+        grid-template-columns:minmax(86px, 34%) minmax(0, 1fr);
+        gap:10px;
+        align-items:start;
+        padding:0;
+        border:0;
+        background:transparent;
+        overflow:visible;
+        text-overflow:clip;
+        white-space:normal;
+        overflow-wrap:anywhere;
+        font-size:12px;
+        text-align:right;
+      }
+      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before {
+        content:attr(data-label);
+        color:#525252;
+        font-weight:800;
+        font-size:11px;
+      }
+      .messages-table td.body, .messages-table td.message-cell {
+        grid-template-columns:1fr;
+        padding:10px;
+        border:1px solid var(--line);
+        background:#f7f8fa;
+      }
+      .messages-table td.body::before { margin-bottom:4px; }
+      .message-inner { align-items:flex-start; }
+      .message-inner .clip { white-space:normal; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; }
+      .details-button { width:100%; }
+      .group-label-select { height:36px; }
+      .access-log-table { margin-top:10px; direction:rtl; }
+      .access-log-table th, .access-log-table td { direction:rtl; text-align:right; }
+      .chart-panel, .access-panel, .profile-panel, .bots-panel { padding:14px; }
+      .chart-head { align-items:flex-start; flex-direction:column; }
+      .bot-form { grid-template-columns:1fr; }
+      .access-form, .access-main { grid-template-columns:1fr; }
+      .access-row { direction:rtl; }
+      .access-email { white-space:normal; overflow-wrap:anywhere; text-align:left; direction:ltr; }
+      .permission-grid, .access-row .permission-grid { grid-template-columns:1fr; direction:rtl; }
+      .permission-option { justify-content:flex-start; direction:ltr; }
+      .access-actions { justify-content:stretch; display:grid; grid-template-columns:1fr; }
+      .revoke-button, .reactivate-button, .secondary-button { width:100%; }
+      .thread-list { max-width:none; }
+      .thread-root, .thread-reply, .thread-missing { padding:12px; }
+      .thread-reply { margin-right:10px; }
+      .thread-item { grid-template-columns:34px minmax(0, 1fr); gap:8px; }
+      .thread-head { gap:6px; }
+      .thread-pill { max-width:100%; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .media-open.thread-photo-frame { width:148px; height:148px; }
+      .media-gallery { grid-template-columns:repeat(auto-fit, minmax(112px, 148px)); }
+      .detail-row { grid-template-columns:1fr; }
+      .modal-backdrop { padding:12px; align-items:flex-start; }
+      .modal { max-height:calc(100vh - 24px); }
+      .user-panel { left:0; right:auto; max-width:calc(100vw - 28px); }
+    }
+    @media (max-width: 520px) {
+      :root { --header-h:0px; --filters-h:246px; }
+      header { grid-template-columns:1fr; }
+      .header-tools { width:100%; justify-content:space-between; direction:ltr; }
+      .meta { max-width:none; text-align:right; direction:rtl; }
+      nav { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+      .thread-filters { grid-template-columns:1fr; }
+      .signals { grid-template-columns:1fr; }
+      .messages-table td, .groups-table td, .bots-table td, .access-log-table td { grid-template-columns:1fr; gap:4px; }
+      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before { font-size:10px; }
+    }
   </style>
 </head>
 <body>
@@ -1493,17 +1588,17 @@ const HTML = `<!doctype html>
         detailByKey.clear();
         rowsEl.innerHTML = data.messages.map((row, index) => \`
           <tr>
-            <td class="full-cell">\${esc(platformText(row.platform))}</td>
-            <td class="full-cell">\${esc(botText(row))}</td>
-            <td class="full-cell">\${esc(row.chat_title)}</td>
-            <td class="full-cell">\${esc(topicLabel(row))}</td>
-            <td class="full-cell">\${esc(row.sender_first_name)}</td>
-            <td class="full-cell">\${esc(row.sender_last_name)}</td>
-            <td class="full-cell">\${esc(row.sender_username)}</td>
-            <td class="body message-cell"><div class="message-inner">\${editedBadge(row)}\${mediaBadge(row)}\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 115)}</div></td>
-            <td class="full-cell">\${esc([row.sent_jalali_date, row.sent_time].filter(Boolean).join(" "))}</td>
-            <td class="full-cell">\${esc(row.registered_jalali_datetime)}</td>
-            <td><button class="details-button" type="button" data-detail-key="detail-\${index}">جزئیات</button></td>
+            <td class="full-cell" data-label="پلتفرم">\${esc(platformText(row.platform))}</td>
+            <td class="full-cell" data-label="بات">\${esc(botText(row))}</td>
+            <td class="full-cell" data-label="نام گروه">\${esc(row.chat_title)}</td>
+            <td class="full-cell" data-label="تاپیک">\${esc(topicLabel(row))}</td>
+            <td class="full-cell" data-label="نام فرستنده">\${esc(row.sender_first_name)}</td>
+            <td class="full-cell" data-label="نام خانوادگی">\${esc(row.sender_last_name)}</td>
+            <td class="full-cell" data-label="یوزرنیم">\${esc(row.sender_username)}</td>
+            <td class="body message-cell" data-label="پیام"><div class="message-inner">\${editedBadge(row)}\${mediaBadge(row)}\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 115)}</div></td>
+            <td class="full-cell" data-label="زمان ارسال">\${esc([row.sent_jalali_date, row.sent_time].filter(Boolean).join(" "))}</td>
+            <td class="full-cell" data-label="زمان ثبت">\${esc(row.registered_jalali_datetime)}</td>
+            <td data-label="جزئیات"><button class="details-button" type="button" data-detail-key="detail-\${index}">جزئیات</button></td>
           </tr>\`).join("");
         data.messages.forEach((row, index) => detailByKey.set("detail-" + index, detailHtml(row)));
         setStatus(token, data.messages.length + " پیام");
@@ -1524,15 +1619,15 @@ const HTML = `<!doctype html>
         detailByKey.clear();
         groupRowsEl.innerHTML = data.groups.map(row => \`
           <tr>
-            <td>\${esc(row.chat_id)}</td>
-            <td class="group-name-cell">\${esc(row.chat_title)}</td>
-            <td>\${esc(platformText(row.platform))}</td>
-            <td class="full-cell">\${esc(botText(row))}</td>
-            <td>\${groupLabelSelect(row)}</td>
-            <td>\${esc(row.chat_username)}</td>
-            <td>\${esc(row.chat_type)}</td>
-            <td>\${esc(row.message_count)}</td>
-            <td><button class="details-button" type="button" data-detail-key="group-\${esc(row.platform || "telegram")}:\${esc(row.chat_id)}">جزئیات</button></td>
+            <td data-label="شناسه گروه">\${esc(row.chat_id)}</td>
+            <td class="group-name-cell" data-label="نام گروه">\${esc(row.chat_title)}</td>
+            <td data-label="پلتفرم">\${esc(platformText(row.platform))}</td>
+            <td class="full-cell" data-label="بات">\${esc(botText(row))}</td>
+            <td data-label="لیبل">\${groupLabelSelect(row)}</td>
+            <td data-label="یوزرنیم گروه">\${esc(row.chat_username)}</td>
+            <td data-label="نوع گروه">\${esc(row.chat_type)}</td>
+            <td data-label="پیام‌ها">\${esc(row.message_count)}</td>
+            <td data-label="جزئیات"><button class="details-button" type="button" data-detail-key="group-\${esc(row.platform || "telegram")}:\${esc(row.chat_id)}">جزئیات</button></td>
           </tr>\`).join("");
         data.groups.forEach(row => detailByKey.set("group-" + (row.platform || "telegram") + ":" + row.chat_id, groupDetailHtml(row)));
         setStatus(token, data.groups.length + " گروه");
@@ -1587,11 +1682,11 @@ const HTML = `<!doctype html>
           const key = "access-log-" + index;
           detailByKey.set(key, accessLogDetailsHtml(log));
           return \`<tr>
-            <td>\${esc(accessActionText(log.action))}</td>
-            <td>\${esc(log.actor_email || "-")}</td>
-            <td>\${esc(log.target_email || "-")}</td>
-            <td>\${esc(log.created_at_utc ? tehranDisplay(log.created_at_utc) : "-")}</td>
-            <td class="details-cell"><button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button></td>
+            <td data-label="عملیات">\${esc(accessActionText(log.action))}</td>
+            <td data-label="انجام‌دهنده">\${esc(log.actor_email || "-")}</td>
+            <td data-label="کاربر هدف">\${esc(log.target_email || "-")}</td>
+            <td data-label="زمان">\${esc(log.created_at_utc ? tehranDisplay(log.created_at_utc) : "-")}</td>
+            <td class="details-cell" data-label="جزئیات"><button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button></td>
           </tr>\`;
         }).join("") || '<tr><td colspan="5" class="empty">لاگی ثبت نشده است</td></tr>';
         accessLogMessageEl.textContent = "";
@@ -1617,14 +1712,14 @@ const HTML = `<!doctype html>
           const key = "bot-" + index;
           detailByKey.set(key, botDetailHtml(row));
           return \`<tr>
-            <td>\${esc(platformText(row.platform))}</td>
-            <td class="full-cell">\${esc(row.bot_name || "-")}</td>
-            <td class="full-cell">\${esc(row.bot_username || "-")}</td>
-            <td>\${esc(row.bot_id || "-")}</td>
-            <td>\${esc(row.group_count || 0)}</td>
-            <td>\${esc(row.message_count || 0)}</td>
-            <td class="full-cell">\${esc(row.last_seen_tehran || "-")}</td>
-            <td><button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button></td>
+            <td data-label="پلتفرم">\${esc(platformText(row.platform))}</td>
+            <td class="full-cell" data-label="نام بات">\${esc(row.bot_name || "-")}</td>
+            <td class="full-cell" data-label="یوزرنیم بات">\${esc(row.bot_username || "-")}</td>
+            <td data-label="شناسه بات">\${esc(row.bot_id || "-")}</td>
+            <td data-label="گروه‌ها">\${esc(row.group_count || 0)}</td>
+            <td data-label="پیام‌ها">\${esc(row.message_count || 0)}</td>
+            <td class="full-cell" data-label="آخرین دریافت">\${esc(row.last_seen_tehran || "-")}</td>
+            <td data-label="جزئیات"><button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button></td>
           </tr>\`;
         }).join("") || '<tr><td colspan="8" class="empty">باتی ثبت نشده است</td></tr>';
         setStatus(token, data.bots.length + " بات");
