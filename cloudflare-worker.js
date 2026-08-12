@@ -22,6 +22,7 @@ const HTML = `<!doctype html>
     .page[hidden] { display:none; }
     .filters { position:sticky; top:var(--header-h); z-index:45; display:grid; grid-template-columns: 1fr 150px 170px 170px 110px; gap:10px; min-height:var(--filters-h); align-items:center; width:calc(100% + 48px); margin:0 -24px 18px; padding:10px 24px; background:var(--bg); border-bottom:1px solid var(--line); box-shadow:0 8px 16px rgba(22,22,22,.06); }
     .thread-filters { grid-template-columns: minmax(200px, 1fr) minmax(170px, .8fr) 105px 105px 105px minmax(150px, .7fr) 110px; max-width:none; margin:0 -24px 18px; }
+    .mobile-filter-toggle { display:none; }
     input, select, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
     .password-wrap { position:relative; display:block; }
@@ -383,7 +384,7 @@ const HTML = `<!doctype html>
     .user-action:hover { background:var(--accent-soft); border-color:var(--accent-soft); }
     .spinner { border-color:#d0e2ff; border-top-color:var(--accent); }
     @media (max-width: 900px) {
-      :root { --header-h:0px; --filters-h:246px; }
+      :root { --header-h:0px; --filters-h:58px; }
       header { position:static; display:grid; grid-template-columns:1fr auto; align-items:start; gap:10px; padding:12px 14px; }
       .brand { min-width:0; display:grid; gap:10px; }
       h1 { font-size:20px; }
@@ -392,8 +393,12 @@ const HTML = `<!doctype html>
       .header-tools { align-items:start; gap:8px; }
       .meta { max-width:80px; min-height:38px; justify-content:flex-end; font-size:11px; text-align:left; }
       main { padding:12px 14px 22px; }
-      .filters { top:0; width:calc(100% + 28px); margin-inline:-14px; padding:10px 14px; grid-template-columns:1fr; gap:8px; align-items:stretch; }
+      .filters { top:0; width:calc(100% + 28px); margin-inline:-14px; padding:10px 14px; grid-template-columns:1fr; gap:8px; align-items:stretch; min-height:var(--filters-h); }
+      .mobile-filter-toggle { display:block; width:100%; }
+      .filters:not(.mobile-open) > :not(.mobile-filter-toggle) { display:none; }
+      .filters.mobile-open > :not(.mobile-filter-toggle) { display:block; }
       .thread-filters { grid-template-columns:1fr 1fr; }
+      .thread-filters .mobile-filter-toggle,
       .thread-filters button { grid-column:1 / -1; }
       .multi-panel { width:min(var(--dropdown-w, 100%), calc(100vw - 28px)); max-height:45vh; z-index:1200; }
       .analytics-summary { grid-template-columns:repeat(2, minmax(120px, 1fr)); }
@@ -473,7 +478,7 @@ const HTML = `<!doctype html>
       .user-panel { left:0; right:auto; max-width:calc(100vw - 28px); }
     }
     @media (max-width: 520px) {
-      :root { --header-h:0px; --filters-h:246px; }
+      :root { --header-h:0px; --filters-h:58px; }
       header { grid-template-columns:1fr; }
       .header-tools { width:100%; justify-content:space-between; direction:ltr; }
       .meta { max-width:none; text-align:right; direction:rtl; }
@@ -616,6 +621,7 @@ const HTML = `<!doctype html>
     </section>
     <section class="page" id="messagesPage">
       <section class="filters">
+        <button class="mobile-filter-toggle" id="messageFilterToggle" type="button">نمایش فیلترها</button>
         <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
         <div id="platform" class="multi-filter"></div>
         <div id="group" class="multi-filter"></div>
@@ -718,6 +724,7 @@ const HTML = `<!doctype html>
     </section>
     <section class="page" id="threadsPage" hidden>
       <section class="filters thread-filters">
+        <button class="mobile-filter-toggle" id="threadFilterToggle" type="button">نمایش فیلترها</button>
         <div id="threadPlatform" class="multi-filter"></div>
         <div id="threadGroup" class="multi-filter"></div>
         <div id="threadTopic" class="multi-filter"></div>
@@ -951,10 +958,12 @@ const HTML = `<!doctype html>
     const botsPageEl = document.getElementById("botsPage");
     const accessPageEl = document.getElementById("accessPage");
     const searchEl = document.getElementById("search");
+    const messageFilterToggleEl = document.getElementById("messageFilterToggle");
     const platformEl = document.getElementById("platform");
     const groupEl = document.getElementById("group");
     const topicEl = document.getElementById("topic");
     const refreshEl = document.getElementById("refresh");
+    const threadFilterToggleEl = document.getElementById("threadFilterToggle");
     const threadPlatformEl = document.getElementById("threadPlatform");
     const threadGroupEl = document.getElementById("threadGroup");
     const threadTopicEl = document.getElementById("threadTopic");
@@ -1643,9 +1652,25 @@ const HTML = `<!doctype html>
     function threadFiltersActive() {
       return Boolean(threadPlatformFilter.values().length || threadGroupFilter.values().length || threadTopicFilter.values().length || selectedThreadJalaliDate());
     }
+    function activeMessageFilterCount() {
+      return (searchEl.value.trim() ? 1 : 0) + messagePlatformFilter.values().length + messageGroupFilter.values().length + messageTopicFilter.values().length;
+    }
+    function activeThreadFilterCount() {
+      return threadPlatformFilter.values().length + threadGroupFilter.values().length + threadTopicFilter.values().length + (selectedThreadJalaliDate() ? 1 : 0);
+    }
+    function syncMobileFilterToggle(toggle, filtersRoot, count) {
+      const isOpen = filtersRoot.classList.contains("mobile-open");
+      toggle.textContent = isOpen ? "بستن فیلترها" : (count ? "فیلترها (" + numberFmt.format(count) + ")" : "نمایش فیلترها");
+      toggle.classList.toggle("secondary-button", isOpen);
+    }
+    function updateMobileFilterToggles() {
+      syncMobileFilterToggle(messageFilterToggleEl, messagesPageEl.querySelector(".filters"), activeMessageFilterCount());
+      syncMobileFilterToggle(threadFilterToggleEl, threadsPageEl.querySelector(".filters"), activeThreadFilterCount());
+    }
     function updateFilterButtons() {
       refreshEl.textContent = messageFiltersActive() ? "ریست فیلتر" : "به‌روزرسانی";
       threadRefreshEl.textContent = threadFiltersActive() ? "ریست فیلتر" : "به‌روزرسانی";
+      updateMobileFilterToggles();
     }
     function resetMessageFilters() {
       searchEl.value = "";
@@ -3095,6 +3120,16 @@ const HTML = `<!doctype html>
     threadRefreshEl.addEventListener("click", () => {
       if (threadFiltersActive()) resetThreadFilters();
       loadThreads();
+    });
+    messageFilterToggleEl.addEventListener("click", () => {
+      messagesPageEl.querySelector(".filters")?.classList.toggle("mobile-open");
+      updateMobileFilterToggles();
+      positionOpenFilterPanels();
+    });
+    threadFilterToggleEl.addEventListener("click", () => {
+      threadsPageEl.querySelector(".filters")?.classList.toggle("mobile-open");
+      updateMobileFilterToggles();
+      positionOpenFilterPanels();
     });
     dashboardNavEl.addEventListener("click", () => showPage("dashboard"));
     analyticsNavEl.addEventListener("click", () => showPage("analytics"));
