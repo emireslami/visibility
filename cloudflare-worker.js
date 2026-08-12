@@ -82,7 +82,8 @@ const HTML = `<!doctype html>
     .message-inner { display:flex; align-items:center; gap:6px; min-width:0; width:100%; }
     .message-inner .clip { flex:1 1 auto; min-width:0; }
     .clip { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .badge { display:inline-flex; align-items:center; height:22px; margin-inline-end:6px; padding:0 8px; border-radius:999px; background:#fff4d6; color:#7a4a00; border:1px solid #f1cf75; font-size:11px; font-weight:700; direction:ltr; }
+    .badge { display:inline-flex; align-items:center; height:22px; margin-inline:4px 8px; padding:0 8px; border-radius:999px; background:#fff4d6; color:#7a4a00; border:1px solid #f1cf75; font-size:11px; font-weight:700; direction:ltr; vertical-align:middle; white-space:nowrap; }
+    .message-inner .badge { margin-inline:0; }
     .more { flex:0 0 auto; width:24px; height:24px; padding:0; display:inline-grid; place-items:center; border-radius:50%; font-size:16px; font-weight:700; line-height:1; }
     .details-button { height: 28px; padding: 0 8px; font-size: 12px; }
     .thread-list { display:grid; gap:14px; max-width:980px; margin:0 auto; direction:rtl; }
