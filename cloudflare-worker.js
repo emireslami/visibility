@@ -191,6 +191,11 @@ const HTML = `<!doctype html>
     .access-log-table th, .access-log-table td { direction:ltr; text-align:left; }
     .access-log-table th { top:var(--header-h); }
     .access-log-table .details-cell { text-align:center; }
+    .access-group-view { display:grid; grid-template-columns:minmax(260px, 1fr) auto; gap:10px; align-items:center; margin:14px 0; }
+    .access-group-summary { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 10px; color:var(--muted); font-size:12px; }
+    .access-group-users { display:grid; gap:8px; }
+    .access-group-user { display:grid; grid-template-columns:minmax(220px, 1fr) auto auto; gap:10px; align-items:center; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fff; direction:ltr; }
+    .access-source-chip { min-height:24px; display:inline-flex; align-items:center; padding:0 8px; border:1px solid var(--line); border-radius:999px; background:#f2f6f8; color:var(--muted); font-size:11px; font-weight:700; direction:rtl; }
     .profile-panel { max-width:640px; margin:0 auto; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
     .profile-panel h2 { margin:0 0 14px; font-size:18px; }
     .profile-form { display:grid; gap:14px; }
@@ -563,6 +568,7 @@ const HTML = `<!doctype html>
         <p class="thread-muted">فقط ایمیل‌های دامنه toman.ir قابل اضافه شدن هستند. برای کاربر ایمیل دعوت ارسال می‌شود.</p>
         <div class="access-tabs">
           <button class="access-tab active" id="accessUsersTab" type="button">کاربران</button>
+          <button class="access-tab" id="accessGroupsTab" type="button">گروه‌ها</button>
           <button class="access-tab" id="accessLogsTab" type="button">لاگ‌ها</button>
         </div>
         <section class="access-section" id="accessUsersSection">
@@ -573,6 +579,16 @@ const HTML = `<!doctype html>
           </form>
           <div class="access-message" id="accessMessage"></div>
           <div class="access-list" id="accessRows"></div>
+        </section>
+        <section class="access-section" id="accessGroupsSection" hidden>
+          <div class="access-group-view">
+            <select id="accessGroupSelect" aria-label="انتخاب گروه">
+              <option value="">انتخاب گروه</option>
+            </select>
+            <button class="secondary-button" id="accessGroupRefresh" type="button">به‌روزرسانی</button>
+          </div>
+          <div class="access-group-summary" id="accessGroupSummary"></div>
+          <div class="access-group-users" id="accessGroupUsers"></div>
         </section>
         <section class="access-section" id="accessLogsSection" hidden>
           <div class="access-message" id="accessLogMessage"></div>
@@ -681,14 +697,20 @@ const HTML = `<!doctype html>
     const profileTelegramUsernameEl = document.getElementById("profileTelegramUsername");
     const profileMessageEl = document.getElementById("profileMessage");
     const accessUsersTabEl = document.getElementById("accessUsersTab");
+    const accessGroupsTabEl = document.getElementById("accessGroupsTab");
     const accessLogsTabEl = document.getElementById("accessLogsTab");
     const accessUsersSectionEl = document.getElementById("accessUsersSection");
+    const accessGroupsSectionEl = document.getElementById("accessGroupsSection");
     const accessLogsSectionEl = document.getElementById("accessLogsSection");
     const accessFormEl = document.getElementById("accessForm");
     const accessEmailEl = document.getElementById("accessEmail");
     const accessNewPermissionsEl = document.getElementById("accessNewPermissions");
     const accessMessageEl = document.getElementById("accessMessage");
     const accessRowsEl = document.getElementById("accessRows");
+    const accessGroupSelectEl = document.getElementById("accessGroupSelect");
+    const accessGroupRefreshEl = document.getElementById("accessGroupRefresh");
+    const accessGroupSummaryEl = document.getElementById("accessGroupSummary");
+    const accessGroupUsersEl = document.getElementById("accessGroupUsers");
     const accessLogMessageEl = document.getElementById("accessLogMessage");
     const accessLogRowsEl = document.getElementById("accessLogRows");
     const botRowsEl = document.getElementById("botRows");
@@ -712,6 +734,7 @@ const HTML = `<!doctype html>
     const fullTextByKey = new Map();
     const detailByKey = new Map();
     let accessGroupOptions = [];
+    let accessUserOptions = [];
     const chartColors = ["#087f8c", "#f25f5c", "#3b82f6", "#f59e0b", "#7c3aed", "#10b981", "#ef476f", "#6b7280", "#06b6d4", "#84cc16"];
     const ownerEmail = "a.eslami@toman.ir";
     let threadFilterOptions = null;
@@ -844,11 +867,15 @@ const HTML = `<!doctype html>
     }
     function showAccessSection(section) {
       const isLogs = section === "logs";
-      accessUsersSectionEl.hidden = isLogs;
+      const isGroups = section === "groups";
+      accessUsersSectionEl.hidden = isLogs || isGroups;
+      accessGroupsSectionEl.hidden = !isGroups;
       accessLogsSectionEl.hidden = !isLogs;
-      accessUsersTabEl.classList.toggle("active", !isLogs);
+      accessUsersTabEl.classList.toggle("active", !isLogs && !isGroups);
+      accessGroupsTabEl.classList.toggle("active", isGroups);
       accessLogsTabEl.classList.toggle("active", isLogs);
       if (isLogs) loadAccessLogs();
+      else if (isGroups) loadAccessGroupView();
       else loadAccessUsers();
     }
     const routablePages = ["dashboard", "messages", "groups", "threads", "bots", "access", "profile"];
@@ -1705,6 +1732,68 @@ const HTML = `<!doctype html>
         setStatus(token, "خطا در دریافت کاربران");
       }
     }
+    function userGroupAccessSource(user, group) {
+      if (user.is_owner) return "مالک";
+      const access = user.group_access || {};
+      const labels = new Set(access.labels || []);
+      const groups = new Set(access.groups || []);
+      if (access.unrestricted || (!labels.size && !groups.size)) return "همه گروه‌ها";
+      if (labels.has(group.group_label || "")) return groupLabelShort(group.group_label) || "لیبل";
+      if (groups.has(group.key)) return "گروه";
+      return "";
+    }
+    function renderAccessGroupUsers() {
+      const selectedKey = accessGroupSelectEl.value;
+      const group = accessGroupOptions.find((item) => item.key === selectedKey);
+      if (!group) {
+        accessGroupSummaryEl.innerHTML = "";
+        accessGroupUsersEl.innerHTML = '<div class="empty">یک گروه را انتخاب کنید.</div>';
+        return;
+      }
+      const allowedUsers = accessUserOptions
+        .map((user) => ({ user, source: userGroupAccessSource(user, group) }))
+        .filter((item) => item.source && item.user.is_active);
+      accessGroupSummaryEl.innerHTML = \`
+        <span class="access-source-chip">\${esc(platformText(group.platform))}</span>
+        <span class="access-source-chip">\${esc(groupLabelShort(group.group_label) || "بدون لیبل")}</span>
+        <span>\${esc(group.title)}</span>
+        <strong>\${allowedUsers.length} کاربر</strong>
+      \`;
+      accessGroupUsersEl.innerHTML = allowedUsers.length ? allowedUsers.map(({ user, source }) => \`
+        <div class="access-group-user">
+          <span class="access-email">\${esc(user.email)}</span>
+          <span class="access-source-chip">\${esc(source)}</span>
+          <span class="access-state">\${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</span>
+        </div>\`).join("") : '<div class="empty">هیچ کاربر فعالی برای این گروه دسترسی ندارد.</div>';
+    }
+    async function loadAccessGroupView() {
+      const token = showLoading("در حال دریافت دسترسی گروه‌ها...");
+      try {
+        const [groupsRes, usersRes] = await Promise.all([
+          fetch("/api/access-groups"),
+          fetch("/api/access-users"),
+        ]);
+        const groupsData = await groupsRes.json();
+        const usersData = await usersRes.json();
+        if (!groupsRes.ok || !Array.isArray(groupsData.groups) || !usersRes.ok || !Array.isArray(usersData.users)) {
+          accessGroupUsersEl.innerHTML = "";
+          accessGroupSummaryEl.innerHTML = "";
+          setStatus(token, groupsData.detail || groupsData.error || usersData.detail || usersData.error || "خطا در دریافت دسترسی گروه‌ها");
+          return;
+        }
+        const previous = accessGroupSelectEl.value;
+        accessGroupOptions = groupsData.groups;
+        accessUserOptions = usersData.users;
+        accessGroupSelectEl.innerHTML = '<option value="">انتخاب گروه</option>' + accessGroupOptions.map((group) => \`<option value="\${esc(group.key)}">\${esc(group.title)} · \${esc(platformText(group.platform))}\${groupLabelShort(group.group_label) ? " · " + esc(groupLabelShort(group.group_label)) : ""}</option>\`).join("");
+        if (previous && accessGroupOptions.some((group) => group.key === previous)) accessGroupSelectEl.value = previous;
+        renderAccessGroupUsers();
+        setStatus(token, accessGroupOptions.length + " گروه");
+      } catch (error) {
+        accessGroupUsersEl.innerHTML = "";
+        accessGroupSummaryEl.innerHTML = "";
+        setStatus(token, "خطا در دریافت دسترسی گروه‌ها");
+      }
+    }
     async function loadAccessLogs() {
       const token = showLoading("در حال دریافت لاگ دسترسی‌ها...");
       try {
@@ -1992,7 +2081,10 @@ const HTML = `<!doctype html>
       }
     });
     accessUsersTabEl.addEventListener("click", () => showAccessSection("users"));
+    accessGroupsTabEl.addEventListener("click", () => showAccessSection("groups"));
     accessLogsTabEl.addEventListener("click", () => showAccessSection("logs"));
+    accessGroupSelectEl.addEventListener("change", () => renderAccessGroupUsers());
+    accessGroupRefreshEl.addEventListener("click", () => loadAccessGroupView());
     accessFormEl.addEventListener("submit", async (event) => {
       event.preventDefault();
       const permissions = selectedPermissions(accessNewPermissionsEl);
@@ -2168,7 +2260,7 @@ const HTML = `<!doctype html>
     });
     syncProfileUi();
     setupAccessShell();
-    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? loadAccessUsers() : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
+    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
   </script>
 </body>
 </html>`;
