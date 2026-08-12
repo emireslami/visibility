@@ -802,8 +802,8 @@ const HTML = `<!doctype html>
       return "/main/" + page;
     }
     function pageFromPath() {
-      const match = window.location.pathname.match(/^\/main\/([^/]+)\/?$/);
-      const page = match ? match[1] : "messages";
+      const path = window.location.pathname;
+      const page = path.startsWith("/main/") ? path.slice(6).split("/")[0] : "messages";
       return routablePages.includes(page) ? page : "messages";
     }
     function firstAccessiblePage() {
