@@ -1021,6 +1021,7 @@ const HTML = `<!doctype html>
       { key:"analytics", label:"تحلیل" },
       { key:"threads", label:"تردها" },
       { key:"messages", label:"پیام‌ها" },
+      { key:"senders", label:"ارسال‌کننده‌ها" },
       { key:"groups", label:"گروه‌ها" },
       { key:"broadcast", label:"اطلاع‌رسانی" },
       { key:"bots", label:"بات‌ها" },
@@ -1051,7 +1052,6 @@ const HTML = `<!doctype html>
       return String(value || "").trim().replace(/^@+/, "");
     }
     function canOpen(page) {
-      if (page === "senders") return currentUserPermissions.has("messages");
       return currentUserPermissions.has(page);
     }
     function selectedPermissions(root) {
@@ -3712,7 +3712,7 @@ function senderLabelTextServer(value) {
   return labels[String(value || "")] || "بدون لیبل";
 }
 
-const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboard", "analytics", "bots"];
+const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "senders", "dashboard", "analytics", "bots"];
 const EXTRA_ACCESS_PERMISSIONS = ["reply", "broadcast"];
 const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS, ...EXTRA_ACCESS_PERMISSIONS];
 const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
@@ -3870,7 +3870,7 @@ function hasAnyAccessPermission(user, permissions) {
 }
 
 function defaultMainPathForUser(user) {
-  const firstPage = ["messages", "threads", "groups", "dashboard", "analytics", "broadcast", "bots", "access"].find((permission) => hasAccessPermission(user, permission));
+  const firstPage = ["dashboard", "threads", "messages", "senders", "groups", "broadcast", "bots", "access", "analytics"].find((permission) => hasAccessPermission(user, permission));
   return `/main/${firstPage || "messages"}`;
 }
 
@@ -7046,11 +7046,11 @@ export default {
       return updateGroupLabel(request, env);
     }
     if (url.pathname === "/api/senders") {
-      if (!hasAccessPermission(authUser, "messages")) return forbiddenAccess();
+      if (!hasAccessPermission(authUser, "senders")) return forbiddenAccess();
       return fetchSenders(request, env, authUser);
     }
     if (url.pathname === "/api/senders/label" && request.method === "POST") {
-      if (!hasAccessPermission(authUser, "messages")) return forbiddenAccess();
+      if (!hasAccessPermission(authUser, "senders")) return forbiddenAccess();
       return updateSenderLabel(request, env);
     }
     if (url.pathname === "/api/bots" && request.method === "GET") {

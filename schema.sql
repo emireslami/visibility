@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS public.visibility_access_users (
     password_salt TEXT NOT NULL,
     must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    permissions JSONB NOT NULL DEFAULT '["access", "threads", "groups", "messages", "dashboard", "bots"]'::jsonb,
+    permissions JSONB NOT NULL DEFAULT '["access", "threads", "groups", "messages", "senders", "dashboard", "analytics", "bots"]'::jsonb,
     avatar_data_url TEXT,
     last_login_at_utc TIMESTAMPTZ,
     created_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -102,13 +102,13 @@ CREATE TABLE IF NOT EXISTS public.visibility_access_users (
         CHECK (
             (
                 jsonb_typeof(permissions) = 'array'
-                AND permissions <@ '["access", "threads", "groups", "messages", "dashboard", "bots"]'::jsonb
+                AND permissions <@ '["access", "threads", "groups", "messages", "senders", "dashboard", "analytics", "bots"]'::jsonb
             )
             OR
             (
                 jsonb_typeof(permissions) = 'object'
                 AND jsonb_typeof(permissions -> 'pages') = 'array'
-                AND (permissions -> 'pages') <@ '["access", "threads", "groups", "messages", "dashboard", "bots"]'::jsonb
+                AND (permissions -> 'pages') <@ '["access", "threads", "groups", "messages", "senders", "dashboard", "analytics", "bots"]'::jsonb
                 AND (
                     NOT (permissions ? 'group_access')
                     OR (
