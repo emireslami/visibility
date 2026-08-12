@@ -1392,7 +1392,7 @@ const HTML = `<!doctype html>
               <span class="access-email">\${esc(user.email)}</span>
               <span class="access-state">\${!user.is_active ? "Revoked" : (user.must_change_password ? "نیازمند تغییر پسورد" : "فعال")} · \${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</span>
               <span class="access-actions">
-                <button class="secondary-button" type="button" data-resend-email="\${esc(user.email)}">Resend Password Email</button>
+                <button class="secondary-button" type="button" data-resend-email="\${esc(user.email)}">Resend Invite</button>
                 \${user.is_owner
                   ? '<span class="owner-badge">Owner</span>'
                   : user.is_active
@@ -1661,7 +1661,7 @@ const HTML = `<!doctype html>
       if (resendButton && !resendButton.disabled) {
         const email = resendButton.dataset.resendEmail;
         resendButton.disabled = true;
-        accessMessageEl.textContent = "در حال ارسال دوباره ایمیل تنظیم پسورد...";
+        accessMessageEl.textContent = "در حال ارسال دوباره ایمیل دعوت...";
         try {
           const res = await fetch("/api/access-users/resend-invite", {
             method: "POST",
@@ -1678,7 +1678,7 @@ const HTML = `<!doctype html>
                 remaining -= 1;
                 if (remaining <= 0) {
                   clearInterval(timer);
-                  resendButton.textContent = "Resend Password Email";
+                  resendButton.textContent = "Resend Invite";
                   resendButton.disabled = false;
                   return;
                 }
@@ -1689,7 +1689,7 @@ const HTML = `<!doctype html>
             resendButton.disabled = false;
             return;
           }
-          accessMessageEl.textContent = "ایمیل تنظیم پسورد دوباره ارسال شد.";
+          accessMessageEl.textContent = "ایمیل دعوت دوباره ارسال شد.";
         } catch (error) {
           accessMessageEl.textContent = "ارسال دوباره ایمیل انجام نشد";
           resendButton.disabled = false;
@@ -2578,11 +2578,6 @@ async function sendAccessInviteEmail(env, email, origin) {
   await sendSupabaseInviteEmail(env, email, `${origin}/recovery`);
 }
 
-async function sendAccessPasswordEmail(env, email, origin) {
-  await ensureSupabaseAuthMirrorUser(env, email);
-  await sendSupabaseRecoveryEmail(env, email, `${origin}/recovery`);
-}
-
 async function getSupabaseRecoveryUser(env, accessToken) {
   const key = supabasePublishableKey(env);
   if (!key) throw new Error("SUPABASE_PUBLISHABLE_KEY روی Worker تنظیم نشده است");
@@ -2809,14 +2804,14 @@ async function resendAccessInviteEmail(request, env, authUser) {
   try {
     const existing = await getAccessUserByEmail(env, email);
     if (!existing) return json({ error: "کاربر پیدا نشد" }, 404);
-    await sendAccessPasswordEmail(env, email, new URL(request.url).origin);
+    await sendAccessInviteEmail(env, email, new URL(request.url).origin);
     await insertAccessAuditLog(env, {
       actorEmail: authUser?.email,
       targetEmail: email,
       action: "invite_email",
       metadata: {
         invite_email_sent: true,
-        invite_email_provider: "supabase_auth_recovery",
+        invite_email_provider: "supabase_auth_invite",
         resend: true,
         target_was_active: existing.is_active,
         target_must_change_password: existing.must_change_password,
@@ -2831,9 +2826,9 @@ async function resendAccessInviteEmail(request, env, authUser) {
       action: "invite_email",
       metadata: {
         invite_email_sent: false,
-        invite_email_provider: "supabase_auth_recovery",
+        invite_email_provider: "supabase_auth_invite",
         resend: true,
-        invite_email_error: error.message || "ارسال ایمیل تنظیم پسورد انجام نشد",
+        invite_email_error: error.message || "ارسال ایمیل دعوت انجام نشد",
       },
     }).catch(() => {});
     return json({
