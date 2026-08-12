@@ -181,6 +181,8 @@ const HTML = `<!doctype html>
     .analytics-panel { display:grid; gap:18px; }
     .analytics-summary { display:grid; grid-template-columns:repeat(4, minmax(120px, 1fr)); gap:10px; }
     .analytics-card { padding:14px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; }
+    .analytics-card[data-analytics-detail] { cursor:pointer; }
+    .analytics-card[data-analytics-detail]:hover { border-color:var(--accent); background:#f4fbfc; }
     .analytics-card strong { display:block; margin-top:8px; font-size:22px; color:var(--ink); direction:rtl; text-align:right; }
     .analytics-card span { color:var(--muted); font-size:12px; }
     .analytics-section-title { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-top:4px; }
@@ -189,6 +191,7 @@ const HTML = `<!doctype html>
     .analytics-table th, .analytics-table td { text-align:right; direction:rtl; }
     .analytics-table .metric-number { direction:rtl; text-align:right; white-space:nowrap; }
     .analytics-table .metric-count { direction:ltr; }
+    .analytics-detail-note { margin:0 0 12px; color:var(--muted); font-size:12px; white-space:normal; }
     .access-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
     .access-panel h2 { margin:0 0 6px; font-size:18px; }
     .bots-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1180px; margin:0 auto; }
@@ -530,10 +533,10 @@ const HTML = `<!doctype html>
           </div>
         </div>
         <div class="analytics-summary">
-          <div class="analytics-card"><span>میانگین کل</span><strong id="analyticsAvg">-</strong></div>
-          <div class="analytics-card"><span>تعداد پاسخ‌های محاسبه‌شده</span><strong id="analyticsCount">۰</strong></div>
-          <div class="analytics-card"><span>کمترین زمان پاسخ</span><strong id="analyticsMin">-</strong></div>
-          <div class="analytics-card"><span>بیشترین زمان پاسخ</span><strong id="analyticsMax">-</strong></div>
+          <div class="analytics-card" data-analytics-detail="avg"><span>میانگین کل</span><strong id="analyticsAvg">-</strong></div>
+          <div class="analytics-card" data-analytics-detail="count"><span>تعداد پاسخ‌های محاسبه‌شده</span><strong id="analyticsCount">۰</strong></div>
+          <div class="analytics-card" data-analytics-detail="min"><span>کمترین زمان پاسخ</span><strong id="analyticsMin">-</strong></div>
+          <div class="analytics-card" data-analytics-detail="max"><span>بیشترین زمان پاسخ</span><strong id="analyticsMax">-</strong></div>
         </div>
         <div class="analytics-section-title">
           <div>
@@ -999,6 +1002,7 @@ const HTML = `<!doctype html>
     let dashboardChartData = { days: [], groups: [], userDays: [], users: [] };
     const selectedGroupChartItems = new Set();
     const selectedUserChartItems = new Set();
+    let analyticsData = { overall: {}, groups: [], labels: [] };
     let accessGroupOptions = [];
     let accessUserOptions = [];
     let broadcastGroupOptions = [];
@@ -2282,6 +2286,44 @@ const HTML = `<!doctype html>
         + '<td class="metric-number" data-label="کمترین">' + esc(formatDuration(row.min_ms)) + '</td>'
         + '<td class="metric-number" data-label="بیشترین">' + esc(formatDuration(row.max_ms)) + '</td>';
     }
+    function analyticsDetailRows(kind) {
+      const groups = [...(analyticsData.groups || [])].filter((row) => row.count);
+      if (kind === "min") return groups.filter((row) => row.min_ms > 0).sort((a, b) => a.min_ms - b.min_ms).slice(0, 12);
+      if (kind === "max") return groups.sort((a, b) => b.max_ms - a.max_ms).slice(0, 12);
+      if (kind === "count") return groups.sort((a, b) => b.count - a.count || b.total_ms - a.total_ms).slice(0, 12);
+      return groups.sort((a, b) => b.total_ms - a.total_ms || b.avg_ms - a.avg_ms).slice(0, 12);
+    }
+    function openAnalyticsDetail(kind) {
+      const labels = {
+        avg: ["اثرگذارترین گروه‌ها روی میانگین کل", "مرتب‌سازی بر اساس سهم هر گروه از کل زمان پاسخ‌گویی انجام شده است."],
+        count: ["بیشترین تعداد پاسخ‌های محاسبه‌شده", "گروه‌هایی که بیشترین تعداد reply قابل محاسبه را داشته‌اند."],
+        min: ["کمترین زمان پاسخ مربوط به کدام گروه‌هاست", "گروه‌ها بر اساس سریع‌ترین پاسخ ثبت‌شده مرتب شده‌اند."],
+        max: ["بیشترین زمان پاسخ مربوط به کدام گروه‌هاست", "گروه‌ها بر اساس کندترین پاسخ ثبت‌شده مرتب شده‌اند."],
+      };
+      const [title, note] = labels[kind] || labels.avg;
+      const rows = analyticsDetailRows(kind);
+      const overallTotal = Number(analyticsData.overall?.total_ms || 0);
+      const tableRows = rows.length ? rows.map((row) => {
+        const share = overallTotal ? Math.round((Number(row.total_ms || 0) / overallTotal) * 1000) / 10 : 0;
+        return '<tr>'
+          + '<td data-label="گروه">' + esc(row.chat_title || "بدون نام") + '<br><span class="thread-muted">' + esc(row.chat_id || "") + '</span></td>'
+          + '<td data-label="پلتفرم">' + esc(platformText(row.platform)) + '</td>'
+          + '<td data-label="لیبل">' + esc(groupLabelText(row.group_label)) + '</td>'
+          + '<td class="metric-number metric-count" data-label="تعداد">' + numberFmt.format(row.count || 0) + '</td>'
+          + '<td class="metric-number" data-label="میانگین">' + esc(formatDuration(row.avg_ms)) + '</td>'
+          + '<td class="metric-number" data-label="کمترین">' + esc(formatDuration(row.min_ms)) + '</td>'
+          + '<td class="metric-number" data-label="بیشترین">' + esc(formatDuration(row.max_ms)) + '</td>'
+          + '<td class="metric-number" data-label="سهم از کل">' + (overallTotal ? numberFmt.format(share) + "٪" : "-") + '</td>'
+        + '</tr>';
+      }).join("") : '<tr><td colspan="8">داده‌ای برای نمایش وجود ندارد.</td></tr>';
+      openDetails(
+        '<p class="analytics-detail-note">' + esc(note) + '</p>'
+        + '<table class="analytics-table"><thead><tr>'
+          + '<th>گروه</th><th>پلتفرم</th><th>لیبل</th><th>تعداد</th><th>میانگین</th><th>کمترین</th><th>بیشترین</th><th>سهم از کل</th>'
+        + '</tr></thead><tbody>' + tableRows + '</tbody></table>',
+        title
+      );
+    }
     async function loadAnalytics() {
       const token = showLoading("در حال محاسبه تحلیل...");
       try {
@@ -2293,6 +2335,7 @@ const HTML = `<!doctype html>
           setStatus(token, data.detail || data.error || "خطا در دریافت تحلیل");
           return;
         }
+        analyticsData = data;
         const overall = data.overall || {};
         analyticsAvgEl.textContent = overall.count ? formatDuration(overall.avg_ms) : "-";
         analyticsCountEl.textContent = numberFmt.format(overall.count || 0);
@@ -2985,6 +3028,11 @@ const HTML = `<!doctype html>
     accessGroupsTabEl.addEventListener("click", () => showAccessSection("groups"));
     accessLogsTabEl.addEventListener("click", () => showAccessSection("logs"));
     accessGroupRefreshEl.addEventListener("click", () => loadAccessGroupView());
+    analyticsPageEl.addEventListener("click", (event) => {
+      const card = event.target.closest("[data-analytics-detail]");
+      if (!card) return;
+      openAnalyticsDetail(card.dataset.analyticsDetail || "avg");
+    });
     accessUserRowsEl.addEventListener("click", (event) => {
       const row = event.target.closest("[data-access-jump-email]");
       if (!row) return;
@@ -6664,6 +6712,7 @@ function finishResponseMetric(bucket) {
     : 0;
   return {
     count: bucket.count,
+    total_ms: bucket.total_ms,
     avg_ms: bucket.count ? Math.round(bucket.total_ms / bucket.count) : 0,
     median_ms: median,
     min_ms: bucket.min_ms ?? 0,
