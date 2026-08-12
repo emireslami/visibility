@@ -1714,11 +1714,19 @@ const HTML = `<!doctype html>
           }
         }
       }
+      const repliedToKeys = new Set();
+      for (const row of new Set(latestByMessage.values())) {
+        if (row.chat_id && row.reply_to_message_id && !isTopicRootReply(row)) {
+          repliedToKeys.add(rowMessageKey(row, row.reply_to_message_id));
+        }
+      }
       function looksLikeDashboardReply(row) {
         const payload = row.raw_payload_json || {};
-        return payload.dashboard_outgoing === true
+        const hasReplyChild = repliedToKeys.has(rowMessageKey(row));
+        const isBotLike = Boolean(row.sender_is_bot || botText(row) || /bot$/i.test(String(row.sender_username || "")));
+        return isBotLike
+          && hasReplyChild
           && payload.dashboard_broadcast !== true
-          && Boolean(row.sender_is_bot)
           && /^[^@\s]+@toman\.ir\s*:/i.test(messageContent(row));
       }
       function inferredDashboardReplyParentId(row) {
