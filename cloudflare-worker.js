@@ -735,6 +735,13 @@ const HTML = `<!doctype html>
         groups: [...root.querySelectorAll("input[data-group-key]:checked")].map(input => input.dataset.groupKey),
       };
     }
+    function syncGroupsBySelectedLabel(labelInput, root) {
+      const label = labelInput?.dataset.groupLabel || "";
+      if (!label || !root) return;
+      root.querySelectorAll('input[data-group-key][data-group-label-value="' + label + '"]').forEach((input) => {
+        input.checked = labelInput.checked;
+      });
+    }
     function isOwnerEmail(email) {
       return String(email || "").trim().toLowerCase() === ownerEmail;
     }
@@ -764,7 +771,7 @@ const HTML = `<!doctype html>
         .map(([value, label]) => \`<label class="group-access-option"><input type="checkbox" data-group-label="\${esc(value)}" \${labelSet.has(value) ? "checked" : ""} \${disabled} /><span>\${esc(label)}</span></label>\`)
         .join("");
       const groupOptions = accessGroupOptions
-        .map((group) => \`<label class="group-access-option"><input type="checkbox" data-group-key="\${esc(group.key)}" \${groupSet.has(group.key) ? "checked" : ""} \${disabled} /><span>\${esc(group.title)}</span><span class="thread-muted">\${esc(platformText(group.platform))}</span></label>\`)
+        .map((group) => \`<label class="group-access-option"><input type="checkbox" data-group-key="\${esc(group.key)}" data-group-label-value="\${esc(group.group_label || "")}" \${groupSet.has(group.key) || labelSet.has(group.group_label || "") ? "checked" : ""} \${disabled} /><span>\${esc(group.title)}</span><span class="thread-muted">\${esc(platformText(group.platform))}</span></label>\`)
         .join("");
       const mode = labelSet.size || groupSet.size ? "محدود" : "همه گروه‌ها";
       return \`<div class="group-access-box" data-group-access-email="\${esc(user.email)}" data-owner="\${user.is_owner ? "true" : "false"}">
@@ -2086,6 +2093,9 @@ const HTML = `<!doctype html>
       const groupInput = event.target.closest("input[data-group-label], input[data-group-key]");
       const groupGrid = event.target.closest("[data-group-access-email]");
       if (groupInput && groupGrid) {
+        if (groupInput.matches("input[data-group-label]")) {
+          syncGroupsBySelectedLabel(groupInput, groupGrid);
+        }
         const email = groupGrid.dataset.groupAccessEmail;
         if (groupGrid.dataset.owner === "true" || isOwnerEmail(email)) {
           accessMessageEl.textContent = "دسترسی owner قابل تغییر نیست.";
