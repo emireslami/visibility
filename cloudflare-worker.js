@@ -89,8 +89,8 @@ const HTML = `<!doctype html>
     .reaction-chip { display:inline-flex; align-items:center; gap:4px; min-height:24px; padding:2px 6px; border:1px solid var(--line); border-radius:999px; background:#f7f8fa; }
     .reaction-emoji { font-size:15px; line-height:1; }
     .reaction-avatar { width:18px; height:18px; border-radius:50%; border:1px solid var(--line); background:#eef3f4; color:#36505a; display:grid; place-items:center; font-size:10px; font-weight:800; object-fit:cover; direction:ltr; }
-    .thread-reply-actions { margin-top:10px; display:grid; gap:8px; justify-items:start; direction:rtl; }
-    .thread-reply-toggle { min-height:28px; padding:0 10px; font-size:12px; }
+    .thread-reply-actions { margin-top:10px; display:grid; gap:8px; direction:rtl; }
+    .thread-reply-toggle { height:28px; min-height:28px; padding:0 8px; font-size:12px; }
     .thread-reply-form { width:100%; display:grid; grid-template-columns:minmax(180px, 1fr) auto; gap:8px; direction:rtl; }
     .thread-reply-form[hidden] { display:none; }
     .thread-reply-input { min-height:38px; border:1px solid var(--line); border-radius:6px; padding:8px 10px; resize:vertical; font-family:inherit; font-size:13px; direction:rtl; text-align:right; background:#fff; }
@@ -1648,10 +1648,16 @@ const HTML = `<!doctype html>
       if (!reactions.length) return "";
       return \`<div class="thread-reactions">\${reactions.map((reaction) => \`<span class="reaction-chip" title="\${esc(reaction.user_username || reaction.user_first_name || "")}">\${reactionAvatar(reaction)}<span class="reaction-emoji">\${esc(reactionEmoji(reaction))}</span></span>\`).join("")}</div>\`;
     }
+    function canReplyToRow(row) {
+      return canOpen("reply") && !row.missing && row.chat_id && row.message_id;
+    }
+    function threadReplyButton(row) {
+      if (!canReplyToRow(row)) return "";
+      return '<button class="details-button thread-reply-toggle" type="button" data-reply-toggle>پاسخ</button>';
+    }
     function threadReplyForm(row) {
-      if (!canOpen("reply") || row.missing || !row.chat_id || !row.message_id) return "";
+      if (!canReplyToRow(row)) return "";
       return \`<div class="thread-reply-actions">
-        <button class="thread-reply-toggle" type="button" data-reply-toggle>پاسخ</button>
         <form class="thread-reply-form" data-thread-reply data-platform="\${esc(row.platform || "telegram")}" data-chat-id="\${esc(row.chat_id)}" data-message-id="\${esc(row.message_id)}" hidden>
           <textarea class="thread-reply-input" name="body" rows="1" maxlength="3500" placeholder="پاسخ به این پیام..."></textarea>
           <button class="thread-reply-submit" type="submit">ارسال</button>
@@ -1684,6 +1690,7 @@ const HTML = `<!doctype html>
               \${row.reply_to_message_id ? \`<span class="thread-pill">ریپلای به: \${esc(row.reply_to_message_id)}</span>\` : ""}
               <span class="thread-muted">\${esc(row.sent_jalali_date || "")} \${esc(row.sent_time || "")}</span>
               <button class="details-button" type="button" data-detail-key="thread-detail-\${index}">جزئیات</button>
+              \${threadReplyButton(row)}
             </div>
             <div class="thread-message">\${messageWithBadge(row)}</div>
             \${threadMedia(row)}
@@ -2371,8 +2378,8 @@ const HTML = `<!doctype html>
     threadRowsEl.addEventListener("click", (event) => {
       const toggle = event.target.closest("[data-reply-toggle]");
       if (!toggle) return;
-      const actions = toggle.closest(".thread-reply-actions");
-      const form = actions?.querySelector("[data-thread-reply]");
+      const content = toggle.closest(".thread-content");
+      const form = content?.querySelector("[data-thread-reply]");
       if (!form) return;
       form.hidden = !form.hidden;
       toggle.textContent = form.hidden ? "پاسخ" : "بستن پاسخ";
@@ -2411,7 +2418,7 @@ const HTML = `<!doctype html>
         }
         input.value = "";
         status.textContent = "پاسخ ارسال شد.";
-        const toggle = form.closest(".thread-reply-actions")?.querySelector("[data-reply-toggle]");
+        const toggle = form.closest(".thread-content")?.querySelector("[data-reply-toggle]");
         if (toggle) toggle.textContent = "پاسخ";
         form.hidden = true;
         setTimeout(() => loadThreads(), 900);
