@@ -20,8 +20,8 @@ const HTML = `<!doctype html>
     .nav-button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
     main { padding: 18px 24px; }
     .page[hidden] { display:none; }
-    .filters { position:sticky; top:var(--header-h); z-index:45; display:grid; grid-template-columns: 1fr 170px 170px 110px; gap:10px; min-height:var(--filters-h); align-items:center; margin:0 0 14px; padding:8px 0; background:var(--bg); }
-    .thread-filters { grid-template-columns: minmax(200px, 1fr) minmax(170px, .8fr) 105px 105px 105px 110px; max-width:980px; margin:0 auto 14px; }
+    .filters { position:sticky; top:var(--header-h); z-index:45; display:grid; grid-template-columns: 1fr 150px 170px 170px 110px; gap:10px; min-height:var(--filters-h); align-items:center; margin:0 0 14px; padding:8px 0; background:var(--bg); }
+    .thread-filters { grid-template-columns: minmax(170px, .8fr) minmax(200px, 1fr) minmax(170px, .8fr) 105px 105px 105px 110px; max-width:1120px; margin:0 auto 14px; }
     input, select, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
     .multi-filter { position:relative; min-width:0; }
@@ -315,6 +315,7 @@ const HTML = `<!doctype html>
     <section class="page" id="messagesPage">
       <section class="filters">
         <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
+        <div id="platform" class="multi-filter"></div>
         <div id="group" class="multi-filter"></div>
         <div id="topic" class="multi-filter"></div>
         <button id="refresh">به‌روزرسانی</button>
@@ -378,6 +379,7 @@ const HTML = `<!doctype html>
     </section>
     <section class="page" id="threadsPage" hidden>
       <section class="filters thread-filters">
+        <div id="threadPlatform" class="multi-filter"></div>
         <div id="threadGroup" class="multi-filter"></div>
         <div id="threadTopic" class="multi-filter"></div>
         <div id="threadYear" class="multi-filter single-filter"></div>
@@ -483,9 +485,11 @@ const HTML = `<!doctype html>
     const threadsPageEl = document.getElementById("threadsPage");
     const accessPageEl = document.getElementById("accessPage");
     const searchEl = document.getElementById("search");
+    const platformEl = document.getElementById("platform");
     const groupEl = document.getElementById("group");
     const topicEl = document.getElementById("topic");
     const refreshEl = document.getElementById("refresh");
+    const threadPlatformEl = document.getElementById("threadPlatform");
     const threadGroupEl = document.getElementById("threadGroup");
     const threadTopicEl = document.getElementById("threadTopic");
     const threadYearEl = document.getElementById("threadYear");
@@ -763,6 +767,7 @@ const HTML = `<!doctype html>
         },
       };
     }
+    const messagePlatformFilter = createMultiFilter(platformEl, "همه پلتفرم‌ها", () => { updateGroupOptions(); updateMessageTopicOptions(); updateFilterButtons(); load(); });
     const messageGroupFilter = createMultiFilter(groupEl, "همه گروه‌ها", () => { updateMessageTopicOptions(); updateFilterButtons(); load(); });
     const messageTopicFilter = createMultiFilter(topicEl, "همه تاپیک‌ها", () => {
       syncGroupsFromSelectedTopics(messageGroupFilter, messageTopicFilter);
@@ -770,6 +775,7 @@ const HTML = `<!doctype html>
       updateFilterButtons();
       load();
     });
+    const threadPlatformFilter = createMultiFilter(threadPlatformEl, "همه پلتفرم‌ها", () => { updateGroupOptions(); updateThreadTopicOptions(); updateFilterButtons(); loadThreads(); });
     const threadGroupFilter = createMultiFilter(threadGroupEl, "همه گروه‌ها", () => { updateThreadTopicOptions(); updateFilterButtons(); loadThreads(); });
     const threadTopicFilter = createMultiFilter(threadTopicEl, "همه تاپیک‌ها", () => {
       syncGroupsFromSelectedTopics(threadGroupFilter, threadTopicFilter);
@@ -783,11 +789,25 @@ const HTML = `<!doctype html>
     function appendFilterValues(params, key, values) {
       values.forEach((value) => params.append(key, value));
     }
+    function platformValueFromText(value) {
+      const text = String(value || "").trim();
+      if (text === "تلگرام") return "telegram";
+      if (text === "بله") return "bale";
+      if (text === "واتساپ") return "whatsapp";
+      return text;
+    }
+    function selectedPlatformValues(filter) {
+      return filter.values().map(platformValueFromText).filter(Boolean);
+    }
+    function platformMatchesFilter(row, filter) {
+      const selected = selectedPlatformValues(filter);
+      return !selected.length || selected.includes(row.platform || "telegram");
+    }
     function messageFiltersActive() {
-      return Boolean(searchEl.value.trim() || messageGroupFilter.values().length || messageTopicFilter.values().length);
+      return Boolean(searchEl.value.trim() || messagePlatformFilter.values().length || messageGroupFilter.values().length || messageTopicFilter.values().length);
     }
     function threadFiltersActive() {
-      return Boolean(threadGroupFilter.values().length || threadTopicFilter.values().length || selectedThreadJalaliDate());
+      return Boolean(threadPlatformFilter.values().length || threadGroupFilter.values().length || threadTopicFilter.values().length || selectedThreadJalaliDate());
     }
     function updateFilterButtons() {
       refreshEl.textContent = messageFiltersActive() ? "ریست فیلتر" : "به‌روزرسانی";
@@ -795,12 +815,14 @@ const HTML = `<!doctype html>
     }
     function resetMessageFilters() {
       searchEl.value = "";
+      messagePlatformFilter.clear();
       messageGroupFilter.clear();
       messageTopicFilter.clear();
       updateMessageTopicOptions();
       updateFilterButtons();
     }
     function resetThreadFilters() {
+      threadPlatformFilter.clear();
       threadGroupFilter.clear();
       threadTopicFilter.clear();
       threadYearFilter.clear();
@@ -836,6 +858,7 @@ const HTML = `<!doctype html>
     }
     function updateThreadTopicOptions() {
       const topics = (threadFilterOptions?.topics || [])
+        .filter((topic) => platformMatchesFilter(topic, threadPlatformFilter))
         .filter((topic) => !threadGroupFilter.values().length || threadGroupFilter.values().includes(topic.chat_title))
         .map((topic) => topic.topic_name)
         .filter(Boolean);
@@ -843,10 +866,24 @@ const HTML = `<!doctype html>
     }
     function updateMessageTopicOptions() {
       const topics = (threadFilterOptions?.topics || [])
+        .filter((topic) => platformMatchesFilter(topic, messagePlatformFilter))
         .filter((topic) => !messageGroupFilter.values().length || messageGroupFilter.values().includes(topic.chat_title))
         .map((topic) => topic.topic_name)
         .filter(Boolean);
       messageTopicFilter.setOptions(topics);
+    }
+    function updateGroupOptions() {
+      const groups = threadFilterOptions?.groups || [];
+      const messageGroups = groups
+        .filter((group) => platformMatchesFilter(group, messagePlatformFilter))
+        .map((group) => group.chat_title)
+        .filter(Boolean);
+      const threadGroups = groups
+        .filter((group) => platformMatchesFilter(group, threadPlatformFilter))
+        .map((group) => group.chat_title)
+        .filter(Boolean);
+      messageGroupFilter.setOptions(messageGroups);
+      threadGroupFilter.setOptions(threadGroups);
     }
     function selectedThreadJalaliDate() {
       const year = threadYearFilter.value();
@@ -861,9 +898,10 @@ const HTML = `<!doctype html>
       const data = await res.json();
       if (!res.ok) return;
       threadFilterOptions = data;
-      const groups = (data.groups || []).map((group) => group.chat_title).filter(Boolean);
-      threadGroupFilter.setOptions(groups);
-      messageGroupFilter.setOptions(groups);
+      const platforms = (data.platforms || []).map(platformText).filter(Boolean);
+      threadPlatformFilter.setOptions(platforms);
+      messagePlatformFilter.setOptions(platforms);
+      updateGroupOptions();
       updateThreadTopicOptions();
       updateMessageTopicOptions();
       updateThreadDateOptions();
@@ -1332,6 +1370,7 @@ const HTML = `<!doctype html>
         await loadThreadFilterOptions();
         const params = new URLSearchParams();
         if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
+        appendFilterValues(params, "platform", selectedPlatformValues(messagePlatformFilter));
         appendFilterValues(params, "group", messageGroupFilter.values());
         appendFilterValues(params, "topic", messageTopicFilter.values());
         const res = await fetch("/api/messages?" + params);
@@ -1458,6 +1497,7 @@ const HTML = `<!doctype html>
       try {
         await loadThreadFilterOptions();
         const params = new URLSearchParams();
+        appendFilterValues(params, "platform", selectedPlatformValues(threadPlatformFilter));
         appendFilterValues(params, "group", threadGroupFilter.values());
         appendFilterValues(params, "topic", threadTopicFilter.values());
         params.set("view", "threads");
@@ -1778,7 +1818,7 @@ const HTML = `<!doctype html>
     searchEl.addEventListener("keydown", e => { if (e.key === "Enter") load(); });
     document.addEventListener("click", (event) => {
       if (!event.target.closest(".user-menu")) userMenuEl.classList.remove("open");
-      for (const filter of [messageGroupFilter, messageTopicFilter, threadGroupFilter, threadTopicFilter, threadYearFilter, threadMonthFilter, threadDayFilter]) {
+      for (const filter of [messagePlatformFilter, messageGroupFilter, messageTopicFilter, threadPlatformFilter, threadGroupFilter, threadTopicFilter, threadYearFilter, threadMonthFilter, threadDayFilter]) {
         if (!event.target.closest(".multi-filter")) filter.close();
       }
     });
@@ -3775,6 +3815,7 @@ async function fetchMessages(request, env) {
 
   const filters = [];
   const q = url.searchParams.get("q");
+  const platforms = [...new Set(url.searchParams.getAll("platform").map(normalizePlatform).filter(Boolean))];
   const groups = url.searchParams.getAll("group").map((value) => value.trim()).filter(Boolean);
   const topicsFilter = url.searchParams.getAll("topic").map((value) => value.trim()).filter(Boolean);
   const jalaliDateFilter = url.searchParams.get("jalali_date");
@@ -3786,6 +3827,8 @@ async function fetchMessages(request, env) {
     filters.push(`body.ilike.${pattern},caption.ilike.${pattern},chat_title.ilike.${pattern},topic_name.ilike.${pattern},sender_username.ilike.${pattern}`);
   }
   if (filters.length) params.set("or", `(${filters.join(",")})`);
+  if (platforms.length === 1) params.set("platform", `eq.${platforms[0]}`);
+  else if (platforms.length > 1) params.set("platform", `in.(${platforms.join(",")})`);
   if (chatId) params.set("chat_id", `eq.${chatId}`);
   if (senderId) params.set("sender_id", `eq.${senderId}`);
 
@@ -4042,6 +4085,7 @@ async function fetchThreadFilterOptions(request, env) {
     return json({ error: "درخواست تاپیک‌ها از دیتابیس انجام نشد", detail: await topicsResponse.text() }, 500);
   }
   const groups = (await groupsResponse.json()).filter((group) => group.chat_title);
+  const platforms = [...new Set(groups.map((group) => normalizePlatform(group.platform)))];
   const groupTitleById = new Map(groups.map((group) => [chatKey(group), group.chat_title]));
   const topicsByKey = new Map();
   for (const topic of await topicsResponse.json()) {
@@ -4066,7 +4110,7 @@ async function fetchThreadFilterOptions(request, env) {
   const jalaliDates = [...dateByTehranDay.entries()]
     .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([, date]) => jalaliDateFast(date));
-  const data = { groups, topics, jalali_dates: jalaliDates };
+  const data = { groups, topics, platforms, jalali_dates: jalaliDates };
   threadFilterOptionsApiCache = { createdAt: Date.now(), data };
   return json(data);
 }
