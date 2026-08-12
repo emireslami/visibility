@@ -21,7 +21,7 @@ const HTML = `<!doctype html>
     main { padding: 18px 24px; }
     .page[hidden] { display:none; }
     .filters { position:sticky; top:var(--header-h); z-index:45; display:grid; grid-template-columns: 1fr 150px 170px 170px 110px; gap:10px; min-height:var(--filters-h); align-items:center; margin:0 0 14px; padding:8px 0; background:var(--bg); }
-    .thread-filters { grid-template-columns: minmax(170px, .8fr) minmax(200px, 1fr) minmax(170px, .8fr) 105px 105px 105px 110px; max-width:1120px; margin:0 auto 14px; }
+    .thread-filters { grid-template-columns: minmax(200px, 1fr) minmax(170px, .8fr) 105px 105px 105px minmax(150px, .7fr) 110px; max-width:1120px; margin:0 auto 14px; }
     input, select, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
     .multi-filter { position:relative; min-width:0; }
@@ -315,9 +315,9 @@ const HTML = `<!doctype html>
     <section class="page" id="messagesPage">
       <section class="filters">
         <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
-        <div id="platform" class="multi-filter"></div>
         <div id="group" class="multi-filter"></div>
         <div id="topic" class="multi-filter"></div>
+        <div id="platform" class="multi-filter"></div>
         <button id="refresh">به‌روزرسانی</button>
       </section>
       <table class="messages-table">
@@ -379,12 +379,12 @@ const HTML = `<!doctype html>
     </section>
     <section class="page" id="threadsPage" hidden>
       <section class="filters thread-filters">
-        <div id="threadPlatform" class="multi-filter"></div>
         <div id="threadGroup" class="multi-filter"></div>
         <div id="threadTopic" class="multi-filter"></div>
         <div id="threadYear" class="multi-filter single-filter"></div>
         <div id="threadMonth" class="multi-filter single-filter"></div>
         <div id="threadDay" class="multi-filter single-filter"></div>
+        <div id="threadPlatform" class="multi-filter"></div>
         <button id="threadRefresh" type="button">به‌روزرسانی</button>
       </section>
       <div class="thread-list" id="threadRows"></div>
