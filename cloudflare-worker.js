@@ -74,10 +74,14 @@ const HTML = `<!doctype html>
     .reaction-emoji { font-size:15px; line-height:1; }
     .reaction-avatar { width:18px; height:18px; border-radius:50%; border:1px solid var(--line); background:#eef3f4; color:#36505a; display:grid; place-items:center; font-size:10px; font-weight:800; object-fit:cover; direction:ltr; }
     .thread-media { clear:both; width:100%; margin-top:12px; margin-bottom:4px; display:flex; justify-content:flex-end; align-items:flex-start; }
+    .thread-media.album { justify-content:flex-end; }
+    .media-gallery { display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 180px)); gap:8px; justify-content:end; max-width:100%; }
     .media-open.thread-photo-frame { width:180px; height:180px; max-width:100%; padding:0; border:1px solid var(--line); border-radius:8px; background:#f7f8fa; overflow:hidden; display:grid; place-items:center; cursor:zoom-in; }
     .thread-photo { width:100%; height:100%; object-fit:contain; display:block; background:#f7f8fa; }
     .thread-file { display:inline-flex; align-items:center; gap:8px; min-height:34px; padding:0 10px; border:1px solid var(--line); border-radius:8px; background:#f7f8fa; color:var(--ink); text-decoration:none; direction:rtl; }
     .media-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .media-actions.album { align-items:flex-start; }
+    .media-detail-item { display:grid; gap:6px; justify-items:start; }
     .media-preview { max-width:260px; max-height:220px; border:1px solid var(--line); border-radius:8px; object-fit:contain; display:block; background:#f7f8fa; }
     .media-open { flex:0 0 auto; padding:0; border:0; background:transparent; cursor:zoom-in; display:block; line-height:0; }
     .modal-media { display:grid; gap:14px; justify-items:center; white-space:normal; }
@@ -256,7 +260,7 @@ const HTML = `<!doctype html>
     .user-action { border-radius:0; }
     .user-action:hover { background:var(--accent-soft); border-color:var(--accent-soft); }
     .spinner { border-color:#d0e2ff; border-top-color:var(--accent); }
-    @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } .access-form, .access-main { grid-template-columns:1fr; } .permission-grid, .access-row .permission-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .access-actions { justify-content:flex-start; } .media-open.thread-photo-frame { width:148px; height:148px; } }
+    @media (max-width: 900px) { .filters { grid-template-columns: 1fr; } main, header { padding: 14px; } th, td { padding:6px; font-size:11px; } .detail-row { grid-template-columns:1fr; } .access-form, .access-main { grid-template-columns:1fr; } .permission-grid, .access-row .permission-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .access-actions { justify-content:flex-start; } .media-open.thread-photo-frame { width:148px; height:148px; } .media-gallery { grid-template-columns:repeat(auto-fit, minmax(112px, 148px)); } }
   </style>
 </head>
 <body>
@@ -855,11 +859,22 @@ const HTML = `<!doctype html>
       if (download) params.set("download", "1");
       return "/api/telegram-file?" + params.toString();
     }
+    function mediaItems(row) {
+      const items = Array.isArray(row.media_items) ? row.media_items : [];
+      if (items.length) return items;
+      return row.media_file_id ? [row] : [];
+    }
     function isPhoto(row) {
       return row.message_type === "photo" && row.media_file_id;
     }
+    function isPhotoItem(item) {
+      return item.message_type === "photo" && item.media_file_id;
+    }
     function isDownloadableFile(row) {
       return row.message_type === "document" && row.media_file_id;
+    }
+    function isDownloadableFileItem(item) {
+      return item.message_type === "document" && item.media_file_id;
     }
     function mediaFileName(row) {
       return row.raw_payload_json?.message?.document?.file_name
@@ -869,16 +884,33 @@ const HTML = `<!doctype html>
         || "دانلود فایل";
     }
     function mediaBadge(row) {
+      const items = mediaItems(row);
+      if (items.length > 1 && items.every(isPhotoItem)) return \`<span class="badge">Images ×\${items.length}</span>\`;
+      if (items.length > 1) return \`<span class="badge">Media ×\${items.length}</span>\`;
       if (isPhoto(row)) return '<span class="badge">Image</span>';
       if (isDownloadableFile(row)) return '<span class="badge">File</span>';
       return "";
     }
     function mediaDetailHtml(row) {
-      if (isPhoto(row)) {
-        return \`<div class="detail-row"><div class="detail-label">Media</div><div class="detail-value media-actions"><img class="media-preview" src="\${fileUrl(row)}" alt="" loading="lazy" /><a class="details-button" href="\${fileUrl(row, true)}" download>Download Image</a></div></div>\`;
+      const items = mediaItems(row);
+      if (items.length > 1) {
+        const html = items.map((item, index) => {
+          if (isPhotoItem(item)) {
+            return \`<div class="media-detail-item"><img class="media-preview" src="\${fileUrl(item)}" alt="" loading="lazy" /><a class="details-button" href="\${fileUrl(item, true)}" download>Download Image \${index + 1}</a></div>\`;
+          }
+          if (isDownloadableFileItem(item)) {
+            return \`<div class="media-detail-item"><a class="details-button" href="\${fileUrl(item, true)}" download>\${esc(mediaFileName(item))}</a></div>\`;
+          }
+          return "";
+        }).join("");
+        return \`<div class="detail-row"><div class="detail-label">Media Album</div><div class="detail-value media-actions album">\${html}</div></div>\`;
       }
-      if (isDownloadableFile(row)) {
-        return \`<div class="detail-row"><div class="detail-label">Media</div><div class="detail-value media-actions"><a class="details-button" href="\${fileUrl(row, true)}" download>\${esc(mediaFileName(row))}</a></div></div>\`;
+      const item = items[0] || row;
+      if (isPhotoItem(item)) {
+        return \`<div class="detail-row"><div class="detail-label">Media</div><div class="detail-value media-actions"><img class="media-preview" src="\${fileUrl(item)}" alt="" loading="lazy" /><a class="details-button" href="\${fileUrl(item, true)}" download>Download Image</a></div></div>\`;
+      }
+      if (isDownloadableFileItem(item)) {
+        return \`<div class="detail-row"><div class="detail-label">Media</div><div class="detail-value media-actions"><a class="details-button" href="\${fileUrl(item, true)}" download>\${esc(mediaFileName(item))}</a></div></div>\`;
       }
       return "";
     }
@@ -927,6 +959,7 @@ const HTML = `<!doctype html>
         ["Reply To Message ID", row.reply_to_message_id],
         ["Media File ID", row.media_file_id],
         ["Media Group ID", row.media_group_id],
+        ["Album Message IDs", row.album_message_ids],
         ["Forward Origin", row.forward_origin_json],
         ["Entities", row.entities_json],
         ["Raw Telegram Payload", row.raw_payload_json],
@@ -953,11 +986,25 @@ const HTML = `<!doctype html>
       return \`\${editedBadge(row)}\${mediaBadge(row)}\${compactMessage(row)}\`;
     }
     function threadMedia(row) {
-      if (isPhoto(row)) {
-        return \`<div class="thread-media"><button class="media-open thread-photo-frame" type="button" data-media-src="\${fileUrl(row)}" data-media-download="\${fileUrl(row, true)}" aria-label="مشاهده عکس"><img class="thread-photo" src="\${fileUrl(row)}" width="180" height="180" alt="" loading="lazy" /></button></div>\`;
+      const items = mediaItems(row);
+      if (items.length > 1) {
+        const gallery = items.map((item) => {
+          if (isPhotoItem(item)) {
+            return \`<button class="media-open thread-photo-frame" type="button" data-media-src="\${fileUrl(item)}" data-media-download="\${fileUrl(item, true)}" aria-label="مشاهده عکس"><img class="thread-photo" src="\${fileUrl(item)}" width="180" height="180" alt="" loading="lazy" /></button>\`;
+          }
+          if (isDownloadableFileItem(item)) {
+            return \`<a class="thread-file" href="\${fileUrl(item, true)}" download><span>فایل</span><strong>\${esc(mediaFileName(item))}</strong></a>\`;
+          }
+          return "";
+        }).join("");
+        return \`<div class="thread-media album"><div class="media-gallery">\${gallery}</div></div>\`;
       }
-      if (isDownloadableFile(row)) {
-        return \`<div class="thread-media"><a class="thread-file" href="\${fileUrl(row, true)}" download><span>فایل</span><strong>\${esc(mediaFileName(row))}</strong></a></div>\`;
+      const item = items[0] || row;
+      if (isPhotoItem(item)) {
+        return \`<div class="thread-media"><button class="media-open thread-photo-frame" type="button" data-media-src="\${fileUrl(item)}" data-media-download="\${fileUrl(item, true)}" aria-label="مشاهده عکس"><img class="thread-photo" src="\${fileUrl(item)}" width="180" height="180" alt="" loading="lazy" /></button></div>\`;
+      }
+      if (isDownloadableFileItem(item)) {
+        return \`<div class="thread-media"><a class="thread-file" href="\${fileUrl(item, true)}" download><span>فایل</span><strong>\${esc(mediaFileName(item))}</strong></a></div>\`;
       }
       return "";
     }
@@ -1033,10 +1080,14 @@ const HTML = `<!doctype html>
       const latestByMessage = new Map();
       for (const row of messages) {
         if (!row.chat_id || !row.message_id) continue;
-        const key = row.chat_id + ":" + row.message_id;
-        const existing = latestByMessage.get(key);
-        if (!existing || Date.parse(row.edited_at_utc || row.sent_at_utc || 0) > Date.parse(existing.edited_at_utc || existing.sent_at_utc || 0)) {
-          latestByMessage.set(key, row);
+        const keys = [row.message_id, ...(Array.isArray(row.album_message_ids) ? row.album_message_ids : [])]
+          .filter((value) => value != null)
+          .map((messageId) => row.chat_id + ":" + messageId);
+        for (const key of keys) {
+          const existing = latestByMessage.get(key);
+          if (!existing || Date.parse(row.edited_at_utc || row.sent_at_utc || 0) > Date.parse(existing.edited_at_utc || existing.sent_at_utc || 0)) {
+            latestByMessage.set(key, row);
+          }
         }
       }
       function parentKeyFor(row) {
@@ -1060,7 +1111,7 @@ const HTML = `<!doctype html>
       }
       const repliesByRoot = new Map();
       const rootKeys = new Set();
-      for (const row of latestByMessage.values()) {
+      for (const row of new Set(latestByMessage.values())) {
         const rowKey = row.chat_id + ":" + row.message_id;
         const rootKey = rootKeyFor(row);
         rootKeys.add(rootKey);
@@ -2810,6 +2861,93 @@ async function withThreadAncestors(env, headers, messages, topicByThread) {
   return allRows;
 }
 
+async function fetchMediaGroupRows(env, headers, groupKeys) {
+  const rows = [];
+  const chunks = [];
+  for (let index = 0; index < groupKeys.length; index += 30) chunks.push(groupKeys.slice(index, index + 30));
+  for (const chunk of chunks) {
+    const params = new URLSearchParams();
+    params.set("select", TELEGRAM_MESSAGE_SELECT);
+    params.set("order", "sent_at_utc.asc.nullslast,message_id.asc");
+    params.set("limit", "10000");
+    params.set("or", `(${chunk.map((key) => {
+      const [chatId, mediaGroupId] = key.split(":");
+      return `and(chat_id.eq.${chatId},media_group_id.eq.${mediaGroupId})`;
+    }).join(",")})`);
+    const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers });
+    if (!response.ok) throw new Error(await response.text());
+    rows.push(...await response.json());
+  }
+  return rows;
+}
+
+async function withMediaGroupRows(env, headers, messages, topicByThread) {
+  const keys = [...new Set(messages
+    .filter((row) => row.chat_id && row.media_group_id)
+    .map((row) => `${row.chat_id}:${row.media_group_id}`))];
+  if (!keys.length) return messages;
+  const existingKeys = new Set(messages.filter((row) => row.chat_id && row.message_id).map((row) => `${row.chat_id}:${row.message_id}`));
+  const rows = await fetchMediaGroupRows(env, headers, keys);
+  const extras = enrichMessageRows(rows, topicByThread).filter((row) => {
+    const key = `${row.chat_id}:${row.message_id}`;
+    if (existingKeys.has(key)) return false;
+    existingKeys.add(key);
+    return true;
+  });
+  return extras.length ? [...messages, ...extras] : messages;
+}
+
+function mediaItemFromRow(row) {
+  return {
+    update_id: row.update_id,
+    message_id: row.message_id,
+    message_type: row.message_type,
+    media_file_id: row.media_file_id,
+    media_group_id: row.media_group_id,
+    raw_payload_json: row.raw_payload_json,
+  };
+}
+
+function aggregateMediaGroups(messages) {
+  const groups = new Map();
+  const passthrough = [];
+  for (const row of messages) {
+    if (!row.chat_id || !row.media_group_id) {
+      passthrough.push(row);
+      continue;
+    }
+    const key = `${row.chat_id}:${row.media_group_id}`;
+    const list = groups.get(key) || [];
+    list.push(row);
+    groups.set(key, list);
+  }
+  const aggregated = [...passthrough];
+  for (const list of groups.values()) {
+    list.sort((a, b) => Number(a.message_id || 0) - Number(b.message_id || 0));
+    const base = list.find((row) => row.body || row.caption) || list[0];
+    const mediaItems = list
+      .filter((row) => row.media_file_id)
+      .map(mediaItemFromRow);
+    const messageIds = list.map((row) => row.message_id).filter((value) => value != null);
+    const reactions = list.flatMap((row) => Array.isArray(row.reactions) ? row.reactions : []);
+    aggregated.push({
+      ...base,
+      media_items: mediaItems,
+      album_message_ids: messageIds,
+      album_update_ids: list.map((row) => row.update_id).filter((value) => value != null),
+      reactions,
+      media_file_id: base.media_file_id || mediaItems[0]?.media_file_id || null,
+      message_type: mediaItems.length > 1 ? "media_group" : base.message_type,
+    });
+  }
+  return aggregated.sort((a, b) => {
+    const aTime = Date.parse(a.sent_at_utc || a.received_at_utc || 0);
+    const bTime = Date.parse(b.sent_at_utc || b.received_at_utc || 0);
+    if (aTime !== bTime) return bTime - aTime;
+    return Number(b.message_id || 0) - Number(a.message_id || 0);
+  });
+}
+
 function findTopicPayload(value, key) {
   if (!value || typeof value !== "object") return null;
   if (value[key]?.name) return value[key];
@@ -3311,6 +3449,11 @@ async function fetchMessages(request, env) {
       return json({ error: "Supabase thread ancestors request failed", detail: String(error?.message || error) }, 500);
     }
   }
+  try {
+    messages = await withMediaGroupRows(env, headers, messages, topicByThread);
+  } catch (error) {
+    return json({ error: "Supabase media group request failed", detail: String(error?.message || error) }, 500);
+  }
   let historyRows = messages;
   const editedKeys = [...new Set(
     messages
@@ -3366,7 +3509,7 @@ async function fetchMessages(request, env) {
     });
     if (reactionsResponse.ok) reactionRows = await reactionsResponse.json();
   }
-  messages = withReactions(withEditHistory(messages, historyRows), reactionRows);
+  messages = aggregateMediaGroups(withReactions(withEditHistory(messages, historyRows), reactionRows));
   return json({ messages });
 }
 
