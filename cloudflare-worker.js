@@ -2022,15 +2022,41 @@ function loginHtml(error = "", email = "", message = "") {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ورود دیدپذیری</title>
   <style>
-    :root { color-scheme: light; --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; }
+    ${AUTH_FONT_FACE}
+    :root { color-scheme: light; --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#0f62fe; --accent-dark:#054ada; --soft:#edf5ff; --ok:#087f5b; }
     * { box-sizing: border-box; }
-    body { margin:0; min-height:100vh; display:grid; place-items:center; font-family:"IRANSans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); }
-    form { width:min(380px, calc(100vw - 32px)); background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:22px; }
-    h1 { margin:0 0 16px; font-size:20px; }
+    body { margin:0; min-height:100vh; font-family:"IRANSans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); }
+    .landing { min-height:100vh; display:flex; flex-direction:column; }
+    .landing-header { height:72px; display:flex; align-items:center; justify-content:space-between; padding:0 clamp(20px, 5vw, 72px); border-bottom:1px solid var(--line); background:rgba(255,255,255,.86); }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:900; font-size:24px; }
+    .brand-mark { width:38px; height:38px; display:grid; place-items:center; border:1px solid #b8d3ff; border-radius:50%; background:var(--soft); color:var(--accent); font-weight:900; }
+    .header-note { color:var(--muted); font-size:13px; }
+    .landing-main { width:min(1120px, calc(100vw - 40px)); margin:0 auto; flex:1; display:grid; grid-template-columns:minmax(0, 1fr) minmax(340px, 420px); gap:48px; align-items:center; padding:48px 0; }
+    .intro { display:flex; flex-direction:column; gap:22px; }
+    h1 { margin:0; font-size:clamp(34px, 5vw, 64px); line-height:1.25; letter-spacing:0; }
+    .lead { margin:0; max-width:680px; color:var(--muted); font-size:17px; line-height:2; }
+    .signals { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; max-width:720px; }
+    .signal { min-height:94px; border:1px solid var(--line); background:#fff; border-radius:8px; padding:14px; }
+    .signal strong { display:block; margin-bottom:8px; font-size:15px; }
+    .signal span { color:var(--muted); font-size:12px; line-height:1.8; }
+    .product-frame { border:1px solid var(--line); background:#fff; border-radius:8px; overflow:hidden; max-width:680px; box-shadow:0 18px 44px rgba(23,32,38,.08); }
+    .frame-bar { height:42px; display:flex; align-items:center; gap:8px; padding:0 14px; border-bottom:1px solid var(--line); background:#f4f6f8; }
+    .dot { width:9px; height:9px; border-radius:50%; background:#8d99a6; }
+    .dot:first-child { background:#0f62fe; }
+    .product-row { display:grid; grid-template-columns:90px 1fr 110px; gap:12px; align-items:center; padding:14px; border-bottom:1px solid var(--line); }
+    .product-row:last-child { border-bottom:0; }
+    .chip { display:inline-flex; align-items:center; justify-content:center; min-height:28px; border:1px solid #c6d8ff; border-radius:999px; background:var(--soft); color:#284b7a; font-size:12px; font-weight:800; }
+    .line { height:10px; border-radius:999px; background:#dfe5eb; }
+    .line.short { width:62%; }
+    .auth-card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:24px; box-shadow:0 18px 44px rgba(23,32,38,.08); }
+    form { width:100%; }
+    .auth-card h2 { margin:0 0 8px; font-size:22px; }
+    .auth-copy { margin:0 0 16px; color:var(--muted); font-size:13px; line-height:1.9; }
     label { display:block; margin-bottom:8px; color:var(--muted); font-size:13px; }
     input, button { width:100%; height:40px; border-radius:6px; font:inherit; }
     input { border:1px solid var(--line); padding:0 10px; }
-    button { margin-top:12px; border:0; background:var(--accent); color:#fff; cursor:pointer; }
+    button { margin-top:12px; border:0; background:var(--accent); color:#fff; cursor:pointer; font-weight:800; }
+    button:hover { background:var(--accent-dark); }
     .password-wrap { position:relative; }
     .password-wrap input { padding-left:48px; direction:ltr; }
     .password-toggle { position:absolute; left:6px; top:6px; width:34px; height:28px; margin:0; padding:0; display:grid; place-items:center; border:1px solid var(--line); background:#fff; color:var(--muted); }
@@ -2038,26 +2064,59 @@ function loginHtml(error = "", email = "", message = "") {
     .auth-link { display:block; margin-top:12px; color:var(--accent); font-size:12px; text-align:center; text-decoration:none; }
     .auth-link:hover { text-decoration:underline; }
     .error { min-height:22px; margin-bottom:10px; color:#b42318; font-size:12px; line-height:1.7; }
-    .message { min-height:22px; margin-bottom:10px; color:#087f5b; font-size:12px; line-height:1.7; }
+    .message { min-height:22px; margin-bottom:10px; color:var(--ok); font-size:12px; line-height:1.7; }
+    @media (max-width: 860px) {
+      .landing-header { height:auto; min-height:64px; padding:14px 20px; align-items:flex-start; gap:8px; flex-direction:column; }
+      .landing-main { grid-template-columns:1fr; gap:28px; padding:28px 0; }
+      .signals { grid-template-columns:1fr; }
+      .product-row { grid-template-columns:74px 1fr; }
+      .product-row .chip:last-child { grid-column:1 / -1; justify-content:flex-start; padding:0 10px; }
+    }
   </style>
 </head>
 <body>
-  <form method="post" action="/login">
-    <h1>دیدپذیری</h1>
-    <div class="error">${htmlEscape(error)}</div>
-    <div class="message">${htmlEscape(message)}</div>
-    <label for="email">ایمیل</label>
-    <input id="email" name="email" type="email" autocomplete="username" placeholder="anything@toman.ir" value="${htmlEscape(email)}" autofocus />
-    <label for="password">پسورد</label>
-    <div class="password-wrap">
-      <input id="password" name="password" type="password" autocomplete="current-password" />
-      <button class="password-toggle" type="button" data-toggle-password="password" aria-label="نمایش پسورد">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-      </button>
-    </div>
-    <button type="submit">ورود</button>
-    <a class="auth-link" href="/forgot-password">فراموشی رمز عبور؟</a>
-  </form>
+  <div class="landing">
+    <header class="landing-header">
+      <div class="brand"><span class="brand-mark">V</span><span>دیدپذیری</span></div>
+      <div class="header-note">پایش گفتگوهای کاری، گروه‌ها، تردها و بات‌ها در یک داشبورد واحد</div>
+    </header>
+    <main class="landing-main">
+      <section class="intro">
+        <h1>یک نمای روشن از پیام‌های عملیاتی تیم‌ها</h1>
+        <p class="lead">دیدپذیری پیام‌های تلگرام و بله را از گروه‌های کاری جمع‌آوری می‌کند و با ساختار قابل جستجو، ترد، گروه، بات و دسترسی نمایش می‌دهد.</p>
+        <div class="signals">
+          <div class="signal"><strong>پیام‌ها و فایل‌ها</strong><span>متن، عکس، فایل، ریپلای، ویرایش و زمان ثبت پیام در یک ساختار قابل پیگیری.</span></div>
+          <div class="signal"><strong>ترد و گروه</strong><span>نمایش مکالمه‌ها مثل ترد و مدیریت گروه‌ها با لیبل و پلتفرم.</span></div>
+          <div class="signal"><strong>دسترسی کنترل‌شده</strong><span>ورود سازمانی، سطح دسترسی صفحه‌ها و لاگ تغییرات اکسس.</span></div>
+        </div>
+        <div class="product-frame" aria-hidden="true">
+          <div class="frame-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          <div class="product-row"><span class="chip">تلگرام</span><span class="line"></span><span class="chip">۱۲۸ پیام</span></div>
+          <div class="product-row"><span class="chip">بله</span><span class="line short"></span><span class="chip">۴ گروه</span></div>
+          <div class="product-row"><span class="chip">تردها</span><span class="line"></span><span class="chip">زنده</span></div>
+        </div>
+      </section>
+      <section class="auth-card">
+        <form method="post" action="/login">
+          <h2>ورود به داشبورد</h2>
+          <p class="auth-copy">فقط ایمیل‌های مجاز دامنه toman.ir امکان ورود دارند.</p>
+          <div class="error">${htmlEscape(error)}</div>
+          <div class="message">${htmlEscape(message)}</div>
+          <label for="email">ایمیل</label>
+          <input id="email" name="email" type="email" autocomplete="username" placeholder="anything@toman.ir" value="${htmlEscape(email)}" autofocus />
+          <label for="password">پسورد</label>
+          <div class="password-wrap">
+            <input id="password" name="password" type="password" autocomplete="current-password" />
+            <button class="password-toggle" type="button" data-toggle-password="password" aria-label="نمایش پسورد">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <button type="submit">ورود</button>
+          <a class="auth-link" href="/forgot-password">فراموشی رمز عبور؟</a>
+        </form>
+      </section>
+    </main>
+  </div>
   <script>
     document.querySelectorAll("[data-toggle-password]").forEach((button) => {
       button.addEventListener("click", () => {
