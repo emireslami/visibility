@@ -89,7 +89,10 @@ const HTML = `<!doctype html>
     .reaction-chip { display:inline-flex; align-items:center; gap:4px; min-height:24px; padding:2px 6px; border:1px solid var(--line); border-radius:999px; background:#f7f8fa; }
     .reaction-emoji { font-size:15px; line-height:1; }
     .reaction-avatar { width:18px; height:18px; border-radius:50%; border:1px solid var(--line); background:#eef3f4; color:#36505a; display:grid; place-items:center; font-size:10px; font-weight:800; object-fit:cover; direction:ltr; }
-    .thread-reply-form { margin-top:12px; display:grid; grid-template-columns:minmax(180px, 1fr) auto; gap:8px; direction:rtl; }
+    .thread-reply-actions { margin-top:10px; display:grid; gap:8px; justify-items:start; direction:rtl; }
+    .thread-reply-toggle { min-height:28px; padding:0 10px; font-size:12px; }
+    .thread-reply-form { width:100%; display:grid; grid-template-columns:minmax(180px, 1fr) auto; gap:8px; direction:rtl; }
+    .thread-reply-form[hidden] { display:none; }
     .thread-reply-input { min-height:38px; border:1px solid var(--line); border-radius:6px; padding:8px 10px; resize:vertical; font-family:inherit; font-size:13px; direction:rtl; text-align:right; background:#fff; }
     .thread-reply-submit { min-height:38px; padding:0 12px; }
     .thread-reply-status { grid-column:1 / -1; min-height:18px; color:var(--muted); font-size:11px; }
@@ -1647,11 +1650,14 @@ const HTML = `<!doctype html>
     }
     function threadReplyForm(row) {
       if (!canOpen("reply") || row.missing || !row.chat_id || !row.message_id) return "";
-      return \`<form class="thread-reply-form" data-thread-reply data-platform="\${esc(row.platform || "telegram")}" data-chat-id="\${esc(row.chat_id)}" data-message-id="\${esc(row.message_id)}">
-        <textarea class="thread-reply-input" name="body" rows="1" maxlength="3500" placeholder="پاسخ به این پیام..."></textarea>
-        <button class="thread-reply-submit" type="submit">ارسال پاسخ</button>
-        <div class="thread-reply-status" data-reply-status></div>
-      </form>\`;
+      return \`<div class="thread-reply-actions">
+        <button class="thread-reply-toggle" type="button" data-reply-toggle>پاسخ</button>
+        <form class="thread-reply-form" data-thread-reply data-platform="\${esc(row.platform || "telegram")}" data-chat-id="\${esc(row.chat_id)}" data-message-id="\${esc(row.message_id)}" hidden>
+          <textarea class="thread-reply-input" name="body" rows="1" maxlength="3500" placeholder="پاسخ به این پیام..."></textarea>
+          <button class="thread-reply-submit" type="submit">ارسال</button>
+          <div class="thread-reply-status" data-reply-status></div>
+        </form>
+      </div>\`;
     }
     function threadNode(row, kind, index) {
       if (row.missing) {
@@ -2340,6 +2346,16 @@ const HTML = `<!doctype html>
       if (!confirmButton || !pendingConfirm) return;
       closeModal(confirmButton.dataset.confirmValue === "ok");
     });
+    threadRowsEl.addEventListener("click", (event) => {
+      const toggle = event.target.closest("[data-reply-toggle]");
+      if (!toggle) return;
+      const actions = toggle.closest(".thread-reply-actions");
+      const form = actions?.querySelector("[data-thread-reply]");
+      if (!form) return;
+      form.hidden = !form.hidden;
+      toggle.textContent = form.hidden ? "پاسخ" : "بستن پاسخ";
+      if (!form.hidden) form.querySelector("[name='body']")?.focus();
+    });
     threadRowsEl.addEventListener("submit", async (event) => {
       const form = event.target.closest("[data-thread-reply]");
       if (!form) return;
@@ -2373,6 +2389,9 @@ const HTML = `<!doctype html>
         }
         input.value = "";
         status.textContent = "پاسخ ارسال شد.";
+        const toggle = form.closest(".thread-reply-actions")?.querySelector("[data-reply-toggle]");
+        if (toggle) toggle.textContent = "پاسخ";
+        form.hidden = true;
         setTimeout(() => loadThreads(), 900);
       } catch (error) {
         status.textContent = "ارسال پاسخ انجام نشد";
