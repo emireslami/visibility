@@ -175,6 +175,14 @@ const HTML = `<!doctype html>
     .permission-option { min-height:32px; display:flex; align-items:center; justify-content:flex-start; gap:6px; padding:5px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; color:var(--ink); }
     .permission-option input { width:14px; height:14px; flex:0 0 auto; }
     .permission-option:has(input:disabled) { opacity:.68; background:#f7f8fa; }
+    .group-access-box { grid-column:1 / -1; display:grid; gap:8px; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fff; direction:rtl; }
+    .group-access-title { display:flex; justify-content:space-between; gap:10px; color:var(--ink); font-size:12px; font-weight:700; }
+    .group-access-title span:last-child { color:var(--muted); font-weight:500; }
+    .group-access-grid { display:grid; grid-template-columns:repeat(3, minmax(150px, 1fr)); gap:8px; }
+    .group-access-grid.groups { max-height:150px; overflow:auto; padding-inline-end:4px; }
+    .group-access-option { min-height:30px; display:flex; align-items:center; justify-content:flex-start; gap:6px; padding:5px 8px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; font-size:12px; color:var(--ink); direction:rtl; }
+    .group-access-option input { width:14px; height:14px; flex:0 0 auto; }
+    .group-access-option:has(input:disabled) { opacity:.68; background:#f7f8fa; }
     .revoke-button { height:30px; padding:0 10px; background:#fff; color:#b42318; border-color:#f0b8b2; }
     .revoke-button:disabled { cursor:not-allowed; color:var(--muted); border-color:var(--line); background:#f3f5f6; }
     .reactivate-button { height:30px; padding:0 10px; background:#fff; color:var(--accent); border-color:#9bd6dd; }
@@ -702,6 +710,7 @@ const HTML = `<!doctype html>
     ];
     const fullTextByKey = new Map();
     const detailByKey = new Map();
+    let accessGroupOptions = [];
     const chartColors = ["#087f8c", "#f25f5c", "#3b82f6", "#f59e0b", "#7c3aed", "#10b981", "#ef476f", "#6b7280", "#06b6d4", "#84cc16"];
     const ownerEmail = "a.eslami@toman.ir";
     let threadFilterOptions = null;
@@ -719,6 +728,12 @@ const HTML = `<!doctype html>
     }
     function selectedPermissions(root) {
       return [...root.querySelectorAll("input[data-permission]:checked")].map(input => input.dataset.permission);
+    }
+    function selectedGroupAccess(root) {
+      return {
+        labels: [...root.querySelectorAll("input[data-group-label]:checked")].map(input => input.dataset.groupLabel),
+        groups: [...root.querySelectorAll("input[data-group-key]:checked")].map(input => input.dataset.groupKey),
+      };
     }
     function isOwnerEmail(email) {
       return String(email || "").trim().toLowerCase() === ownerEmail;
@@ -739,6 +754,28 @@ const HTML = `<!doctype html>
     function groupLabelText(value) {
       return groupLabelOptions.find(([key]) => key === String(value || ""))?.[1] || "بدون لیبل";
     }
+    function groupAccessHtml(user) {
+      const access = user.group_access || { labels: [], groups: [] };
+      const labelSet = new Set(access.labels || []);
+      const groupSet = new Set(access.groups || []);
+      const disabled = user.is_owner ? "disabled" : "";
+      const labelOptions = groupLabelOptions
+        .filter(([value]) => value)
+        .map(([value, label]) => \`<label class="group-access-option"><input type="checkbox" data-group-label="\${esc(value)}" \${labelSet.has(value) ? "checked" : ""} \${disabled} /><span>\${esc(label)}</span></label>\`)
+        .join("");
+      const groupOptions = accessGroupOptions
+        .map((group) => \`<label class="group-access-option"><input type="checkbox" data-group-key="\${esc(group.key)}" \${groupSet.has(group.key) ? "checked" : ""} \${disabled} /><span>\${esc(group.title)}</span><span class="thread-muted">\${esc(platformText(group.platform))}</span></label>\`)
+        .join("");
+      const mode = labelSet.size || groupSet.size ? "محدود" : "همه گروه‌ها";
+      return \`<div class="group-access-box" data-group-access-email="\${esc(user.email)}" data-owner="\${user.is_owner ? "true" : "false"}">
+        <div class="group-access-title"><strong>دسترسی گروه‌ها</strong><span>\${mode}</span></div>
+        <div class="thread-muted">اگر هیچ لیبل یا گروهی انتخاب نشود، کاربر همه گروه‌ها را می‌بیند.</div>
+        <div class="group-access-title"><strong>بر اساس لیبل</strong></div>
+        <div class="group-access-grid">\${labelOptions}</div>
+        <div class="group-access-title"><strong>بر اساس گروه</strong></div>
+        <div class="group-access-grid groups">\${groupOptions || '<span class="thread-muted">گروهی برای انتخاب وجود ندارد.</span>'}</div>
+      </div>\`;
+    }
     function groupLabelSelect(row) {
       const current = String(row.group_label || "");
       return \`<select class="group-label-select" data-platform="\${esc(row.platform || "telegram")}" data-chat-id="\${esc(row.chat_id)}" data-previous="\${esc(current)}" aria-label="لیبل گروه">\${groupLabelOptions.map(([value, label]) => \`<option value="\${esc(value)}" \${current === value ? "selected" : ""}>\${esc(label)}</option>\`).join("")}</select>\`;
@@ -751,6 +788,7 @@ const HTML = `<!doctype html>
         revoke: "لغو دسترسی",
         reactivate: "فعال‌سازی دوباره",
         permissions_update: "تغییر دسترسی‌ها",
+        group_access_update: "تغییر دسترسی گروه‌ها",
         password_change: "تغییر پسورد",
         password_recovery: "بازیابی پسورد",
         profile_update: "به‌روزرسانی پروفایل",
@@ -1619,6 +1657,9 @@ const HTML = `<!doctype html>
     async function loadAccessUsers() {
       const token = showLoading("در حال دریافت کاربران...");
       try {
+        const groupsRes = await fetch("/api/access-groups");
+        const groupsData = await groupsRes.json();
+        accessGroupOptions = groupsRes.ok && Array.isArray(groupsData.groups) ? groupsData.groups : [];
         const res = await fetch("/api/access-users");
         const data = await res.json();
         if (!res.ok || !Array.isArray(data.users)) {
@@ -1641,6 +1682,7 @@ const HTML = `<!doctype html>
               </span>
             </div>
             <div class="permission-grid" data-permission-email="\${esc(user.email)}" data-owner="\${user.is_owner ? "true" : "false"}">\${permissionGridHtml(user.permissions, "user-" + user.email, user.is_owner)}</div>
+            \${groupAccessHtml(user)}
           </div>\`).join("");
         setStatus(token, data.users.length + " کاربر");
       } catch (error) {
@@ -2041,6 +2083,35 @@ const HTML = `<!doctype html>
     accessRowsEl.addEventListener("change", async (event) => {
       const input = event.target.closest("input[data-permission]");
       const grid = event.target.closest("[data-permission-email]");
+      const groupInput = event.target.closest("input[data-group-label], input[data-group-key]");
+      const groupGrid = event.target.closest("[data-group-access-email]");
+      if (groupInput && groupGrid) {
+        const email = groupGrid.dataset.groupAccessEmail;
+        if (groupGrid.dataset.owner === "true" || isOwnerEmail(email)) {
+          accessMessageEl.textContent = "دسترسی owner قابل تغییر نیست.";
+          loadAccessUsers();
+          return;
+        }
+        accessMessageEl.textContent = "در حال ذخیره دسترسی گروه‌ها...";
+        try {
+          const res = await fetch("/api/access-users/group-access", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ email, group_access: selectedGroupAccess(groupGrid) }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            accessMessageEl.textContent = data.error || "ذخیره دسترسی گروه‌ها انجام نشد";
+            loadAccessUsers();
+            return;
+          }
+          accessMessageEl.textContent = "دسترسی گروه‌ها ذخیره شد.";
+        } catch (error) {
+          accessMessageEl.textContent = "ذخیره دسترسی گروه‌ها انجام نشد";
+          loadAccessUsers();
+        }
+        return;
+      }
       if (!input || !grid) return;
       const email = grid.dataset.permissionEmail;
       if (grid.dataset.owner === "true" || isOwnerEmail(email)) {
@@ -2602,15 +2673,46 @@ function isAccessOwnerEmail(email) {
 }
 
 function normalizeAccessPermissions(value) {
-  const source = Array.isArray(value) ? value : FULL_ACCESS_PERMISSIONS;
+  const source = Array.isArray(value) ? value : (Array.isArray(value?.pages) ? value.pages : FULL_ACCESS_PERMISSIONS);
   const allowed = new Set(ACCESS_PERMISSIONS);
   const normalized = source.map((item) => String(item || "").trim().toLowerCase()).filter((item) => allowed.has(item));
   return [...new Set(normalized)];
 }
 
+function normalizeGroupAccess(value) {
+  const source = value?.group_access && typeof value.group_access === "object" ? value.group_access : value;
+  const labelSet = new Set(GROUP_LABELS);
+  const labels = Array.isArray(source?.labels)
+    ? [...new Set(source.labels.map((item) => String(item || "").trim()).filter((item) => labelSet.has(item)))]
+    : [];
+  const groups = Array.isArray(source?.groups)
+    ? [...new Set(source.groups.map((item) => {
+      const [platform, chatId] = String(item || "").split(":");
+      return platform && /^-?\d+$/.test(chatId || "") ? `${normalizePlatform(platform)}:${chatId}` : "";
+    }).filter(Boolean))]
+    : [];
+  return { labels, groups };
+}
+
+function accessPayload(pages, groupAccess = {}) {
+  return {
+    pages: normalizeAccessPermissions(pages),
+    group_access: normalizeGroupAccess(groupAccess),
+  };
+}
+
 function accessPermissionsForUser(user) {
   if (isAccessOwnerEmail(user?.email)) return FULL_ACCESS_PERMISSIONS;
   return normalizeAccessPermissions(user?.permissions);
+}
+
+function groupAccessForUser(user) {
+  if (isAccessOwnerEmail(user?.email)) return { labels: [], groups: [], unrestricted: true };
+  const groupAccess = normalizeGroupAccess(user?.permissions);
+  return {
+    ...groupAccess,
+    unrestricted: !groupAccess.labels.length && !groupAccess.groups.length,
+  };
 }
 
 function hasAccessPermission(user, permission) {
@@ -2624,6 +2726,28 @@ function hasAnyAccessPermission(user, permissions) {
 function defaultMainPathForUser(user) {
   const firstPage = ["messages", "threads", "groups", "dashboard", "bots", "access"].find((permission) => hasAccessPermission(user, permission));
   return `/main/${firstPage || "messages"}`;
+}
+
+function groupRowAllowedByAccess(row, groupAccess) {
+  if (!groupAccess || groupAccess.unrestricted) return true;
+  return groupAccess.groups.includes(chatKey(row)) || groupAccess.labels.includes(String(row.group_label || ""));
+}
+
+async function allowedChatKeySet(env, user) {
+  const groupAccess = groupAccessForUser(user);
+  if (groupAccess.unrestricted) return null;
+  const params = new URLSearchParams({
+    select: "platform,chat_id,group_label",
+    limit: "10000",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${params}`, { headers: supabaseHeaders(env) });
+  if (!response.ok) return new Set();
+  const rows = await response.json();
+  return new Set(rows.filter((row) => groupRowAllowedByAccess(row, groupAccess)).map((row) => chatKey(row)));
+}
+
+function rowAllowedByChatSet(row, allowedSet) {
+  return !allowedSet || allowedSet.has(chatKey(row));
 }
 
 function profilePhotoUrlFromRow(row) {
@@ -2876,7 +3000,7 @@ async function getAccessUserByEmail(env, email) {
   return rows[0] || null;
 }
 
-async function createAccessUser(env, email, permissions = FULL_ACCESS_PERMISSIONS) {
+async function createAccessUser(env, email, permissions = FULL_ACCESS_PERMISSIONS, groupAccess = {}) {
   const normalized = normalizeEmail(email);
   if (!validAccessEmail(normalized)) throw new Error("ایمیل باید از دامنه toman.ir باشد");
   const salt = randomHex();
@@ -2886,7 +3010,7 @@ async function createAccessUser(env, email, permissions = FULL_ACCESS_PERMISSION
     password_hash: await hashPassword("changeme", salt),
     must_change_password: true,
     is_active: true,
-    permissions: normalizeAccessPermissions(permissions),
+    permissions: accessPayload(permissions, groupAccess),
     updated_at_utc: new Date().toISOString(),
   };
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_access_users?on_conflict=email`, {
@@ -3174,12 +3298,34 @@ async function fetchAccessUsers(env) {
       is_owner: isAccessOwnerEmail(user.email),
       is_active: isAccessOwnerEmail(user.email) ? true : user.is_active,
       permissions: accessPermissionsForUser(user),
+      group_access: groupAccessForUser(user),
     })),
   });
 }
 
 async function fetchAccessAuditLogs(env) {
   return json({ logs: await listAccessAuditLogs(env) });
+}
+
+async function fetchAccessGroups(env) {
+  const params = new URLSearchParams({
+    select: "platform,chat_id,chat_title,group_label,message_count,last_seen_at_utc",
+    order: "chat_title.asc",
+    limit: "1000",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${params}`, { headers: supabaseHeaders(env) });
+  if (!response.ok) return json({ error: "درخواست گروه‌ها انجام نشد", detail: await response.text() }, 500);
+  const groups = (await response.json())
+    .filter((row) => row.chat_id && row.chat_title)
+    .map((row) => ({
+      key: chatKey(row),
+      platform: normalizePlatform(row.platform),
+      chat_id: row.chat_id,
+      title: row.chat_title,
+      group_label: row.group_label || "",
+      message_count: Number(row.message_count || 0),
+    }));
+  return json({ groups });
 }
 
 async function addAccessUser(request, env, authUser) {
@@ -3196,7 +3342,7 @@ async function addAccessUser(request, env, authUser) {
   try {
     const existing = await getAccessUserByEmail(env, email);
     if (existing) return json({ error: "این ایمیل قبلاً اضافه شده است" }, 409);
-    const user = await createAccessUser(env, email, permissions);
+    const user = await createAccessUser(env, email, permissions, body.group_access || {});
     let inviteEmailSent = false;
     let inviteEmailError = "";
     try {
@@ -3214,6 +3360,7 @@ async function addAccessUser(request, env, authUser) {
         must_change_password: user.must_change_password,
         is_active: user.is_active,
         permissions: accessPermissionsForUser(user),
+        group_access: groupAccessForUser(user),
       },
       metadata: {
         invite_email_sent: inviteEmailSent,
@@ -3353,7 +3500,7 @@ async function updateAccessUserPermissions(request, env, authUser) {
     const existing = await getAccessUserByEmail(env, email);
     if (!existing) return json({ error: "کاربر پیدا نشد" }, 404);
     const user = await patchAccessUser(env, email, {
-      permissions,
+      permissions: accessPayload(permissions, groupAccessForUser(existing)),
       updated_at_utc: new Date().toISOString(),
     });
     await insertAccessAuditLog(env, {
@@ -3366,6 +3513,37 @@ async function updateAccessUserPermissions(request, env, authUser) {
     return json({ user: { email: user.email, permissions: accessPermissionsForUser(user) } });
   } catch (error) {
     return json({ error: error.message || "ذخیره دسترسی انجام نشد" }, 500);
+  }
+}
+
+async function updateAccessUserGroupAccess(request, env, authUser) {
+  let body = {};
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const email = normalizeEmail(body.email);
+  if (!validAccessEmail(email)) return json({ error: "ایمیل نامعتبر است" }, 400);
+  if (isAccessOwnerEmail(email)) return json({ error: "دسترسی مالک قابل تغییر نیست" }, 400);
+  const groupAccess = normalizeGroupAccess(body.group_access || {});
+  try {
+    const existing = await getAccessUserByEmail(env, email);
+    if (!existing) return json({ error: "کاربر پیدا نشد" }, 404);
+    const user = await patchAccessUser(env, email, {
+      permissions: accessPayload(accessPermissionsForUser(existing), groupAccess),
+      updated_at_utc: new Date().toISOString(),
+    });
+    await insertAccessAuditLog(env, {
+      actorEmail: authUser?.email,
+      targetEmail: email,
+      action: "group_access_update",
+      oldValues: { group_access: groupAccessForUser(existing) },
+      newValues: { group_access: groupAccessForUser(user) },
+    });
+    return json({ user: { email: user.email, group_access: groupAccessForUser(user) } });
+  } catch (error) {
+    return json({ error: error.message || "ذخیره دسترسی گروه‌ها انجام نشد" }, 500);
   }
 }
 
@@ -4063,7 +4241,7 @@ async function fetchSenderProfilePhoto(env, platform, senderId, runtimeConfig = 
   }
 }
 
-async function fetchTelegramProfilePhoto(request, env) {
+async function fetchTelegramProfilePhoto(request, env, authUser) {
   const url = new URL(request.url);
   const platform = normalizePlatform(url.searchParams.get("platform"));
   const botId = url.searchParams.get("bot_id");
@@ -4079,6 +4257,9 @@ async function fetchTelegramProfilePhoto(request, env) {
   if (!token) return text("توکن تلگرام تنظیم نشده است", 503);
   const fileId = url.searchParams.get("file_id");
   if (!fileId) return text("شناسه فایل ارسال نشده است", 400);
+  if (!await canAccessFileReference(env, authUser, "sender_photo_file_id", fileId, platform)) {
+    return forbiddenAccess();
+  }
 
   const fileResponse = await fetch(`${apiBase}/bot${token}/getFile?file_id=${encodeURIComponent(fileId)}`);
   if (!fileResponse.ok) return text("دریافت اطلاعات عکس پروفایل انجام نشد", 502);
@@ -4107,7 +4288,22 @@ function contentTypeFromPath(filePath, fallback = "application/octet-stream") {
   return fallback;
 }
 
-async function fetchBotFile(request, env) {
+async function canAccessFileReference(env, authUser, column, fileId, platform) {
+  if (groupAccessForUser(authUser).unrestricted) return true;
+  if (!fileId || !["media_file_id", "sender_photo_file_id"].includes(column)) return false;
+  const params = new URLSearchParams({
+    select: "platform,chat_id",
+    [column]: `eq.${fileId}`,
+    limit: "100",
+  });
+  if (platform) params.set("platform", `eq.${normalizePlatform(platform)}`);
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers: supabaseHeaders(env) });
+  if (!response.ok) return false;
+  const allowedSet = await allowedChatKeySet(env, authUser);
+  return (await response.json()).some((row) => rowAllowedByChatSet(row, allowedSet));
+}
+
+async function fetchBotFile(request, env, authUser) {
   const url = new URL(request.url);
   const platform = normalizePlatform(url.searchParams.get("platform"));
   const botId = url.searchParams.get("bot_id");
@@ -4126,6 +4322,9 @@ async function fetchBotFile(request, env) {
   if (!config.token) return text(`توکن ${platformLabel(platform)} تنظیم نشده است`, 503);
   const fileId = url.searchParams.get("file_id");
   if (!fileId) return text("شناسه فایل ارسال نشده است", 400);
+  if (!await canAccessFileReference(env, authUser, "media_file_id", fileId, platform)) {
+    return forbiddenAccess();
+  }
 
   const fileResponse = await fetch(`${config.apiBase}/bot${config.token}/getFile?file_id=${encodeURIComponent(fileId)}`);
   if (!fileResponse.ok) return text("دریافت اطلاعات فایل انجام نشد", 502);
@@ -4462,7 +4661,7 @@ async function handleBaleWebhook(request, env) {
   return handleBotWebhook(request, env, "bale");
 }
 
-async function fetchMessages(request, env) {
+async function fetchMessages(request, env, authUser) {
   const url = new URL(request.url);
   const params = new URLSearchParams();
   params.set("select", TELEGRAM_MESSAGE_SELECT);
@@ -4507,7 +4706,8 @@ async function fetchMessages(request, env) {
   const topicByThread = new Map(
     topics.map((topicRow) => [topicThreadKey(topicRow), topicRow.topic_name])
   );
-  const rows = await response.json();
+  const allowedSet = await allowedChatKeySet(env, authUser);
+  const rows = (await response.json()).filter((row) => rowAllowedByChatSet(row, allowedSet));
   let messages = enrichMessageRows(rows, topicByThread);
   if (topicsFilter.length) {
     const normalizedTopics = topicsFilter.map((value) => value.toLowerCase());
@@ -4592,7 +4792,7 @@ async function fetchMessages(request, env) {
   return json({ messages });
 }
 
-async function fetchGroups(request, env) {
+async function fetchGroups(request, env, authUser) {
   const params = new URLSearchParams();
   params.set("select", "platform,bot_id,bot_username,bot_name,chat_id,chat_title,chat_username,chat_type,group_label,joined_at_utc,first_seen_at_utc,last_seen_at_utc,message_count,last_message_at_utc");
   params.set("order", "first_seen_at_utc.desc.nullslast,joined_at_utc.desc.nullslast,last_seen_at_utc.desc.nullslast");
@@ -4620,7 +4820,8 @@ async function fetchGroups(request, env) {
     topicsByChat.set(chatKey(topic), list);
   }
 
-  const rows = await response.json();
+  const groupAccess = groupAccessForUser(authUser);
+  const rows = (await response.json()).filter((row) => groupRowAllowedByAccess(row, groupAccess));
   const groups = rows.map((row) => {
     const joinedAt = row.joined_at_utc || row.first_seen_at_utc;
     const joined = joinedAt ? tehranParts(new Date(joinedAt)) : { sent_date: null, sent_time: null };
@@ -4695,12 +4896,13 @@ async function fetchBots(env) {
   return json({ bots });
 }
 
-async function fetchDashboard(request, env) {
-  if (dashboardApiCache && Date.now() - dashboardApiCache.createdAt < API_CACHE_TTL_MS) {
+async function fetchDashboard(request, env, authUser) {
+  const restricted = !groupAccessForUser(authUser).unrestricted;
+  if (!restricted && dashboardApiCache && Date.now() - dashboardApiCache.createdAt < API_CACHE_TTL_MS) {
     return json(dashboardApiCache.data);
   }
   const params = new URLSearchParams();
-  params.set("select", "platform,sent_at_utc,chat_title");
+  params.set("select", "platform,chat_id,sent_at_utc,chat_title");
   params.set("sent_at_utc", "not.is.null");
   params.set("order", "sent_at_utc.asc");
   params.set("limit", "10000");
@@ -4713,7 +4915,8 @@ async function fetchDashboard(request, env) {
   const byDate = new Map();
   const groupTotals = new Map();
   let totalMessages = 0;
-  for (const row of await response.json()) {
+  const allowedSet = await allowedChatKeySet(env, authUser);
+  for (const row of (await response.json()).filter((item) => rowAllowedByChatSet(item, allowedSet))) {
     if (!row.sent_at_utc) continue;
     const sentDate = new Date(row.sent_at_utc);
     const tehranDate = tehranIsoDateFast(sentDate);
@@ -4729,17 +4932,18 @@ async function fetchDashboard(request, env) {
   const days = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
   const groups = [...groupTotals.entries()].sort((a, b) => b[1] - a[1]).map(([group]) => group);
   const data = { days, groups, total_messages: totalMessages, display_timezone: "Asia/Tehran" };
-  dashboardApiCache = { createdAt: Date.now(), data };
+  if (!restricted) dashboardApiCache = { createdAt: Date.now(), data };
   return json(data);
 }
 
-async function fetchThreadFilterOptions(request, env) {
-  if (threadFilterOptionsApiCache && Date.now() - threadFilterOptionsApiCache.createdAt < API_CACHE_TTL_MS) {
+async function fetchThreadFilterOptions(request, env, authUser) {
+  const restricted = !groupAccessForUser(authUser).unrestricted;
+  if (!restricted && threadFilterOptionsApiCache && Date.now() - threadFilterOptionsApiCache.createdAt < API_CACHE_TTL_MS) {
     return json(threadFilterOptionsApiCache.data);
   }
   const headers = supabaseHeaders(env);
   const groupParams = new URLSearchParams();
-  groupParams.set("select", "platform,chat_id,chat_title,message_count,last_seen_at_utc");
+  groupParams.set("select", "platform,chat_id,chat_title,group_label,message_count,last_seen_at_utc");
   groupParams.set("order", "message_count.desc,last_seen_at_utc.desc");
   groupParams.set("limit", "1000");
   const groupsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${groupParams}`, { headers });
@@ -4748,7 +4952,7 @@ async function fetchThreadFilterOptions(request, env) {
   }
 
   const dateParams = new URLSearchParams();
-  dateParams.set("select", "sent_at_utc");
+  dateParams.set("select", "platform,chat_id,sent_at_utc");
   dateParams.set("sent_at_utc", "not.is.null");
   dateParams.set("order", "sent_at_utc.desc");
   dateParams.set("limit", "10000");
@@ -4764,7 +4968,8 @@ async function fetchThreadFilterOptions(request, env) {
   if (!topicsResponse.ok) {
     return json({ error: "درخواست تاپیک‌ها از دیتابیس انجام نشد", detail: await topicsResponse.text() }, 500);
   }
-  const groups = (await groupsResponse.json()).filter((group) => group.chat_title);
+  const groupAccess = groupAccessForUser(authUser);
+  const groups = (await groupsResponse.json()).filter((group) => group.chat_title && groupRowAllowedByAccess(group, groupAccess));
   const platforms = [...new Set(groups.map((group) => normalizePlatform(group.platform)))];
   const groupTitleById = new Map(groups.map((group) => [chatKey(group), group.chat_title]));
   const topicsByKey = new Map();
@@ -4781,7 +4986,8 @@ async function fetchThreadFilterOptions(request, env) {
   }
   const topics = [...topicsByKey.values()].sort((a, b) => a.chat_title.localeCompare(b.chat_title) || a.topic_name.localeCompare(b.topic_name));
   const dateByTehranDay = new Map();
-  for (const row of await datesResponse.json()) {
+  const allowedSet = await allowedChatKeySet(env, authUser);
+  for (const row of (await datesResponse.json()).filter((item) => rowAllowedByChatSet(item, allowedSet))) {
     if (!row.sent_at_utc) continue;
     const sentDate = new Date(row.sent_at_utc);
     const tehranDate = tehranIsoDateFast(sentDate);
@@ -4791,7 +4997,7 @@ async function fetchThreadFilterOptions(request, env) {
     .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([, date]) => jalaliDateFast(date));
   const data = { groups, topics, platforms, jalali_dates: jalaliDates };
-  threadFilterOptionsApiCache = { createdAt: Date.now(), data };
+  if (!restricted) threadFilterOptionsApiCache = { createdAt: Date.now(), data };
   return json(data);
 }
 
@@ -4849,6 +5055,7 @@ export default {
     if (url.pathname === "/api/bale-webhook-reset" && request.method === "POST") return resetBaleWebhook(request, env);
     if (url.pathname === "/api/access-users" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname.startsWith("/api/access-users/") && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
+    if (url.pathname === "/api/access-groups" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname === "/api/access-logs" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname === "/api/access-users" && request.method === "GET") return fetchAccessUsers(env);
     if (url.pathname === "/api/access-users" && request.method === "POST") return addAccessUser(request, env, authUser);
@@ -4856,15 +5063,17 @@ export default {
     if (url.pathname === "/api/access-users/revoke" && request.method === "POST") return revokeAccessUser(request, env, authUser);
     if (url.pathname === "/api/access-users/reactivate" && request.method === "POST") return reactivateAccessUser(request, env, authUser);
     if (url.pathname === "/api/access-users/permissions" && request.method === "POST") return updateAccessUserPermissions(request, env, authUser);
+    if (url.pathname === "/api/access-users/group-access" && request.method === "POST") return updateAccessUserGroupAccess(request, env, authUser);
+    if (url.pathname === "/api/access-groups" && request.method === "GET") return fetchAccessGroups(env);
     if (url.pathname === "/api/access-logs" && request.method === "GET") return fetchAccessAuditLogs(env);
     if (url.pathname === "/api/messages") {
       const view = url.searchParams.get("view");
       if (view === "threads" ? !hasAccessPermission(authUser, "threads") : !hasAccessPermission(authUser, "messages")) return forbiddenAccess();
-      return fetchMessages(request, env);
+      return fetchMessages(request, env, authUser);
     }
     if (url.pathname === "/api/groups") {
       if (!hasAccessPermission(authUser, "groups")) return forbiddenAccess();
-      return fetchGroups(request, env);
+      return fetchGroups(request, env, authUser);
     }
     if (url.pathname === "/api/groups/label" && request.method === "POST") {
       if (!hasAccessPermission(authUser, "groups")) return forbiddenAccess();
@@ -4880,23 +5089,23 @@ export default {
     }
     if (url.pathname === "/api/dashboard") {
       if (!hasAccessPermission(authUser, "dashboard")) return forbiddenAccess();
-      return fetchDashboard(request, env);
+      return fetchDashboard(request, env, authUser);
     }
     if (url.pathname === "/api/thread-filter-options") {
       if (!hasAnyAccessPermission(authUser, ["messages", "threads"])) return forbiddenAccess();
-      return fetchThreadFilterOptions(request, env);
+      return fetchThreadFilterOptions(request, env, authUser);
     }
     if (url.pathname === "/api/profile-photo") {
       if (!hasAnyAccessPermission(authUser, ["messages", "threads"])) return forbiddenAccess();
-      return fetchTelegramProfilePhoto(request, env);
+      return fetchTelegramProfilePhoto(request, env, authUser);
     }
     if (url.pathname === "/api/file") {
       if (!hasAnyAccessPermission(authUser, ["messages", "threads"])) return forbiddenAccess();
-      return fetchBotFile(request, env);
+      return fetchBotFile(request, env, authUser);
     }
     if (url.pathname === "/api/telegram-file") {
       if (!hasAnyAccessPermission(authUser, ["messages", "threads"])) return forbiddenAccess();
-      return fetchBotFile(request, env);
+      return fetchBotFile(request, env, authUser);
     }
     return text("Not found", 404);
   },
