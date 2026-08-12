@@ -197,12 +197,15 @@ const HTML = `<!doctype html>
     .access-message { min-height:24px; color:var(--muted); font-size:12px; }
     .access-users-table { margin-top:12px; }
     .access-users-table th, .access-users-table td { text-align:right; direction:rtl; }
+    .access-users-table tbody tr { cursor:pointer; }
+    .access-users-table tbody tr:hover { background:#f4f8fb; }
     .access-users-table .avatar-cell { text-align:center; }
     .access-table-avatar { width:32px; height:32px; border-radius:50%; border:1px solid var(--line); background:#e8f1ff; color:#0f62fe; display:inline-grid; place-items:center; font-weight:800; font-size:13px; direction:ltr; object-fit:cover; }
     .access-permission-summary { display:flex; flex-wrap:wrap; gap:4px; justify-content:flex-end; }
     .access-permission-chip { display:inline-flex; align-items:center; min-height:22px; padding:0 7px; border:1px solid var(--line); border-radius:999px; background:#f7f8fa; color:var(--muted); font-size:11px; font-weight:700; }
     .access-list { display:grid; gap:10px; margin-top:12px; }
     .access-row { display:grid; gap:10px; padding:12px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; direction:ltr; }
+    .access-row.focused { border-color:var(--accent); box-shadow:0 0 0 3px rgba(8,127,140,.14); background:#f0fbfc; }
     .access-main { display:grid; grid-template-columns:minmax(220px, 1fr) minmax(180px, auto) auto; align-items:center; gap:12px; }
     .access-email { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
     .access-state { min-width:0; color:var(--muted); font-size:12px; line-height:1.6; text-align:right; direction:rtl; }
@@ -2140,7 +2143,7 @@ const HTML = `<!doctype html>
           return;
         }
         accessUserRowsEl.innerHTML = data.users.map((user) => \`
-          <tr>
+          <tr data-access-jump-email="\${esc(user.email)}">
             <td class="avatar-cell" data-label="آواتار">\${avatarMarkup(user.telegram_avatar_url, "access-table-avatar", "accessAvatar-" + String(user.email).replace(/[^a-zA-Z0-9_-]/g, "-"), user.email)}</td>
             <td class="full-cell" data-label="ایمیل">\${esc(user.email)}</td>
             <td class="full-cell" data-label="یوزرنیم تلگرام">\${esc(user.telegram_username || "-")}</td>
@@ -2149,7 +2152,7 @@ const HTML = `<!doctype html>
             <td data-label="دسترسی‌ها"><div class="access-permission-summary">\${permissionSummaryHtml(user.permissions)}</div></td>
           </tr>\`).join("") || '<tr><td colspan="6" class="empty">کاربری ثبت نشده است</td></tr>';
         accessRowsEl.innerHTML = data.users.map((user) => \`
-          <div class="access-row">
+          <div class="access-row" data-access-card-email="\${esc(user.email)}">
             <div class="access-main">
               <span class="access-email">\${esc(user.email)}</span>
               <span class="access-state">\${!user.is_active ? "لغوشده" : (user.must_change_password ? "نیازمند تغییر پسورد" : "فعال")} · \${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</span>
@@ -2646,6 +2649,17 @@ const HTML = `<!doctype html>
     accessGroupsTabEl.addEventListener("click", () => showAccessSection("groups"));
     accessLogsTabEl.addEventListener("click", () => showAccessSection("logs"));
     accessGroupRefreshEl.addEventListener("click", () => loadAccessGroupView());
+    accessUserRowsEl.addEventListener("click", (event) => {
+      const row = event.target.closest("[data-access-jump-email]");
+      if (!row) return;
+      const email = row.dataset.accessJumpEmail || "";
+      const card = accessRowsEl.querySelector(\`[data-access-card-email="\${CSS.escape(email)}"]\`);
+      if (!card) return;
+      accessRowsEl.querySelectorAll(".access-row.focused").forEach((item) => item.classList.remove("focused"));
+      card.classList.add("focused");
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => card.classList.remove("focused"), 2200);
+    });
     accessFormEl.addEventListener("submit", async (event) => {
       event.preventDefault();
       const permissions = selectedPermissions(accessNewPermissionsEl);
