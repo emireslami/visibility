@@ -805,10 +805,10 @@ const HTML = `<!doctype html>
       const groupOptions = accessGroupOptions
         .map((group) => \`<label class="group-access-option"><input type="checkbox" data-group-key="\${esc(group.key)}" data-group-label-value="\${esc(group.group_label || "")}" \${groupSet.has(group.key) || labelSet.has(group.group_label || "") ? "checked" : ""} \${disabled} /><span>\${esc(group.title)}</span>\${groupLabelShort(group.group_label) ? \`<span class="group-label-chip">\${esc(groupLabelShort(group.group_label))}</span>\` : ""}<span class="thread-muted">\${esc(platformText(group.platform))}</span></label>\`)
         .join("");
-      const mode = labelSet.size || groupSet.size ? "محدود" : "همه گروه‌ها";
+      const mode = labelSet.size || groupSet.size ? "محدود" : "بدون دسترسی گروهی";
       return \`<div class="group-access-box" data-group-access-email="\${esc(user.email)}" data-owner="\${user.is_owner ? "true" : "false"}">
         <div class="group-access-title"><strong>دسترسی گروه‌ها</strong><span>\${mode}</span></div>
-        <div class="thread-muted">اگر هیچ لیبل یا گروهی انتخاب نشود، کاربر همه گروه‌ها را می‌بیند.</div>
+        <div class="thread-muted">اگر هیچ لیبل یا گروهی انتخاب نشود، کاربر هیچ گروهی را نمی‌بیند.</div>
         <div class="group-access-title"><strong>بر اساس لیبل</strong></div>
         <div class="group-access-grid">\${labelOptions}</div>
         <div class="group-access-title"><strong>بر اساس گروه</strong></div>
@@ -1589,7 +1589,7 @@ const HTML = `<!doctype html>
     }
     function renderDailyChart(days, groups) {
       if (!Array.isArray(days) || !days.length) {
-        dailyChartEl.innerHTML = '<div class="empty-chart">داده‌ای برای نمایش نمودار وجود ندارد</div>';
+        dailyChartEl.innerHTML = '<div class="empty-chart">شما به هیچ چیز دسترسی ندارید.</div>';
         chartLegendEl.innerHTML = "";
         return;
       }
@@ -1648,7 +1648,7 @@ const HTML = `<!doctype html>
         }
         fullTextByKey.clear();
         detailByKey.clear();
-        rowsEl.innerHTML = data.messages.map((row, index) => \`
+        rowsEl.innerHTML = data.messages.length ? data.messages.map((row, index) => \`
           <tr>
             <td class="full-cell" data-label="پلتفرم">\${esc(platformText(row.platform))}</td>
             <td class="full-cell" data-label="بات">\${esc(botText(row))}</td>
@@ -1661,7 +1661,7 @@ const HTML = `<!doctype html>
             <td class="full-cell" data-label="زمان ارسال">\${esc([row.sent_jalali_date, row.sent_time].filter(Boolean).join(" "))}</td>
             <td class="full-cell" data-label="زمان ثبت">\${esc(row.registered_jalali_datetime)}</td>
             <td data-label="جزئیات"><button class="details-button" type="button" data-detail-key="detail-\${index}">جزئیات</button></td>
-          </tr>\`).join("");
+          </tr>\`).join("") : '<tr><td colspan="11" class="empty">شما به هیچ چیز دسترسی ندارید.</td></tr>';
         data.messages.forEach((row, index) => detailByKey.set("detail-" + index, detailHtml(row)));
         setStatus(token, data.messages.length + " پیام");
       } catch (error) {
@@ -1679,7 +1679,7 @@ const HTML = `<!doctype html>
           return;
         }
         detailByKey.clear();
-        groupRowsEl.innerHTML = data.groups.map(row => \`
+        groupRowsEl.innerHTML = data.groups.length ? data.groups.map(row => \`
           <tr>
             <td data-label="شناسه گروه">\${esc(row.chat_id)}</td>
             <td class="group-name-cell" data-label="نام گروه">\${esc(row.chat_title)}</td>
@@ -1690,7 +1690,7 @@ const HTML = `<!doctype html>
             <td data-label="نوع گروه">\${esc(row.chat_type)}</td>
             <td data-label="پیام‌ها">\${esc(row.message_count)}</td>
             <td data-label="جزئیات"><button class="details-button" type="button" data-detail-key="group-\${esc(row.platform || "telegram")}:\${esc(row.chat_id)}">جزئیات</button></td>
-          </tr>\`).join("");
+          </tr>\`).join("") : '<tr><td colspan="9" class="empty">شما به هیچ چیز دسترسی ندارید.</td></tr>';
         data.groups.forEach(row => detailByKey.set("group-" + (row.platform || "telegram") + ":" + row.chat_id, groupDetailHtml(row)));
         setStatus(token, data.groups.length + " گروه");
       } catch (error) {
@@ -1737,7 +1737,8 @@ const HTML = `<!doctype html>
       const access = user.group_access || {};
       const labels = new Set(access.labels || []);
       const groups = new Set(access.groups || []);
-      if (access.unrestricted || (!labels.size && !groups.size)) return "همه گروه‌ها";
+      if (access.unrestricted) return "همه گروه‌ها";
+      if (!labels.size && !groups.size) return "";
       if (labels.has(group.group_label || "")) return groupLabelShort(group.group_label) || "لیبل";
       if (groups.has(group.key)) return "گروه";
       return "";
@@ -1880,7 +1881,7 @@ const HTML = `<!doctype html>
         data.messages.forEach((row, index) => detailByKey.set("thread-detail-" + index, detailHtml(row)));
         const indexByRow = new Map(data.messages.map((row, index) => [row, index]));
         const threads = buildThreads(data.messages);
-        threadRowsEl.innerHTML = threads.map((thread) => {
+        threadRowsEl.innerHTML = threads.length ? threads.map((thread) => {
           const rootIndex = indexByRow.get(thread.root) ?? "missing-" + thread.root.message_id;
           return \`<section class="thread-card">
             \${threadNode(thread.root, "thread-root", rootIndex)}
@@ -1888,7 +1889,7 @@ const HTML = `<!doctype html>
               \${thread.replies.map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply))).join("")}
             </div>
           </section>\`;
-        }).join("");
+        }).join("") : '<div class="empty">شما به هیچ چیز دسترسی ندارید.</div>';
         setStatus(token, threads.length + " ترد");
       } catch (error) {
         setStatus(token, "خطا در دریافت تردها");
@@ -2822,7 +2823,7 @@ function groupAccessForUser(user) {
   const groupAccess = normalizeGroupAccess(user?.permissions);
   return {
     ...groupAccess,
-    unrestricted: !groupAccess.labels.length && !groupAccess.groups.length,
+    unrestricted: false,
   };
 }
 
