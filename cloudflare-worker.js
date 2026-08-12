@@ -598,12 +598,9 @@ const HTML = `<!doctype html>
             <div>
               <div class="thread-muted">ایمیل</div>
               <div class="profile-email" id="profileEmail"></div>
+              <div class="thread-muted" id="profileAvatarHint"></div>
             </div>
           </div>
-          <label class="profile-upload">
-            <span class="thread-muted">عکس آواتار</span>
-            <input id="profileAvatarInput" type="file" accept="image/*" />
-          </label>
           <label class="profile-upload">
             <span class="thread-muted">یوزرنیم تلگرام</span>
             <span class="telegram-input-wrap">
@@ -671,7 +668,7 @@ const HTML = `<!doctype html>
     const profileFormEl = document.getElementById("profileForm");
     let profileAvatarEl = document.getElementById("profileAvatar");
     const profileEmailEl = document.getElementById("profileEmail");
-    const profileAvatarInputEl = document.getElementById("profileAvatarInput");
+    const profileAvatarHintEl = document.getElementById("profileAvatarHint");
     const profileTelegramUsernameEl = document.getElementById("profileTelegramUsername");
     const profileMessageEl = document.getElementById("profileMessage");
     const accessUsersTabEl = document.getElementById("accessUsersTab");
@@ -711,7 +708,6 @@ const HTML = `<!doctype html>
     let currentPage = "messages";
     let loadingToken = 0;
     let pendingConfirm = null;
-    let currentAvatarDataUrl = currentUser.avatar_data_url || "";
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
     }
@@ -765,8 +761,11 @@ const HTML = `<!doctype html>
       headerEmailEl.textContent = currentUser.email;
       profileEmailEl.textContent = currentUser.email;
       profileTelegramUsernameEl.value = telegramUsernameLocal(currentUser.telegram_username);
-      headerAvatarEl.outerHTML = avatarMarkup(currentAvatarDataUrl, "user-avatar", "headerAvatar", currentUser.email);
-      profileAvatarEl.outerHTML = avatarMarkup(currentAvatarDataUrl, "profile-avatar-large", "profileAvatar", currentUser.email);
+      profileAvatarHintEl.textContent = currentUser.telegram_avatar_url
+        ? "عکس از پروفایل تلگرام نمایش داده می‌شود."
+        : "برای نمایش عکس، یوزرنیم تلگرام را ثبت کنید و حداقل یک پیام از همان کاربر در گروه‌ها دریافت شده باشد.";
+      headerAvatarEl.outerHTML = avatarMarkup(currentUser.telegram_avatar_url, "user-avatar", "headerAvatar", currentUser.email);
+      profileAvatarEl.outerHTML = avatarMarkup(currentUser.telegram_avatar_url, "profile-avatar-large", "profileAvatar", currentUser.email);
       headerAvatarEl = document.getElementById("headerAvatar");
       profileAvatarEl = document.getElementById("profileAvatar");
     }
@@ -1491,39 +1490,8 @@ const HTML = `<!doctype html>
     }
     function loadProfile() {
       profileMessageEl.textContent = "";
-      profileAvatarInputEl.value = "";
       syncProfileUi();
       setStatus(++loadingToken, "پروفایل");
-    }
-    function compressAvatar(file) {
-      return new Promise((resolve, reject) => {
-        if (!file || !file.type.startsWith("image/")) {
-          reject(new Error("فقط فایل عکس قابل آپلود است."));
-          return;
-        }
-        const image = new Image();
-        image.onload = () => {
-          const size = 160;
-          const canvas = document.createElement("canvas");
-          canvas.width = size;
-          canvas.height = size;
-          const context = canvas.getContext("2d");
-          const sourceSize = Math.min(image.width, image.height);
-          const sx = Math.max(0, (image.width - sourceSize) / 2);
-          const sy = Math.max(0, (image.height - sourceSize) / 2);
-          context.drawImage(image, sx, sy, sourceSize, sourceSize, 0, 0, size, size);
-          let quality = 0.58;
-          let dataUrl = canvas.toDataURL("image/jpeg", quality);
-          while (dataUrl.length > 60000 && quality > 0.28) {
-            quality -= 0.08;
-            dataUrl = canvas.toDataURL("image/jpeg", quality);
-          }
-          URL.revokeObjectURL(image.src);
-          resolve(dataUrl);
-        };
-        image.onerror = () => reject(new Error("خواندن عکس انجام نشد."));
-        image.src = URL.createObjectURL(file);
-      });
     }
     function renderDailyChart(days, groups) {
       if (!Array.isArray(days) || !days.length) {
@@ -1919,42 +1887,25 @@ const HTML = `<!doctype html>
     });
     profileFormEl.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const file = profileAvatarInputEl.files?.[0];
       const telegramUsername = profileTelegramUsernameEl.value.trim();
-      profileMessageEl.textContent = file ? "در حال فشرده‌سازی عکس..." : "در حال ذخیره...";
+      profileMessageEl.textContent = "در حال ذخیره...";
       try {
-        const avatarDataUrl = file ? await compressAvatar(file) : currentAvatarDataUrl;
-        profileMessageEl.textContent = "در حال ذخیره...";
         const res = await fetch("/api/me", {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ avatar_data_url: avatarDataUrl, telegram_username: telegramUsername }),
+          body: JSON.stringify({ telegram_username: telegramUsername }),
         });
         const data = await res.json();
         if (!res.ok) {
           profileMessageEl.textContent = data.error || "ذخیره پروفایل انجام نشد";
           return;
         }
-        currentAvatarDataUrl = data.user?.avatar_data_url || "";
         currentUser.telegram_username = data.user?.telegram_username || "";
-        profileAvatarInputEl.value = "";
+        currentUser.telegram_avatar_url = data.user?.telegram_avatar_url || "";
         syncProfileUi();
         profileMessageEl.textContent = "پروفایل ذخیره شد.";
       } catch (error) {
         profileMessageEl.textContent = error.message || "ذخیره پروفایل انجام نشد";
-      }
-    });
-    profileAvatarInputEl.addEventListener("change", async () => {
-      const file = profileAvatarInputEl.files?.[0];
-      if (!file) return;
-      try {
-        profileMessageEl.textContent = "پیش‌نمایش عکس آماده شد. برای ثبت، ذخیره کنید.";
-        const avatarDataUrl = await compressAvatar(file);
-        profileAvatarEl.outerHTML = avatarMarkup(avatarDataUrl, "profile-avatar-large", "profileAvatar", currentUser.email);
-        profileAvatarEl = document.getElementById("profileAvatar");
-      } catch (error) {
-        profileAvatarInputEl.value = "";
-        profileMessageEl.textContent = error.message || "فقط فایل عکس قابل آپلود است.";
       }
     });
     accessUsersTabEl.addEventListener("click", () => showAccessSection("users"));
@@ -2110,11 +2061,11 @@ const HTML = `<!doctype html>
 const AUTH_FONT_FACE = HTML.match(/@font-face\s*\{[^}]+\}/)?.[0] || "";
 const SESSION_MAX_AGE_SECONDS = 24 * 60 * 60;
 
-function loginHtml(error = "", email = "", message = "", authUser = null) {
-  const profile = authUser ? publicUserProfile(authUser) : null;
+async function loginHtml(env, error = "", email = "", message = "", authUser = null) {
+  const profile = authUser ? await publicUserProfile(env, authUser) : null;
   const profileInitial = htmlEscape((profile?.email || "?").slice(0, 1).toUpperCase());
-  const profileAvatar = profile?.avatar_data_url
-    ? `<img class="signed-avatar" src="${htmlEscape(profile.avatar_data_url)}" alt="" />`
+  const profileAvatar = profile?.telegram_avatar_url
+    ? `<img class="signed-avatar" src="${htmlEscape(profile.telegram_avatar_url)}" alt="" />`
     : `<span class="signed-avatar">${profileInitial}</span>`;
   const profileTarget = authUser?.must_change_password ? "/set-password" : "/main";
   return `<!doctype html>
@@ -2645,18 +2596,45 @@ function hasAnyAccessPermission(user, permissions) {
   return permissions.some((permission) => hasAccessPermission(user, permission));
 }
 
-function publicUserProfile(user) {
-  return {
-    email: normalizeEmail(user?.email),
-    telegram_username: normalizeTelegramUsername(user?.telegram_username),
-    avatar_data_url: typeof user?.avatar_data_url === "string" ? user.avatar_data_url : "",
-  };
+function profilePhotoUrlFromRow(row) {
+  if (!row?.sender_photo_file_id) return "";
+  const params = new URLSearchParams({
+    platform: row.platform || "telegram",
+    file_id: row.sender_photo_file_id,
+  });
+  if (row.bot_id) params.set("bot_id", row.bot_id);
+  return `/api/profile-photo?${params.toString()}`;
 }
 
-function validAvatarDataUrl(value) {
-  if (value === "") return true;
-  if (typeof value !== "string" || value.length > 80000) return false;
-  return /^data:image\/(?:jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value);
+async function latestTelegramProfilePhotoForUsername(env, username) {
+  const local = telegramUsernameLocal(username);
+  if (!local) return null;
+  const params = new URLSearchParams({
+    select: "platform,bot_id,sender_photo_file_id,sender_photo_file_unique_id,received_at_utc,sent_at_utc",
+    platform: "eq.telegram",
+    sender_username: `ilike.${local}`,
+    sender_photo_file_id: "not.is.null",
+    order: "received_at_utc.desc.nullslast,sent_at_utc.desc.nullslast",
+    limit: "1",
+  });
+  try {
+    const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers: supabaseHeaders(env) });
+    if (!response.ok) return null;
+    const rows = await response.json();
+    return rows[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+async function publicUserProfile(env, user) {
+  const telegramUsername = normalizeTelegramUsername(user?.telegram_username);
+  const photoRow = await latestTelegramProfilePhotoForUsername(env, telegramUsername);
+  return {
+    email: normalizeEmail(user?.email),
+    telegram_username: telegramUsername,
+    telegram_avatar_url: profilePhotoUrlFromRow(photoRow),
+  };
 }
 
 function forbiddenAccess() {
@@ -2788,21 +2766,21 @@ async function handleLogin(request, env) {
   if (request.method !== "POST") {
     const authUser = await dashboardAuthorized(request, env);
     const recovered = new URL(request.url).searchParams.get("recovered") === "1";
-    return text(loginHtml("", "", recovered ? "پسورد جدید ذخیره شد. حالا وارد شوید." : "", authUser), 200, "text/html; charset=utf-8");
+    return text(await loginHtml(env, "", "", recovered ? "پسورد جدید ذخیره شد. حالا وارد شوید." : "", authUser), 200, "text/html; charset=utf-8");
   }
   const form = await request.formData();
   const email = normalizeEmail(form.get("email"));
   const password = String(form.get("password") || "");
-  if (!validAccessEmail(email)) return text(loginHtml("ایمیل باید به شکل anything@toman.ir باشد.", email), 400, "text/html; charset=utf-8");
+  if (!validAccessEmail(email)) return text(await loginHtml(env, "ایمیل باید به شکل anything@toman.ir باشد.", email), 400, "text/html; charset=utf-8");
   const user = await getAccessUserByEmail(env, email);
   if (!user) {
-    return text(loginHtml("این ایمیل مجوز دسترسی ندارد.", email), 401, "text/html; charset=utf-8");
+    return text(await loginHtml(env, "این ایمیل مجوز دسترسی ندارد.", email), 401, "text/html; charset=utf-8");
   }
   if (!user.is_active && !isAccessOwnerEmail(user.email)) {
-    return text(loginHtml("دسترسی این ایمیل لغو شده است.", email), 403, "text/html; charset=utf-8");
+    return text(await loginHtml(env, "دسترسی این ایمیل لغو شده است.", email), 403, "text/html; charset=utf-8");
   }
   if (await hashPassword(password, user.password_salt) !== user.password_hash) {
-    return text(loginHtml("پسورد وارد شده درست نیست.", email), 401, "text/html; charset=utf-8");
+    return text(await loginHtml(env, "پسورد وارد شده درست نیست.", email), 401, "text/html; charset=utf-8");
   }
   await patchAccessUser(env, email, { last_login_at_utc: new Date().toISOString(), updated_at_utc: new Date().toISOString() });
   const cookieValue = await makeSessionCookie(user, env);
@@ -2858,7 +2836,7 @@ async function readSupabaseJson(response) {
 
 async function getAccessUserByEmail(env, email) {
   const params = new URLSearchParams({
-    select: "id,email,password_hash,password_salt,must_change_password,is_active,permissions,telegram_username,avatar_data_url,last_login_at_utc,created_at_utc,updated_at_utc",
+    select: "id,email,password_hash,password_salt,must_change_password,is_active,permissions,telegram_username,last_login_at_utc,created_at_utc,updated_at_utc",
     email: `eq.${normalizeEmail(email)}`,
     limit: "1",
   });
@@ -3131,8 +3109,8 @@ async function handleRecoveryPassword(request, env) {
   }
 }
 
-async function fetchCurrentUser(authUser) {
-  return json({ user: publicUserProfile(authUser) });
+async function fetchCurrentUser(env, authUser) {
+  return json({ user: await publicUserProfile(env, authUser) });
 }
 
 async function updateCurrentUserProfile(request, env, authUser) {
@@ -3142,10 +3120,6 @@ async function updateCurrentUserProfile(request, env, authUser) {
   } catch {
     return json({ error: "درخواست نامعتبر است" }, 400);
   }
-  const avatarDataUrl = String(body.avatar_data_url || "");
-  if (!validAvatarDataUrl(avatarDataUrl)) {
-    return json({ error: "فقط عکس کم‌حجم قابل ذخیره است." }, 400);
-  }
   const rawTelegramUsername = String(body.telegram_username || "").trim();
   if (!validTelegramUsername(rawTelegramUsername)) {
     return json({ error: "یوزرنیم تلگرام باید بعد از @ با حرف انگلیسی شروع شود، ۵ تا ۳۲ کاراکتر باشد و فقط شامل حروف انگلیسی، عدد و _ باشد." }, 400);
@@ -3153,11 +3127,10 @@ async function updateCurrentUserProfile(request, env, authUser) {
   const telegramUsername = normalizeTelegramUsername(rawTelegramUsername);
   try {
     const user = await patchAccessUser(env, authUser.email, {
-      avatar_data_url: avatarDataUrl,
       telegram_username: telegramUsername,
       updated_at_utc: new Date().toISOString(),
     });
-    return json({ user: publicUserProfile(user) });
+    return json({ user: await publicUserProfile(env, user) });
   } catch (error) {
     return json({ error: error.message || "ذخیره پروفایل انجام نشد" }, 500);
   }
@@ -4829,11 +4802,11 @@ export default {
     if (url.pathname === "/main") {
       const html = HTML
         .replace("__CURRENT_USER_PERMISSIONS__", JSON.stringify(accessPermissionsForUser(authUser)))
-        .replace("__CURRENT_USER__", JSON.stringify(publicUserProfile(authUser)));
+        .replace("__CURRENT_USER__", JSON.stringify(await publicUserProfile(env, authUser)));
       return text(html, 200, "text/html; charset=utf-8");
     }
     if (url.pathname === "/api/debug") return text("Not found", 404);
-    if (url.pathname === "/api/me" && request.method === "GET") return fetchCurrentUser(authUser);
+    if (url.pathname === "/api/me" && request.method === "GET") return fetchCurrentUser(env, authUser);
     if (url.pathname === "/api/me" && request.method === "PATCH") return updateCurrentUserProfile(request, env, authUser);
     if (url.pathname === "/api/telegram-webhook-info" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname === "/api/telegram-webhook-reset" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
