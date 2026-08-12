@@ -2173,6 +2173,8 @@ function loginHtml(error = "", email = "", message = "", authUser = null) {
     .signed-meta { color:var(--muted); direction:ltr; text-align:center; font-size:13px; min-height:20px; }
     .button-link { display:grid; place-items:center; width:100%; height:40px; margin-top:8px; border-radius:6px; background:var(--accent); color:#fff; text-decoration:none; font-weight:900; }
     .button-link:hover { background:var(--accent-dark); }
+    .logout-link { background:#fff; color:#b42318; border:1px solid #f0b8b2; }
+    .logout-link:hover { background:#fff1f1; color:#a2191f; }
     .switch-note { margin:8px 0 0; color:var(--muted); text-align:center; font-size:12px; line-height:1.8; }
     @media (max-width: 860px) {
       .landing-header { height:auto; min-height:64px; padding:14px 20px; align-items:flex-start; gap:8px; flex-direction:column; }
@@ -2214,7 +2216,8 @@ function loginHtml(error = "", email = "", message = "", authUser = null) {
             <div class="signed-email">${htmlEscape(profile.email)}</div>
             <div class="signed-meta">${profile.telegram_username ? htmlEscape(profile.telegram_username) : "یوزرنیم تلگرام ثبت نشده"}</div>
             <a class="button-link" href="${profileTarget}">ورود</a>
-            <p class="switch-note">برای ورود با کاربر دیگر، از داخل داشبورد خارج شوید.</p>
+            <a class="button-link logout-link" href="/logout">این کاربر من نیست</a>
+            <p class="switch-note">برای ورود با کاربر دیگر، ابتدا از این حساب خارج شوید.</p>
           </div>
         ` : `
           <form method="post" action="/">
