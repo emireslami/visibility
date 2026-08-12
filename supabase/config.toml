@@ -1,4 +1,12 @@
 project_id = "dniaincbngeeqnjzvfjs"
 
+[auth]
+site_url = "https://visibility.fgpt.workers.dev"
+additional_redirect_urls = [
+  "https://visibility.fgpt.workers.dev",
+  "https://visibility.fgpt.workers.dev/",
+  "https://visibility.fgpt.workers.dev/recovery",
+]
+
 [functions.telegram-webhook]
 verify_jwt = false

@@ -3766,6 +3766,16 @@ function redirect(location) {
   });
 }
 
+function publicOrigin(request, env) {
+  const configured = String(env.PUBLIC_APP_ORIGIN || env.APP_ORIGIN || "").trim().replace(/\/+$/, "");
+  if (configured) return configured;
+  const origin = new URL(request.url).origin;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+    return "https://visibility.fgpt.workers.dev";
+  }
+  return origin;
+}
+
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
@@ -4456,7 +4466,7 @@ async function handleForgotPassword(request, env) {
   }
   try {
     await ensureSupabaseAuthMirrorUser(env, email);
-    await sendSupabaseRecoveryEmail(env, email, `${new URL(request.url).origin}/recovery`);
+    await sendSupabaseRecoveryEmail(env, email, `${publicOrigin(request, env)}/recovery`);
     return text(forgotPasswordHtml({
       email,
       message: "ایمیل بازیابی ارسال شد. لطفاً inbox یا spam را بررسی کنید.",
@@ -4599,7 +4609,7 @@ async function addAccessUser(request, env, authUser) {
     let inviteEmailSent = false;
     let inviteEmailError = "";
     try {
-      await sendAccessInviteEmail(env, user.email, new URL(request.url).origin);
+      await sendAccessInviteEmail(env, user.email, publicOrigin(request, env));
       inviteEmailSent = true;
     } catch (error) {
       inviteEmailError = error.message || "ارسال ایمیل دعوت انجام نشد";
@@ -4674,7 +4684,7 @@ async function resendAccessInviteEmail(request, env, authUser) {
   try {
     const existing = await getAccessUserByEmail(env, email);
     if (!existing) return json({ error: "کاربر پیدا نشد" }, 404);
-    await sendAccessInviteEmail(env, email, new URL(request.url).origin);
+    await sendAccessInviteEmail(env, email, publicOrigin(request, env));
     await insertAccessAuditLog(env, {
       actorEmail: authUser?.email,
       targetEmail: email,
