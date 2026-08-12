@@ -141,6 +141,11 @@ const HTML = `<!doctype html>
     .modal-head h2 { margin:0; font-size:16px; }
     .modal-close { width:34px; height:34px; padding:0; font-size:20px; line-height:1; }
     .modal-body { padding:16px; overflow:auto; white-space:pre-wrap; line-height:1.8; text-align:right; }
+    .modal-table-wrap { max-width:100%; overflow:auto; border:1px solid var(--line); white-space:normal; }
+    table.modal-table { min-width:760px; table-layout:auto; border:0; box-shadow:none; white-space:normal; }
+    .modal-table th, .modal-table td { height:auto; padding:8px 10px; overflow:visible; text-overflow:clip; white-space:normal; line-height:1.55; background:#fff; }
+    .modal-table thead th { position:sticky; top:0; z-index:1; background:#e7ecef; font-weight:800; }
+    .modal-table tbody tr:hover td { background:#f4f7fb; }
     .confirm-copy { margin:0; color:var(--ink); white-space:normal; }
     .confirm-target { display:inline-block; direction:ltr; font-weight:800; }
     .confirm-target-list { display:grid; gap:6px; max-height:180px; overflow:auto; margin:12px 0; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; }
@@ -2340,9 +2345,9 @@ const HTML = `<!doctype html>
       }).join("") : '<tr><td colspan="8">داده‌ای برای نمایش وجود ندارد.</td></tr>';
       openDetails(
         '<p class="analytics-detail-note">' + esc(note) + '</p>'
-        + '<table class="analytics-table"><thead><tr>'
+        + '<div class="modal-table-wrap"><table class="modal-table"><thead><tr>'
           + '<th>گروه</th><th>پلتفرم</th><th>لیبل</th><th>تعداد</th><th>میانگین</th><th>کمترین</th><th>بیشترین</th><th>سهم از کل</th>'
-        + '</tr></thead><tbody>' + tableRows + '</tbody></table>',
+        + '</tr></thead><tbody>' + tableRows + '</tbody></table></div>',
         title
       );
     }
