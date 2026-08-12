@@ -132,6 +132,10 @@ const HTML = `<!doctype html>
     .modal-body { padding:16px; overflow:auto; white-space:pre-wrap; line-height:1.8; text-align:right; }
     .confirm-copy { margin:0; color:var(--ink); white-space:normal; }
     .confirm-target { display:inline-block; direction:ltr; font-weight:800; }
+    .confirm-target-list { display:grid; gap:6px; max-height:180px; overflow:auto; margin:12px 0; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; }
+    .confirm-target-item { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; }
+    .confirm-password-row { margin-top:12px; }
+    .confirm-error { min-height:20px; margin-top:8px; color:#b42318; font-size:12px; }
     .confirm-actions { display:flex; align-items:center; justify-content:flex-start; gap:10px; margin-top:18px; }
     .confirm-cancel { background:#fff; color:var(--ink); border-color:var(--line); }
     .confirm-danger { background:#b42318; color:#fff; border-color:#b42318; }
@@ -186,7 +190,6 @@ const HTML = `<!doctype html>
     .broadcast-panel h2 { margin:0 0 6px; font-size:18px; }
     .broadcast-form { display:grid; gap:12px; margin-top:16px; }
     .broadcast-message-input { min-height:140px; border:1px solid var(--line); border-radius:6px; padding:10px; resize:vertical; font-family:inherit; font-size:13px; direction:rtl; text-align:right; }
-    .broadcast-password-row { display:grid; grid-template-columns:minmax(220px, 1fr) 150px; gap:10px; align-items:start; }
     .broadcast-groups { display:grid; gap:8px; max-height:360px; overflow:auto; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fff; }
     .broadcast-labels { display:grid; grid-template-columns:repeat(3, minmax(140px, 1fr)); gap:8px; }
     .broadcast-group-grid { display:grid; grid-template-columns:repeat(2, minmax(180px, 1fr)); gap:8px; }
@@ -417,7 +420,7 @@ const HTML = `<!doctype html>
       .chart-head { align-items:flex-start; flex-direction:column; }
       .legend-grid { grid-template-columns:1fr; }
       .bot-form { grid-template-columns:1fr; }
-      .access-form, .access-main, .broadcast-password-row { grid-template-columns:1fr; }
+      .access-form, .access-main { grid-template-columns:1fr; }
       .access-row { direction:rtl; }
       .access-email { white-space:normal; overflow-wrap:anywhere; text-align:left; direction:ltr; }
       .permission-grid, .access-row .permission-grid { grid-template-columns:1fr; direction:rtl; }
@@ -698,15 +701,7 @@ const HTML = `<!doctype html>
             <div class="broadcast-group-grid" id="broadcastGroups"></div>
           </div>
           <textarea class="broadcast-message-input" id="broadcastBody" maxlength="3500" placeholder="متن اطلاع‌رسانی..."></textarea>
-          <div class="broadcast-password-row">
-            <span class="password-wrap">
-              <input id="broadcastPassword" type="password" placeholder="پسورد شما برای تایید نهایی" autocomplete="current-password" />
-              <button class="password-toggle" id="broadcastPasswordToggle" type="button" aria-label="نمایش پسورد">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-              </button>
-            </span>
-            <button type="submit">ارسال گروهی</button>
-          </div>
+          <button type="submit">ارسال گروهی</button>
           <div class="broadcast-result" id="broadcastResult"></div>
         </form>
         <section class="broadcast-log-panel">
@@ -935,8 +930,6 @@ const HTML = `<!doctype html>
     const broadcastGroupsEl = document.getElementById("broadcastGroups");
     const broadcastSelectedCountEl = document.getElementById("broadcastSelectedCount");
     const broadcastBodyEl = document.getElementById("broadcastBody");
-    const broadcastPasswordEl = document.getElementById("broadcastPassword");
-    const broadcastPasswordToggleEl = document.getElementById("broadcastPasswordToggle");
     const broadcastResultEl = document.getElementById("broadcastResult");
     const broadcastLogRefreshEl = document.getElementById("broadcastLogRefresh");
     const broadcastLogMessageEl = document.getElementById("broadcastLogMessage");
@@ -2034,6 +2027,36 @@ const HTML = `<!doctype html>
         pendingConfirm = resolve;
       });
     }
+    function openBroadcastConfirmModal({ body, groups }) {
+      const groupByKey = new Map(broadcastGroupOptions.map((group) => [group.key, group]));
+      const targetHtml = groups.map((key) => {
+        const group = groupByKey.get(key) || { title: key, platform: "" };
+        return '<div class="confirm-target-item">'
+          + '<strong>' + esc(group.title || key) + '</strong>'
+          + '<span class="thread-muted">' + esc(platformText(group.platform || "")) + '</span>'
+          + '</div>';
+      }).join("");
+      modalTitleEl.textContent = "تایید ارسال گروهی";
+      modalBodyEl.innerHTML = '<p class="confirm-copy">این پیام برای <strong>' + numberFmt.format(groups.length) + '</strong> گروه ارسال شود؟</p>'
+        + '<div class="confirm-target-list">' + targetHtml + '</div>'
+        + '<p class="confirm-copy"><span class="confirm-target">' + esc(shortText(body, 160)) + '</span></p>'
+        + '<div class="confirm-password-row password-wrap">'
+          + '<input data-confirm-password type="password" placeholder="پسورد شما برای تایید نهایی" autocomplete="current-password" />'
+          + '<button class="password-toggle" data-confirm-password-toggle type="button" aria-label="نمایش پسورد">'
+            + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>'
+          + '</button>'
+        + '</div>'
+        + '<div class="confirm-error" data-confirm-error></div>'
+        + '<div class="confirm-actions">'
+          + '<button class="confirm-cancel" type="button" data-confirm-value="cancel">انصراف</button>'
+          + '<button class="confirm-danger" type="button" data-confirm-value="ok">ارسال قطعی</button>'
+        + '</div>';
+      modalBackdropEl.classList.add("open");
+      setTimeout(() => modalBodyEl.querySelector("[data-confirm-password]")?.focus(), 0);
+      return new Promise(resolve => {
+        pendingConfirm = resolve;
+      });
+    }
     function closeModal(confirmResult = false) {
       const confirmResolver = pendingConfirm;
       pendingConfirm = null;
@@ -2563,9 +2586,6 @@ const HTML = `<!doctype html>
     botTokenToggleEl.addEventListener("click", () => {
       botTokenEl.type = botTokenEl.type === "password" ? "text" : "password";
     });
-    broadcastPasswordToggleEl.addEventListener("click", () => {
-      broadcastPasswordEl.type = broadcastPasswordEl.type === "password" ? "text" : "password";
-    });
     broadcastLabelsEl.addEventListener("change", (event) => {
       const input = event.target.closest("input[data-broadcast-label]");
       if (!input) return;
@@ -2581,7 +2601,6 @@ const HTML = `<!doctype html>
       event.preventDefault();
       const groups = selectedBroadcastGroups();
       const body = broadcastBodyEl.value.trim();
-      const password = broadcastPasswordEl.value;
       if (!groups.length) {
         broadcastResultEl.textContent = "حداقل یک گروه را انتخاب کنید.";
         return;
@@ -2590,17 +2609,9 @@ const HTML = `<!doctype html>
         broadcastResultEl.textContent = "متن اطلاع‌رسانی را وارد کنید.";
         return;
       }
-      if (!password) {
-        broadcastResultEl.textContent = "برای تایید نهایی پسورد خود را وارد کنید.";
-        return;
-      }
-      const confirmed = await openConfirmModal({
-        title: "تایید ارسال گروهی",
-        message: \`این پیام برای <strong>\${groups.length}</strong> گروه ارسال شود؟<br><br><span class="confirm-target">\${esc(shortText(body, 160))}</span>\`,
-        confirmText: "ارسال قطعی",
-        cancelText: "انصراف",
-      });
-      if (!confirmed) return;
+      const confirmed = await openBroadcastConfirmModal({ body, groups });
+      if (!confirmed?.ok) return;
+      const password = confirmed.password;
       const submitButton = broadcastFormEl.querySelector("button[type='submit']");
       submitButton.disabled = true;
       broadcastResultEl.textContent = "در حال ارسال اطلاع‌رسانی...";
@@ -2616,10 +2627,9 @@ const HTML = `<!doctype html>
           submitButton.disabled = false;
           return;
         }
-        broadcastResultEl.textContent = \`ارسال‌شده: \${data.sent || 0} / ناموفق: \${data.failed || 0}\`;
+        broadcastResultEl.textContent = broadcastResultText(data);
         if (!data.failed) {
           broadcastBodyEl.value = "";
-          broadcastPasswordEl.value = "";
         }
         loadBroadcastLogs(false);
         setTimeout(() => loadBroadcast(), 800);
@@ -2678,9 +2688,31 @@ const HTML = `<!doctype html>
     modalBackdropEl.addEventListener("click", event => { if (event.target === modalBackdropEl) closeModal(); });
     document.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
     modalBodyEl.addEventListener("click", event => {
+      const passwordToggle = event.target.closest("[data-confirm-password-toggle]");
+      if (passwordToggle) {
+        const input = modalBodyEl.querySelector("[data-confirm-password]");
+        if (input) input.type = input.type === "password" ? "text" : "password";
+        return;
+      }
       const confirmButton = event.target.closest("[data-confirm-value]");
       if (!confirmButton || !pendingConfirm) return;
-      closeModal(confirmButton.dataset.confirmValue === "ok");
+      if (confirmButton.dataset.confirmValue !== "ok") {
+        closeModal(false);
+        return;
+      }
+      const passwordInput = modalBodyEl.querySelector("[data-confirm-password]");
+      if (passwordInput) {
+        const password = passwordInput.value;
+        if (!password) {
+          const errorEl = modalBodyEl.querySelector("[data-confirm-error]");
+          if (errorEl) errorEl.textContent = "برای تایید نهایی پسورد خود را وارد کنید.";
+          passwordInput.focus();
+          return;
+        }
+        closeModal({ ok: true, password });
+        return;
+      }
+      closeModal(true);
     });
     threadRowsEl.addEventListener("click", (event) => {
       const toggle = event.target.closest("[data-reply-toggle]");
