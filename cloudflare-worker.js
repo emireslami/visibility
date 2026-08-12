@@ -2097,7 +2097,7 @@ function loginHtml(error = "", email = "", message = "") {
         </div>
       </section>
       <section class="auth-card">
-        <form method="post" action="/login">
+        <form method="post" action="/">
           <h2>ورود به داشبورد</h2>
           <p class="auth-copy">فقط ایمیل‌های مجاز دامنه toman.ir امکان ورود دارند.</p>
           <div class="error">${htmlEscape(error)}</div>
@@ -2238,7 +2238,7 @@ function forgotPasswordHtml({ error = "", email = "", message = "" } = {}) {
     <label for="email">ایمیل</label>
     <input id="email" name="email" type="email" autocomplete="username" placeholder="anything@toman.ir" value="${htmlEscape(email)}" autofocus />
     <button type="submit">ارسال ایمیل بازیابی</button>
-    <a class="auth-link" href="/login">بازگشت به ورود</a>
+    <a class="auth-link" href="/">بازگشت به ورود</a>
   </form>
 </body>
 </html>`;
@@ -2293,7 +2293,7 @@ function recoveryPasswordHtml(error = "", accessToken = "") {
       </button>
     </div>
     <button id="submitButton" type="submit">ذخیره رمز جدید</button>
-    <a class="auth-link" href="/login">بازگشت به ورود</a>
+    <a class="auth-link" href="/">بازگشت به ورود</a>
   </form>
   <script>
     const params = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : location.search.slice(1));
@@ -2662,6 +2662,8 @@ async function dashboardAuthorized(request, env) {
 
 async function handleLogin(request, env) {
   if (request.method !== "POST") {
+    const authUser = await dashboardAuthorized(request, env);
+    if (authUser) return redirect(authUser.must_change_password ? "/set-password" : "/main");
     const recovered = new URL(request.url).searchParams.get("recovered") === "1";
     return text(loginHtml("", "", recovered ? "پسورد جدید ذخیره شد. حالا وارد شوید." : ""), 200, "text/html; charset=utf-8");
   }
@@ -2684,7 +2686,7 @@ async function handleLogin(request, env) {
   return new Response(null, {
     status: 303,
     headers: {
-      location: user.must_change_password ? "/set-password" : "/",
+      location: user.must_change_password ? "/set-password" : "/main",
       "set-cookie": `visibility_session=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
     },
   });
@@ -2819,7 +2821,7 @@ async function listAccessAuditLogs(env) {
 }
 
 async function handleSetPassword(request, env, user) {
-  if (!user) return redirect("/login");
+  if (!user) return redirect("/");
   if (request.method !== "POST") return text(passwordPageHtml(), 200, "text/html; charset=utf-8");
   const form = await request.formData();
   const currentPassword = String(form.get("current_password") || "");
@@ -2857,7 +2859,7 @@ async function handleSetPassword(request, env, user) {
   return new Response(null, {
     status: 303,
     headers: {
-      location: "/login",
+      location: "/",
       "set-cookie": clearSessionCookie(),
     },
   });
@@ -2997,7 +2999,7 @@ async function handleRecoveryPassword(request, env) {
     return new Response(null, {
       status: 303,
       headers: {
-        location: "/login?recovered=1",
+        location: "/?recovered=1",
         "set-cookie": clearSessionCookie(),
       },
     });
@@ -4676,14 +4678,15 @@ export default {
     if (url.pathname === "/telegram-webhook") return handleTelegramWebhook(request, env);
     if (url.pathname === "/bale-webhook") return handleBaleWebhook(request, env);
     if (url.pathname.startsWith("/bot-webhook/")) return handleStoredBotWebhook(request, env);
-    if (url.pathname === "/login") return handleLogin(request, env);
+    if (url.pathname === "/login") return redirect("/");
+    if (url.pathname === "/") return handleLogin(request, env);
     if (url.pathname === "/forgot-password") return handleForgotPassword(request, env);
     if (url.pathname === "/recovery") return handleRecoveryPassword(request, env);
     if (url.pathname === "/logout") {
       return new Response(null, {
         status: 303,
         headers: {
-          location: "/login",
+          location: "/",
           "set-cookie": clearSessionCookie(),
         },
       });
@@ -4693,13 +4696,14 @@ export default {
     const apiPath = url.pathname.startsWith("/api/");
     if (!authUser) {
       if (apiPath) return json({ error: "Unauthorized" }, 401);
-      return text(loginHtml("برای مشاهده داشبورد ابتدا وارد شوید."), 200, "text/html; charset=utf-8");
+      return redirect("/");
     }
     if (authUser.must_change_password) {
       if (apiPath) return json({ error: "تغییر پسورد الزامی است" }, 403);
       return redirect("/set-password");
     }
-    if (url.pathname === "/") {
+    if (url.pathname === "/") return redirect("/main");
+    if (url.pathname === "/main") {
       const html = HTML
         .replace("__CURRENT_USER_PERMISSIONS__", JSON.stringify(accessPermissionsForUser(authUser)))
         .replace("__CURRENT_USER__", JSON.stringify(publicUserProfile(authUser)));
