@@ -59,17 +59,18 @@ const HTML = `<!doctype html>
     .groups-table col.group-messages { width:4%; }
     .groups-table col.group-details { width:6%; }
     .groups-table .group-name-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.5; }
-    .senders-table col.sender-id { width:11%; }
-    .senders-table col.sender-name { width:10%; }
-    .senders-table col.sender-last-name { width:10%; }
-    .senders-table col.sender-username { width:10%; }
-    .senders-table col.sender-platform { width:7%; }
-    .senders-table col.sender-label { width:13%; }
-    .senders-table col.sender-last-group { width:23%; }
-    .senders-table col.sender-messages { width:7%; }
-    .senders-table col.sender-last-message { width:6%; }
-    .senders-table col.sender-details { width:5%; }
-    .senders-table .sender-last-group-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.45; }
+    .senders-table col.sender-id { width:9%; }
+    .senders-table col.sender-name { width:9%; }
+    .senders-table col.sender-last-name { width:9%; }
+    .senders-table col.sender-username { width:11%; }
+    .senders-table col.sender-platform { width:6%; }
+    .senders-table col.sender-label { width:12%; }
+    .senders-table col.sender-last-group { width:24%; }
+    .senders-table col.sender-messages { width:5%; }
+    .senders-table col.sender-last-message { width:9%; }
+    .senders-table col.sender-details { width:6%; }
+    .senders-table .sender-last-group-cell { overflow:hidden; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.35; }
+    .senders-table .sender-date-cell { direction:ltr; text-align:right; line-height:1.35; white-space:normal; }
     .group-label-filter { width:100%; min-width:0; }
     .group-label-filter .multi-button { min-height:32px; font-size:12px; }
     td.body { direction:rtl; text-align:right; }
@@ -2308,6 +2309,12 @@ const HTML = `<!doctype html>
       if (minutes) return minutes + " دقیقه " + seconds + " ثانیه";
       return seconds + " ثانیه";
     }
+    function compactDateTime(value) {
+      const text = String(value || "").trim();
+      if (!text) return "-";
+      const [datePart, timePart] = text.split(/\\s+/, 2);
+      return esc(datePart || text) + (timePart ? '<br><span class="thread-muted">' + esc(timePart) + '</span>' : "");
+    }
     function analyticsMetricCells(row) {
       return '<td class="metric-number metric-count" data-label="تعداد پاسخ" data-analytics-detail="count">' + numberFmt.format(row.count || 0) + '</td>'
         + '<td class="metric-number" data-label="میانگین" data-analytics-detail="avg">' + esc(formatDuration(row.avg_ms)) + '</td>'
@@ -2508,7 +2515,7 @@ const HTML = `<!doctype html>
             <td data-label="لیبل">\${senderLabelSelect(row)}</td>
             <td class="sender-last-group-cell" data-label="آخرین گروه">\${esc(row.last_chat_title || "-")}<br><span class="thread-muted">\${esc(row.last_chat_id || "")}</span></td>
             <td data-label="پیام‌ها">\${esc(row.message_count)}</td>
-            <td data-label="آخرین پیام">\${esc(row.last_message_tehran || "-")}</td>
+            <td class="sender-date-cell" data-label="آخرین پیام">\${compactDateTime(row.last_message_tehran)}</td>
             <td data-label="جزئیات"><button class="details-button" type="button" data-detail-key="sender-\${esc(row.platform || "telegram")}:\${esc(row.sender_id)}">جزئیات</button></td>
           </tr>\`).join("") : '<tr><td colspan="10" class="empty">ارسال‌کننده‌ای پیدا نشد.</td></tr>';
         data.senders.forEach(row => detailByKey.set("sender-" + (row.platform || "telegram") + ":" + row.sender_id, senderDetailHtml(row)));
@@ -6311,9 +6318,9 @@ async function fetchSenders(request, env, authUser) {
         last_chat_id: row.chat_id === null || row.chat_id === undefined ? "" : String(row.chat_id),
         last_chat_title: row.chat_title || "",
         first_seen_at_utc: sentAt,
-        first_seen_tehran: sentAt ? tehranDateTimeDisplay(new Date(sentAt)) : "",
+        first_seen_tehran: sentAt ? tehranJalaliDateTimeDisplay(new Date(sentAt)) : "",
         last_message_at_utc: sentAt,
-        last_message_tehran: sentAt ? tehranDateTimeDisplay(new Date(sentAt)) : "",
+        last_message_tehran: sentAt ? tehranJalaliDateTimeDisplay(new Date(sentAt)) : "",
         display_timezone: "Asia/Tehran",
       });
       continue;
@@ -6326,7 +6333,7 @@ async function fetchSenders(request, env, authUser) {
     if (!existing.sender_photo_file_unique_id && row.sender_photo_file_unique_id) existing.sender_photo_file_unique_id = row.sender_photo_file_unique_id;
     if (sentAt && (!existing.first_seen_at_utc || Date.parse(sentAt) < Date.parse(existing.first_seen_at_utc))) {
       existing.first_seen_at_utc = sentAt;
-      existing.first_seen_tehran = tehranDateTimeDisplay(new Date(sentAt));
+      existing.first_seen_tehran = tehranJalaliDateTimeDisplay(new Date(sentAt));
     }
   }
   const senders = [...sendersByKey.values()].sort((a, b) => {
