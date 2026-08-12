@@ -604,9 +604,9 @@ const HTML = `<!doctype html>
     <section class="page" id="messagesPage">
       <section class="filters">
         <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
+        <div id="platform" class="multi-filter"></div>
         <div id="group" class="multi-filter"></div>
         <div id="topic" class="multi-filter"></div>
-        <div id="platform" class="multi-filter"></div>
         <button id="refresh">به‌روزرسانی</button>
       </section>
       <table class="messages-table">
@@ -703,12 +703,12 @@ const HTML = `<!doctype html>
     </section>
     <section class="page" id="threadsPage" hidden>
       <section class="filters thread-filters">
+        <div id="threadPlatform" class="multi-filter"></div>
         <div id="threadGroup" class="multi-filter"></div>
         <div id="threadTopic" class="multi-filter"></div>
         <div id="threadYear" class="multi-filter single-filter"></div>
         <div id="threadMonth" class="multi-filter single-filter"></div>
         <div id="threadDay" class="multi-filter single-filter"></div>
-        <div id="threadPlatform" class="multi-filter"></div>
         <button id="threadRefresh" type="button">به‌روزرسانی</button>
       </section>
       <div class="thread-list" id="threadRows"></div>
