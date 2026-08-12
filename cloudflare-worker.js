@@ -174,7 +174,9 @@ const HTML = `<!doctype html>
     .chart-filter-head button { height:28px; padding:0 10px; }
     .legend-grid { display:grid; grid-template-columns:repeat(3, minmax(180px, 1fr)); gap:8px; }
     .legend-item { min-height:32px; display:flex; align-items:center; justify-content:flex-start; gap:6px; padding:5px 8px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; color:var(--muted); font-size:12px; cursor:pointer; direction:rtl; text-align:right; }
+    .chart-legend .legend-item:hover { background:#eef4f8; border-color:#b8c6d1; color:var(--ink); }
     .legend-item.active { border-color:var(--accent); background:#eefbfc; color:var(--ink); font-weight:700; }
+    .chart-legend .legend-item.active:hover { background:var(--accent); border-color:var(--accent); color:#fff; }
     .legend-item.dimmed { opacity:.58; }
     .legend-swatch { width:10px; height:10px; border-radius:2px; flex:0 0 auto; }
     .empty-chart { min-height:240px; display:grid; place-items:center; color:var(--muted); border:1px dashed var(--line); border-radius:8px; }
