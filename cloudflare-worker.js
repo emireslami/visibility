@@ -30,12 +30,13 @@ const HTML = `<!doctype html>
     .password-toggle svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; }
     .multi-filter { position:relative; min-width:0; }
     .multi-control { position:relative; }
-    .multi-button { width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; background:#fff; color:var(--ink); border-color:var(--line); text-align:right; padding-inline-start:38px; }
-    .multi-button::before { content:"⌄"; color:var(--muted); font-size:14px; }
-    .multi-clear { position:absolute; left:7px; top:7px; z-index:2; display:none; width:24px; height:24px; padding:0; border-radius:50%; background:#eef3f4; color:var(--muted); border-color:var(--line); font-size:16px; line-height:1; }
+    .multi-button { width:100%; display:grid; grid-template-columns:minmax(0, 1fr) 18px; align-items:center; gap:8px; background:#fff; color:var(--ink); border-color:var(--line); text-align:right; direction:rtl; padding-inline:10px 12px; }
+    .multi-button::before { content:"⌄"; grid-column:2; color:var(--muted); font-size:14px; justify-self:center; }
+    .multi-clear { position:absolute; left:30px; top:7px; z-index:2; display:none; width:24px; height:24px; padding:0; border-radius:50%; background:#eef3f4; color:var(--muted); border-color:var(--line); font-size:16px; line-height:1; }
     .multi-filter.has-value .multi-clear { display:grid; place-items:center; }
+    .multi-filter.has-value .multi-button { padding-left:62px; }
     .multi-clear:hover { background:#dde6e9; color:var(--ink); }
-    .multi-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .multi-label { grid-column:1; grid-row:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; direction:rtl; }
     .multi-panel { position:fixed; z-index:1200; display:none; width:var(--dropdown-w, 220px); max-height:min(320px, calc(100vh - var(--dropdown-top, 0px) - 12px)); overflow:hidden; padding:6px; border:1px solid var(--line); border-radius:8px; background:#fff; box-shadow:0 12px 36px rgba(23,32,38,.16); }
     .multi-filter.open .multi-panel { display:grid; grid-template-rows:auto minmax(0, 1fr); gap:6px; }
     .multi-search { width:100%; height:32px; padding:0 8px; border:1px solid var(--line); border-radius:6px; background:#fff; direction:rtl; text-align:right; font-size:12px; }
