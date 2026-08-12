@@ -89,6 +89,10 @@ const HTML = `<!doctype html>
     .reaction-chip { display:inline-flex; align-items:center; gap:4px; min-height:24px; padding:2px 6px; border:1px solid var(--line); border-radius:999px; background:#f7f8fa; }
     .reaction-emoji { font-size:15px; line-height:1; }
     .reaction-avatar { width:18px; height:18px; border-radius:50%; border:1px solid var(--line); background:#eef3f4; color:#36505a; display:grid; place-items:center; font-size:10px; font-weight:800; object-fit:cover; direction:ltr; }
+    .thread-reply-form { margin-top:12px; display:grid; grid-template-columns:minmax(180px, 1fr) auto; gap:8px; direction:rtl; }
+    .thread-reply-input { min-height:38px; border:1px solid var(--line); border-radius:6px; padding:8px 10px; resize:vertical; font-family:inherit; font-size:13px; direction:rtl; text-align:right; background:#fff; }
+    .thread-reply-submit { min-height:38px; padding:0 12px; }
+    .thread-reply-status { grid-column:1 / -1; min-height:18px; color:var(--muted); font-size:11px; }
     .thread-media { clear:both; width:100%; margin-top:12px; margin-bottom:4px; display:flex; justify-content:flex-end; align-items:flex-start; }
     .thread-media.album { justify-content:flex-end; }
     .media-gallery { display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 180px)); gap:8px; justify-content:end; max-width:100%; }
@@ -177,8 +181,8 @@ const HTML = `<!doctype html>
     .access-state { min-width:0; color:var(--muted); font-size:12px; line-height:1.6; text-align:right; direction:rtl; }
     .access-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; }
     .owner-badge { min-height:30px; display:inline-flex; align-items:center; padding:0 10px; border:1px solid #9bd6dd; border-radius:6px; color:var(--accent); background:#f0fbfc; font-size:12px; font-weight:700; }
-    .permission-grid { grid-column:1 / -1; display:grid; grid-template-columns:repeat(5, minmax(100px, 1fr)); gap:8px; direction:ltr; }
-    .access-row .permission-grid { grid-column:1 / -1; grid-template-columns:repeat(5, minmax(120px, 1fr)); }
+    .permission-grid { grid-column:1 / -1; display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:8px; direction:ltr; }
+    .access-row .permission-grid { grid-column:1 / -1; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); }
     .permission-option { min-height:32px; display:flex; align-items:center; justify-content:flex-start; gap:6px; padding:5px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; color:var(--ink); }
     .permission-option input { width:14px; height:14px; flex:0 0 auto; }
     .permission-option:has(input:disabled) { opacity:.68; background:#f7f8fa; }
@@ -382,6 +386,7 @@ const HTML = `<!doctype html>
       .thread-item { grid-template-columns:34px minmax(0, 1fr); gap:8px; }
       .thread-head { gap:6px; }
       .thread-pill { max-width:100%; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .thread-reply-form { grid-template-columns:1fr; }
       .media-open.thread-photo-frame { width:148px; height:148px; }
       .media-gallery { grid-template-columns:repeat(auto-fit, minmax(112px, 148px)); }
       .detail-row { grid-template-columns:1fr; }
@@ -745,6 +750,7 @@ const HTML = `<!doctype html>
       { key:"messages", label:"پیام‌ها" },
       { key:"dashboard", label:"داشبورد" },
       { key:"bots", label:"بات‌ها" },
+      { key:"reply", label:"پاسخ" },
     ];
     const fullTextByKey = new Map();
     const detailByKey = new Map();
@@ -877,6 +883,9 @@ const HTML = `<!doctype html>
         password_change: "تغییر پسورد",
         password_recovery: "بازیابی پسورد",
         profile_update: "به‌روزرسانی پروفایل",
+        bot_create: "ثبت بات",
+        bot_rotate: "تغییر توکن بات",
+        thread_reply: "ارسال پاسخ",
       };
       return labels[String(action || "")] || String(action || "");
     }
@@ -1519,6 +1528,14 @@ const HTML = `<!doctype html>
       if (!reactions.length) return "";
       return \`<div class="thread-reactions">\${reactions.map((reaction) => \`<span class="reaction-chip" title="\${esc(reaction.user_username || reaction.user_first_name || "")}">\${reactionAvatar(reaction)}<span class="reaction-emoji">\${esc(reactionEmoji(reaction))}</span></span>\`).join("")}</div>\`;
     }
+    function threadReplyForm(row) {
+      if (!canOpen("reply") || row.missing || !row.chat_id || !row.message_id) return "";
+      return \`<form class="thread-reply-form" data-thread-reply data-platform="\${esc(row.platform || "telegram")}" data-chat-id="\${esc(row.chat_id)}" data-message-id="\${esc(row.message_id)}">
+        <textarea class="thread-reply-input" name="body" rows="1" maxlength="3500" placeholder="پاسخ به این پیام..."></textarea>
+        <button class="thread-reply-submit" type="submit">ارسال پاسخ</button>
+        <div class="thread-reply-status" data-reply-status></div>
+      </form>\`;
+    }
     function threadNode(row, kind, index) {
       if (row.missing) {
         return \`<article class="thread-missing">
@@ -1548,6 +1565,7 @@ const HTML = `<!doctype html>
             <div class="thread-message">\${messageWithBadge(row)}</div>
             \${threadMedia(row)}
             \${reactionBar(row)}
+            \${threadReplyForm(row)}
           </div>
         </div>
       </article>\`;
@@ -2135,6 +2153,45 @@ const HTML = `<!doctype html>
       const confirmButton = event.target.closest("[data-confirm-value]");
       if (!confirmButton || !pendingConfirm) return;
       closeModal(confirmButton.dataset.confirmValue === "ok");
+    });
+    threadRowsEl.addEventListener("submit", async (event) => {
+      const form = event.target.closest("[data-thread-reply]");
+      if (!form) return;
+      event.preventDefault();
+      const input = form.querySelector("[name='body']");
+      const status = form.querySelector("[data-reply-status]");
+      const button = form.querySelector("button[type='submit']");
+      const body = String(input?.value || "").trim();
+      if (!body) {
+        status.textContent = "متن پاسخ را وارد کنید.";
+        return;
+      }
+      button.disabled = true;
+      status.textContent = "در حال ارسال پاسخ...";
+      try {
+        const res = await fetch("/api/thread-reply", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            platform: form.dataset.platform,
+            chat_id: form.dataset.chatId,
+            message_id: form.dataset.messageId,
+            body,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          status.textContent = data.error || "ارسال پاسخ انجام نشد";
+          button.disabled = false;
+          return;
+        }
+        input.value = "";
+        status.textContent = "پاسخ ارسال شد.";
+        setTimeout(() => loadThreads(), 900);
+      } catch (error) {
+        status.textContent = "ارسال پاسخ انجام نشد";
+        button.disabled = false;
+      }
     });
     refreshEl.addEventListener("click", () => {
       if (messageFiltersActive()) resetMessageFilters();
@@ -2798,7 +2855,8 @@ function normalizeGroupLabel(value) {
 }
 
 const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboard", "bots"];
-const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS];
+const EXTRA_ACCESS_PERMISSIONS = ["reply"];
+const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS, ...EXTRA_ACCESS_PERMISSIONS];
 const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
 const GROUP_LABELS = ["internal_team", "customer", "provider"];
 const DEFAULT_PLATFORM = "telegram";
@@ -2896,9 +2954,11 @@ function isAccessOwnerEmail(email) {
 }
 
 function normalizeAccessPermissions(value) {
-  const source = Array.isArray(value) ? value : (Array.isArray(value?.pages) ? value.pages : FULL_ACCESS_PERMISSIONS);
+  const source = Array.isArray(value) ? value : (Array.isArray(value?.pages) ? value.pages : ACCESS_PERMISSIONS);
   const allowed = new Set(ACCESS_PERMISSIONS);
   const normalized = source.map((item) => String(item || "").trim().toLowerCase()).filter((item) => allowed.has(item));
+  const replyEnabled = (Array.isArray(value) && value.includes("reply")) || value?.reply === true;
+  if (replyEnabled) normalized.push("reply");
   return [...new Set(normalized)];
 }
 
@@ -2918,9 +2978,11 @@ function normalizeGroupAccess(value) {
 }
 
 function accessPayload(pages, groupAccess = {}) {
+  const requested = Array.isArray(pages) ? pages.map((item) => String(item || "").trim().toLowerCase()) : [];
   return {
-    pages: normalizeAccessPermissions(pages),
+    pages: normalizeAccessPermissions(pages).filter((item) => ACCESS_PERMISSIONS.includes(item)),
     group_access: normalizeGroupAccess(groupAccess),
+    reply: requested.includes("reply"),
   };
 }
 
@@ -4427,19 +4489,47 @@ async function handleStoredBotWebhook(request, env) {
   return handleBotWebhookWithConfig(request, env, config);
 }
 
-async function sendBotMessage(env, platform, chatId, textValue, runtimeConfig = null) {
+async function sendBotMessage(env, platform, chatId, textValue, runtimeConfig = null, options = {}) {
   const config = runtimeConfig || botPlatformConfig(env, platform);
   if (!config.token || !chatId) return false;
+  const payload = {
+    chat_id: chatId,
+    text: textValue,
+    disable_notification: true,
+  };
+  if (options.replyToMessageId) {
+    payload.reply_to_message_id = Number(options.replyToMessageId);
+    payload.allow_sending_without_reply = false;
+  }
   const response = await fetch(`${config.apiBase}/bot${config.token}/sendMessage`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: textValue,
-      disable_notification: true,
-    }),
+    body: JSON.stringify(payload),
   });
   return response.ok;
+}
+
+async function runtimeConfigForMessageBot(env, row) {
+  const platform = normalizePlatform(row?.platform);
+  const botId = String(row?.bot_id || "").trim();
+  const defaultConfig = botPlatformConfig(env, platform);
+  if (!botId || botId === defaultConfig.botId || botId === `${platform}_default`) return defaultConfig;
+  try {
+    const stored = await getStoredBot(env, platform, botId);
+    if (!stored || !stored.is_active) return defaultConfig;
+    const token = await decryptBotCredential(env, stored);
+    if (!token) return defaultConfig;
+    return botPlatformRuntimeConfig(platform, token, {
+      botId: stored.bot_id,
+      botUsername: stored.bot_username,
+      botName: stored.bot_name,
+      apiBase: stored.api_base || undefined,
+      fileBase: stored.file_base || undefined,
+      webhookPath: stored.webhook_path,
+    });
+  } catch {
+    return defaultConfig;
+  }
 }
 
 async function fetchSenderProfilePhoto(env, platform, senderId, runtimeConfig = null) {
@@ -5066,6 +5156,62 @@ async function fetchGroups(request, env, authUser) {
   return json({ groups });
 }
 
+async function fetchSingleMessageForReply(env, platform, chatId, messageId) {
+  const params = new URLSearchParams();
+  params.set("select", TELEGRAM_MESSAGE_SELECT);
+  params.set("platform", `eq.${normalizePlatform(platform)}`);
+  params.set("chat_id", `eq.${chatId}`);
+  params.set("message_id", `eq.${messageId}`);
+  params.set("limit", "1");
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, {
+    headers: supabaseHeaders(env),
+  });
+  if (!response.ok) throw new Error(await response.text());
+  const rows = await response.json();
+  return rows[0] || null;
+}
+
+async function sendThreadReply(request, env, authUser) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const platform = normalizePlatform(body.platform);
+  const chatId = String(body.chat_id || "").trim();
+  const messageId = String(body.message_id || "").trim();
+  const replyBody = String(body.body || "").trim();
+  if (!/^-?\d+$/.test(chatId) || !/^\d+$/.test(messageId)) return json({ error: "شناسه پیام یا گروه نامعتبر است" }, 400);
+  if (!replyBody) return json({ error: "متن پاسخ را وارد کنید" }, 400);
+  if (replyBody.length > 3500) return json({ error: "متن پاسخ بیش از حد طولانی است" }, 400);
+
+  try {
+    const row = await fetchSingleMessageForReply(env, platform, chatId, messageId);
+    if (!row) return json({ error: "پیام مقصد پیدا نشد" }, 404);
+    const allowedSet = await allowedChatKeySet(env, authUser);
+    if (!rowAllowedByChatSet(row, allowedSet)) return forbiddenAccess();
+    const runtimeConfig = await runtimeConfigForMessageBot(env, row);
+    const outgoingText = `${normalizeEmail(authUser.email)} :\n${replyBody}`;
+    const sent = await sendBotMessage(env, platform, chatId, outgoingText, runtimeConfig, { replyToMessageId: messageId });
+    if (!sent) return json({ error: "ارسال پاسخ توسط بات انجام نشد" }, 502);
+    try {
+      await insertAccessAuditLog(env, {
+        actorEmail: authUser.email,
+        targetEmail: authUser.email,
+        action: "thread_reply",
+        newValues: { platform, chat_id: chatId, message_id: messageId },
+        metadata: { bot_id: row.bot_id || null, chat_title: row.chat_title || null },
+      });
+    } catch (auditError) {
+      console.error("thread reply audit failed", auditError?.message || auditError);
+    }
+    return json({ ok: true });
+  } catch (error) {
+    return json({ error: error.message || "ارسال پاسخ انجام نشد" }, 500);
+  }
+}
+
 async function updateGroupLabel(request, env) {
   let body;
   try {
@@ -5305,6 +5451,10 @@ export default {
       const view = url.searchParams.get("view");
       if (view === "threads" ? !hasAccessPermission(authUser, "threads") : !hasAccessPermission(authUser, "messages")) return forbiddenAccess();
       return fetchMessages(request, env, authUser);
+    }
+    if (url.pathname === "/api/thread-reply" && request.method === "POST") {
+      if (!hasAccessPermission(authUser, "reply")) return forbiddenAccess();
+      return sendThreadReply(request, env, authUser);
     }
     if (url.pathname === "/api/groups") {
       if (!hasAccessPermission(authUser, "groups")) return forbiddenAccess();
