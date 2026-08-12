@@ -61,16 +61,17 @@ const HTML = `<!doctype html>
     .groups-table col.group-messages { width:4%; }
     .groups-table col.group-details { width:6%; }
     .groups-table .group-name-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.5; }
-    .senders-table col.sender-id { width:9%; }
-    .senders-table col.sender-name { width:9%; }
-    .senders-table col.sender-last-name { width:9%; }
-    .senders-table col.sender-username { width:11%; }
+    .senders-table col.sender-id { width:8%; }
+    .senders-table col.sender-name { width:8%; }
+    .senders-table col.sender-last-name { width:8%; }
+    .senders-table col.sender-username { width:10%; }
     .senders-table col.sender-platform { width:6%; }
-    .senders-table col.sender-label { width:12%; }
-    .senders-table col.sender-last-group { width:24%; }
+    .senders-table col.sender-label { width:11%; }
+    .senders-table col.sender-last-group { width:22%; }
     .senders-table col.sender-messages { width:5%; }
-    .senders-table col.sender-last-message { width:9%; }
-    .senders-table col.sender-details { width:6%; }
+    .senders-table col.sender-first-seen { width:9%; }
+    .senders-table col.sender-last-message { width:8%; }
+    .senders-table col.sender-details { width:5%; }
     .senders-table .sender-last-group-cell { overflow:hidden; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.35; }
     .senders-table .sender-date-cell { direction:ltr; text-align:right; line-height:1.35; white-space:normal; }
     .group-label-filter { width:100%; min-width:0; }
@@ -691,6 +692,7 @@ const HTML = `<!doctype html>
           <col class="sender-label" />
           <col class="sender-last-group" />
           <col class="sender-messages" />
+          <col class="sender-first-seen" />
           <col class="sender-last-message" />
           <col class="sender-details" />
         </colgroup>
@@ -704,6 +706,7 @@ const HTML = `<!doctype html>
             <th>لیبل</th>
             <th>آخرین گروه</th>
             <th>پیام‌ها</th>
+            <th>زمان پیدا شدن</th>
             <th>آخرین پیام</th>
             <th>جزئیات</th>
           </tr>
@@ -2585,9 +2588,10 @@ const HTML = `<!doctype html>
             <td data-label="لیبل">\${senderLabelSelect(row)}</td>
             <td class="sender-last-group-cell" data-label="آخرین گروه">\${esc(row.last_chat_title || "-")}<br><span class="thread-muted">\${esc(row.last_chat_id || "")}</span></td>
             <td data-label="پیام‌ها">\${esc(row.message_count)}</td>
+            <td class="sender-date-cell" data-label="زمان پیدا شدن">\${compactDateTime(row.first_seen_tehran)}</td>
             <td class="sender-date-cell" data-label="آخرین پیام">\${compactDateTime(row.last_message_tehran)}</td>
             <td data-label="جزئیات"><button class="details-button" type="button" data-detail-key="sender-\${esc(row.platform || "telegram")}:\${esc(row.sender_id)}">جزئیات</button></td>
-          </tr>\`).join("") : '<tr><td colspan="10" class="empty">ارسال‌کننده‌ای پیدا نشد.</td></tr>';
+          </tr>\`).join("") : '<tr><td colspan="11" class="empty">ارسال‌کننده‌ای پیدا نشد.</td></tr>';
         data.senders.forEach(row => detailByKey.set("sender-" + (row.platform || "telegram") + ":" + row.sender_id, senderDetailHtml(row)));
         mountSenderLabelFilters();
         setStatus(token, data.senders.length + " ارسال‌کننده");
