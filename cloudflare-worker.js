@@ -45,6 +45,13 @@ const HTML = `<!doctype html>
     th, td { padding: 6px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: middle; font-size: 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     th { background: #eef3f4; color: #24343b; position: sticky; top: var(--header-h); z-index:30; }
     .messages-table th { top: calc(var(--header-h) + var(--filters-h)); }
+    .groups-table col.group-id { width:17%; }
+    .groups-table col.group-name { width:34%; }
+    .groups-table col.group-username { width:18%; }
+    .groups-table col.group-type { width:12%; }
+    .groups-table col.group-messages { width:9%; }
+    .groups-table col.group-details { width:10%; }
+    .groups-table .group-name-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.5; }
     td.body { direction:rtl; text-align:right; }
     .full-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.45; }
     .message-cell { min-width:0; }
@@ -338,21 +345,23 @@ const HTML = `<!doctype html>
       </table>
     </section>
     <section class="page" id="groupsPage" hidden>
-      <table>
+      <table class="groups-table">
+        <colgroup>
+          <col class="group-id" />
+          <col class="group-name" />
+          <col class="group-username" />
+          <col class="group-type" />
+          <col class="group-messages" />
+          <col class="group-details" />
+        </colgroup>
         <thead>
           <tr>
             <th>Group ID</th>
             <th>Group Name</th>
-            <th>Topics</th>
             <th>Group Username</th>
             <th>Group Type</th>
             <th>Messages</th>
-            <th>Joined Date (Tehran)</th>
-            <th>Joined Time (Tehran)</th>
-            <th>Last Seen Date (Tehran)</th>
-            <th>Last Seen Time (Tehran)</th>
-            <th>Last Message Date (Tehran)</th>
-            <th>Last Message Time (Tehran)</th>
+            <th>Details</th>
           </tr>
         </thead>
         <tbody id="groupRows"></tbody>
@@ -966,6 +975,23 @@ const HTML = `<!doctype html>
       ];
       return \`<div class="details-grid">\${mediaDetailHtml(row)}\${details.map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
     }
+    function groupDetailHtml(row) {
+      const details = [
+        ["Group ID", row.chat_id],
+        ["Group Name", row.chat_title],
+        ["Group Username", row.chat_username],
+        ["Group Type", row.chat_type],
+        ["Messages", row.message_count],
+        ["Topics", row.topic_names],
+        ["Joined Date (Tehran)", row.joined_date],
+        ["Joined Time (Tehran)", row.joined_time],
+        ["Last Seen Date (Tehran)", row.last_seen_date],
+        ["Last Seen Time (Tehran)", row.last_seen_time],
+        ["Last Message Date (Tehran)", row.last_message_date],
+        ["Last Message Time (Tehran)", row.last_message_time],
+      ];
+      return \`<div class="details-grid">\${details.map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
+    }
     function messageContent(row) {
       return row.body || row.caption || (row.message_type ? "[" + row.message_type + "]" : "");
     }
@@ -1136,8 +1162,8 @@ const HTML = `<!doctype html>
       modalBodyEl.innerHTML = text;
       modalBackdropEl.classList.add("open");
     }
-    function openDetails(html) {
-      modalTitleEl.textContent = "جزئیات پیام";
+    function openDetails(html, title = "جزئیات پیام") {
+      modalTitleEl.textContent = title;
       modalBodyEl.innerHTML = html;
       modalBackdropEl.classList.add("open");
     }
@@ -1292,21 +1318,17 @@ const HTML = `<!doctype html>
           setStatus(token, data.detail || data.error || "خطا در دریافت گروه‌ها");
           return;
         }
+        detailByKey.clear();
         groupRowsEl.innerHTML = data.groups.map(row => \`
           <tr>
             <td>\${esc(row.chat_id)}</td>
-            <td>\${esc(row.chat_title)}</td>
-            <td class="full-cell">\${esc(row.topic_names)}</td>
+            <td class="group-name-cell">\${esc(row.chat_title)}</td>
             <td>\${esc(row.chat_username)}</td>
             <td>\${esc(row.chat_type)}</td>
             <td>\${esc(row.message_count)}</td>
-            <td>\${esc(row.joined_date)}</td>
-            <td>\${esc(row.joined_time)}</td>
-            <td>\${esc(row.last_seen_date)}</td>
-            <td>\${esc(row.last_seen_time)}</td>
-            <td>\${esc(row.last_message_date)}</td>
-            <td>\${esc(row.last_message_time)}</td>
+            <td><button class="details-button" type="button" data-detail-key="group-\${esc(row.chat_id)}">Details</button></td>
           </tr>\`).join("");
+        data.groups.forEach(row => detailByKey.set("group-" + row.chat_id, groupDetailHtml(row)));
         setStatus(token, data.groups.length + " گروه");
       } catch (error) {
         setStatus(token, "خطا در دریافت گروه‌ها");
@@ -1453,6 +1475,10 @@ const HTML = `<!doctype html>
       }
       const detailsButton = event.target.closest("[data-detail-key]");
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "");
+    });
+    groupRowsEl.addEventListener("click", event => {
+      const detailsButton = event.target.closest("[data-detail-key]");
+      if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات گروه");
     });
     accessLogRowsEl.addEventListener("click", event => {
       const detailsButton = event.target.closest("[data-detail-key]");
