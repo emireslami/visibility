@@ -1647,7 +1647,9 @@ const HTML = `<!doctype html>
         }
         accessEmailEl.value = "";
         accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
-        accessMessageEl.textContent = "کاربر اضافه شد. پسورد اولیه changeme است.";
+        accessMessageEl.textContent = data.invite_email_sent
+          ? "کاربر اضافه شد و ایمیل تنظیم پسورد ارسال شد."
+          : ("کاربر اضافه شد، اما ایمیل دعوت ارسال نشد: " + (data.invite_email_error || "خطای نامشخص"));
         loadAccessUsers();
       } catch (error) {
         accessMessageEl.textContent = "افزودن کاربر انجام نشد";
@@ -2500,6 +2502,11 @@ async function sendSupabaseRecoveryEmail(env, email, redirectTo) {
   throw new Error(message);
 }
 
+async function sendAccessInviteEmail(env, email, origin) {
+  await ensureSupabaseAuthMirrorUser(env, email);
+  await sendSupabaseRecoveryEmail(env, email, `${origin}/recovery`);
+}
+
 async function getSupabaseRecoveryUser(env, accessToken) {
   const key = supabasePublishableKey(env);
   if (!key) throw new Error("SUPABASE_PUBLISHABLE_KEY روی Worker تنظیم نشده است");
@@ -2649,6 +2656,14 @@ async function addAccessUser(request, env, authUser) {
     const existing = await getAccessUserByEmail(env, email);
     if (existing) return json({ error: "این ایمیل قبلاً اضافه شده است" }, 409);
     const user = await createAccessUser(env, email, permissions);
+    let inviteEmailSent = false;
+    let inviteEmailError = "";
+    try {
+      await sendAccessInviteEmail(env, user.email, new URL(request.url).origin);
+      inviteEmailSent = true;
+    } catch (error) {
+      inviteEmailError = error.message || "ارسال ایمیل دعوت انجام نشد";
+    }
     await insertAccessAuditLog(env, {
       actorEmail: authUser?.email,
       targetEmail: user.email,
@@ -2659,8 +2674,17 @@ async function addAccessUser(request, env, authUser) {
         is_active: user.is_active,
         permissions: accessPermissionsForUser(user),
       },
+      metadata: {
+        invite_email_sent: inviteEmailSent,
+        invite_email_provider: "supabase_auth_recovery",
+        ...(inviteEmailError ? { invite_email_error: inviteEmailError } : {}),
+      },
     });
-    return json({ user: { email: user.email, must_change_password: user.must_change_password } }, 201);
+    return json({
+      user: { email: user.email, must_change_password: user.must_change_password },
+      invite_email_sent: inviteEmailSent,
+      ...(inviteEmailError ? { invite_email_error: inviteEmailError } : {}),
+    }, 201);
   } catch (error) {
     return json({ error: error.message || "ساخت کاربر انجام نشد" }, 500);
   }
