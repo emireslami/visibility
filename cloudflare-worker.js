@@ -3589,7 +3589,7 @@ async function fetchMessages(request, env) {
 async function fetchGroups(request, env) {
   const params = new URLSearchParams();
   params.set("select", "chat_id,chat_title,chat_username,chat_type,group_label,joined_at_utc,first_seen_at_utc,last_seen_at_utc,message_count,last_message_at_utc");
-  params.set("order", "message_count.desc,last_seen_at_utc.desc");
+  params.set("order", "first_seen_at_utc.desc.nullslast,joined_at_utc.desc.nullslast,last_seen_at_utc.desc.nullslast");
   params.set("limit", "1000");
 
   const headers = supabaseHeaders(env);
