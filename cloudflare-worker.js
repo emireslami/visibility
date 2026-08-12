@@ -1086,6 +1086,15 @@ const HTML = `<!doctype html>
         setStatus(token, "خطا در دریافت گروه‌ها");
       }
     }
+    function broadcastResultText(log) {
+      const sent = Number(log?.sent || 0);
+      const failed = Number(log?.failed || 0);
+      const total = sent + failed;
+      if (!total) return "ثبت شده، بدون نتیجه ارسال";
+      if (!failed) return numberFmt.format(sent) + " از " + numberFmt.format(total) + " موفق";
+      if (!sent) return numberFmt.format(failed) + " از " + numberFmt.format(total) + " ناموفق";
+      return numberFmt.format(sent) + " موفق، " + numberFmt.format(failed) + " ناموفق";
+    }
     async function loadBroadcastLogs(showStatus = true) {
       const token = showStatus ? showLoading("در حال دریافت لاگ اطلاع‌رسانی‌ها...") : null;
       try {
@@ -1108,7 +1117,7 @@ const HTML = `<!doctype html>
             <td data-label="زمان">\${esc(log.created_at_utc ? tehranDisplay(log.created_at_utc) : "-")}</td>
             <td class="full-cell" data-label="گروه‌های هدف">\${esc(shortText(targetText || "-", 110))}</td>
             <td class="body message-cell" data-label="متن"><div class="message-inner">\${textCell(log.body || "متن در لاگ قدیمی ذخیره نشده است.", bodyKey, 90)}</div></td>
-            <td data-label="نتیجه">\${esc((log.sent || 0) + " / " + (log.failed || 0))}</td>
+            <td data-label="نتیجه">\${esc(broadcastResultText(log))}</td>
             <td class="details-cell" data-label="جزئیات"><button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button></td>
           </tr>\`;
         }).join("") || '<tr><td colspan="6" class="empty">اطلاع‌رسانی ثبت نشده است</td></tr>';
@@ -1222,7 +1231,7 @@ const HTML = `<!doctype html>
         \${detailRow("فرستنده", log.sender_email || "-")}
         \${detailRow("زمان (تهران)", log.created_at_utc ? tehranDisplay(log.created_at_utc) : "-")}
         \${detailRow("شناسه اطلاع‌رسانی", log.broadcast_id || "-")}
-        \${detailRow("نتیجه", \`\${log.sent || 0} موفق / \${log.failed || 0} ناموفق\`)}
+        \${detailRow("نتیجه", broadcastResultText(log))}
         \${detailRow("متن", log.body || "متن در لاگ قدیمی ذخیره نشده است.")}
         <div class="detail-row"><div class="detail-label">گروه‌های هدف</div><div class="detail-value broadcast-targets-detail">\${targetHtml}</div></div>
         <div class="detail-row"><div class="detail-label">متادیتا</div><pre class="detail-value detail-pre">\${esc(JSON.stringify(log.metadata || {}, null, 2))}</pre></div>
