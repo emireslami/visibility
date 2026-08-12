@@ -145,6 +145,7 @@ const HTML = `<!doctype html>
     .confirm-target { display:inline-block; direction:ltr; font-weight:800; }
     .confirm-target-list { display:grid; gap:6px; max-height:180px; overflow:auto; margin:12px 0; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; }
     .confirm-target-item { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; }
+    .confirm-message-preview { margin:12px 0 0; padding:12px; max-height:220px; overflow:auto; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--ink); white-space:pre-wrap; overflow-wrap:anywhere; direction:rtl; text-align:right; line-height:1.8; }
     .confirm-password-row { margin-top:12px; }
     .confirm-error { min-height:20px; margin-top:8px; color:#b42318; font-size:12px; }
     .confirm-actions { display:flex; align-items:center; justify-content:flex-start; gap:10px; margin-top:18px; }
@@ -2128,7 +2129,8 @@ const HTML = `<!doctype html>
       modalTitleEl.textContent = "تایید ارسال گروهی";
       modalBodyEl.innerHTML = '<p class="confirm-copy">این پیام برای <strong>' + numberFmt.format(groups.length) + '</strong> گروه ارسال شود؟</p>'
         + '<div class="confirm-target-list">' + targetHtml + '</div>'
-        + '<p class="confirm-copy"><span class="confirm-target">' + esc(shortText(body, 160)) + '</span></p>'
+        + '<p class="confirm-copy"><strong>متن پیام</strong></p>'
+        + '<div class="confirm-message-preview">' + esc(body) + '</div>'
         + '<div class="confirm-password-row password-wrap">'
           + '<input data-confirm-password type="password" placeholder="پسورد شما برای تایید نهایی" autocomplete="current-password" />'
           + '<button class="password-toggle" data-confirm-password-toggle type="button" aria-label="نمایش پسورد">'
