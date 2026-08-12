@@ -2192,7 +2192,7 @@ async function loginHtml(env, error = "", email = "", message = "", authUser = n
             <div class="signed-email">${htmlEscape(profile.email)}</div>
             <div class="signed-meta">${profile.telegram_username ? htmlEscape(profile.telegram_username) : "یوزرنیم تلگرام ثبت نشده"}</div>
             <a class="button-link" href="${profileTarget}">ورود</a>
-            <a class="button-link logout-link" href="/logout">این کاربر من نیست</a>
+            <a class="button-link logout-link" href="/logout">این حساب کاربری من نیست</a>
             <p class="switch-note">برای ورود با کاربر دیگر، ابتدا از این حساب خارج شوید.</p>
           </div>
         ` : `
