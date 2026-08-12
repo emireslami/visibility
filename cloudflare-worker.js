@@ -984,6 +984,7 @@ const HTML = `<!doctype html>
     const currentUser = __CURRENT_USER__;
     const permissionOptions = [
       { key:"dashboard", label:"داشبورد" },
+      { key:"analytics", label:"تحلیل" },
       { key:"threads", label:"تردها" },
       { key:"messages", label:"پیام‌ها" },
       { key:"groups", label:"گروه‌ها" },
@@ -1014,7 +1015,6 @@ const HTML = `<!doctype html>
       return String(value || "").trim().replace(/^@+/, "");
     }
     function canOpen(page) {
-      if (page === "analytics") return currentUserPermissions.has("dashboard");
       if (page === "senders") return currentUserPermissions.has("messages");
       return currentUserPermissions.has(page);
     }
@@ -3595,7 +3595,7 @@ function groupLabelTextServer(value) {
   return labels[String(value || "")] || "بدون لیبل";
 }
 
-const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboard", "bots"];
+const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboard", "analytics", "bots"];
 const EXTRA_ACCESS_PERMISSIONS = ["reply", "broadcast"];
 const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS, ...EXTRA_ACCESS_PERMISSIONS];
 const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
@@ -3695,7 +3695,7 @@ function isAccessOwnerEmail(email) {
 }
 
 function normalizeAccessPermissions(value) {
-  const source = Array.isArray(value) ? value : (Array.isArray(value?.pages) ? value.pages : ACCESS_PERMISSIONS);
+  const source = Array.isArray(value) ? value : (Array.isArray(value?.pages) ? value.pages : []);
   const allowed = new Set(ACCESS_PERMISSIONS);
   const normalized = source.map((item) => String(item || "").trim().toLowerCase()).filter((item) => allowed.has(item));
   const replyEnabled = (Array.isArray(value) && value.includes("reply")) || value?.reply === true;
@@ -3753,7 +3753,7 @@ function hasAnyAccessPermission(user, permissions) {
 }
 
 function defaultMainPathForUser(user) {
-  const firstPage = ["messages", "threads", "groups", "dashboard", "broadcast", "bots", "access"].find((permission) => hasAccessPermission(user, permission));
+  const firstPage = ["messages", "threads", "groups", "dashboard", "analytics", "broadcast", "bots", "access"].find((permission) => hasAccessPermission(user, permission));
   return `/main/${firstPage || "messages"}`;
 }
 
@@ -6922,7 +6922,7 @@ export default {
       return fetchDashboard(request, env, authUser);
     }
     if (url.pathname === "/api/analytics") {
-      if (!hasAccessPermission(authUser, "dashboard")) return forbiddenAccess();
+      if (!hasAccessPermission(authUser, "analytics")) return forbiddenAccess();
       return fetchAnalytics(request, env, authUser);
     }
     if (url.pathname === "/api/thread-filter-options") {
