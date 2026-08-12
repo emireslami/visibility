@@ -140,7 +140,7 @@ const HTML = `<!doctype html>
     .detail-label { color:var(--muted); font-size:12px; font-weight:700; }
     .detail-value { min-width:0; overflow-wrap:anywhere; white-space:pre-wrap; }
     .detail-pre { direction:ltr; text-align:left; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px; line-height:1.55; }
-    .chart-panel { max-width:1180px; margin:0 auto; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+    .chart-panel, .analytics-panel { max-width:1180px; margin:0 auto; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
     .chart-panel.secondary-chart-panel { margin-top:18px; }
     .chart-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:18px; }
     .chart-head h2 { margin:0; font-size:18px; }
@@ -162,6 +162,16 @@ const HTML = `<!doctype html>
     .legend-item.dimmed { opacity:.58; }
     .legend-swatch { width:10px; height:10px; border-radius:2px; flex:0 0 auto; }
     .empty-chart { min-height:240px; display:grid; place-items:center; color:var(--muted); border:1px dashed var(--line); border-radius:8px; }
+    .analytics-panel { display:grid; gap:18px; }
+    .analytics-summary { display:grid; grid-template-columns:repeat(4, minmax(120px, 1fr)); gap:10px; }
+    .analytics-card { padding:14px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; }
+    .analytics-card strong { display:block; margin-top:8px; font-size:22px; color:var(--ink); direction:ltr; text-align:right; }
+    .analytics-card span { color:var(--muted); font-size:12px; }
+    .analytics-section-title { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-top:4px; }
+    .analytics-section-title h3 { margin:0; font-size:15px; }
+    .analytics-section-title p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+    .analytics-table th, .analytics-table td { text-align:right; direction:rtl; }
+    .analytics-table .metric-number { direction:ltr; text-align:right; white-space:nowrap; }
     .access-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
     .access-panel h2 { margin:0 0 6px; font-size:18px; }
     .bots-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1180px; margin:0 auto; }
@@ -318,7 +328,7 @@ const HTML = `<!doctype html>
     .modal-close { border-radius:0; }
     .detail-row { border-radius:0; border-color:var(--line); background:#fff; }
     .detail-label { color:#525252; }
-    .chart-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel { border-radius:0; border-color:var(--line); box-shadow:0 1px 0 rgba(22,22,22,.04); }
+    .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel { border-radius:0; border-color:var(--line); box-shadow:0 1px 0 rgba(22,22,22,.04); }
     .chart-head h2, .access-panel h2, .profile-panel h2, .bots-panel h2, .broadcast-panel h2 { font-size:20px; font-weight:800; }
     .broadcast-message-input, .broadcast-option { border-radius:0; border-color:#dfe1e6; }
     .bar-stack { border-radius:0; border-color:#c6c6c6; }
@@ -352,11 +362,12 @@ const HTML = `<!doctype html>
       .thread-filters { grid-template-columns:1fr 1fr; }
       .thread-filters button { grid-column:1 / -1; }
       .multi-panel { width:min(var(--dropdown-w, 100%), calc(100vw - 28px)); max-height:45vh; z-index:1200; }
-      .messages-table, .groups-table, .bots-table, .access-log-table, .broadcast-log-table, .access-users-table { display:block; border:0; background:transparent; box-shadow:none; }
-      .messages-table colgroup, .groups-table colgroup, .bots-table colgroup, .access-log-table colgroup, .broadcast-log-table colgroup, .access-users-table colgroup,
-      .messages-table thead, .groups-table thead, .bots-table thead, .access-log-table thead, .broadcast-log-table thead, .access-users-table thead { display:none; }
-      .messages-table tbody, .groups-table tbody, .bots-table tbody, .access-log-table tbody, .broadcast-log-table tbody, .access-users-table tbody { display:grid; gap:10px; }
-      .messages-table tr, .groups-table tr, .bots-table tr, .access-log-table tr, .broadcast-log-table tr, .access-users-table tr {
+      .analytics-summary { grid-template-columns:repeat(2, minmax(120px, 1fr)); }
+      .messages-table, .groups-table, .bots-table, .access-log-table, .broadcast-log-table, .access-users-table, .analytics-table { display:block; border:0; background:transparent; box-shadow:none; }
+      .messages-table colgroup, .groups-table colgroup, .bots-table colgroup, .access-log-table colgroup, .broadcast-log-table colgroup, .access-users-table colgroup, .analytics-table colgroup,
+      .messages-table thead, .groups-table thead, .bots-table thead, .access-log-table thead, .broadcast-log-table thead, .access-users-table thead, .analytics-table thead { display:none; }
+      .messages-table tbody, .groups-table tbody, .bots-table tbody, .access-log-table tbody, .broadcast-log-table tbody, .access-users-table tbody, .analytics-table tbody { display:grid; gap:10px; }
+      .messages-table tr, .groups-table tr, .bots-table tr, .access-log-table tr, .broadcast-log-table tr, .access-users-table tr, .analytics-table tr {
         display:grid;
         gap:8px;
         padding:12px;
@@ -364,7 +375,7 @@ const HTML = `<!doctype html>
         background:#fff;
         box-shadow:0 1px 2px rgba(9,30,66,.08);
       }
-      .messages-table td, .groups-table td, .bots-table td, .access-log-table td, .broadcast-log-table td, .access-users-table td {
+      .messages-table td, .groups-table td, .bots-table td, .access-log-table td, .broadcast-log-table td, .access-users-table td, .analytics-table td {
         min-height:0;
         height:auto;
         display:grid;
@@ -381,7 +392,7 @@ const HTML = `<!doctype html>
         font-size:12px;
         text-align:right;
       }
-      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before, .access-users-table td::before {
+      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before, .access-users-table td::before, .analytics-table td::before {
         content:attr(data-label);
         color:#525252;
         font-weight:800;
@@ -401,7 +412,7 @@ const HTML = `<!doctype html>
       .access-log-table { margin-top:10px; direction:rtl; }
       .access-log-table th, .access-log-table td { direction:rtl; text-align:right; }
       .broadcast-log-table { margin-top:10px; direction:rtl; }
-      .chart-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel { padding:14px; }
+      .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel { padding:14px; }
       .chart-head { align-items:flex-start; flex-direction:column; }
       .legend-grid { grid-template-columns:1fr; }
       .bot-form { grid-template-columns:1fr; }
@@ -435,8 +446,9 @@ const HTML = `<!doctype html>
       nav { grid-template-columns:repeat(2, minmax(0, 1fr)); }
       .thread-filters { grid-template-columns:1fr; }
       .signals { grid-template-columns:1fr; }
-      .messages-table td, .groups-table td, .bots-table td, .access-log-table td, .broadcast-log-table td, .access-users-table td { grid-template-columns:1fr; gap:4px; }
-      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before, .access-users-table td::before { font-size:10px; }
+      .analytics-summary { grid-template-columns:1fr; }
+      .messages-table td, .groups-table td, .bots-table td, .access-log-table td, .broadcast-log-table td, .access-users-table td, .analytics-table td { grid-template-columns:1fr; gap:4px; }
+      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before, .access-users-table td::before, .analytics-table td::before { font-size:10px; }
     }
   </style>
 </head>
@@ -446,6 +458,7 @@ const HTML = `<!doctype html>
       <h1>دیدپذیری</h1>
       <nav aria-label="صفحه‌های داشبورد">
         <button class="nav-button" id="dashboardNav" type="button">داشبورد</button>
+        <button class="nav-button" id="analyticsNav" type="button">تحلیل</button>
         <button class="nav-button" id="threadsNav" type="button">تردها</button>
         <button class="nav-button active" id="messagesNav" type="button">پیام‌ها</button>
         <button class="nav-button" id="groupsNav" type="button">گروه‌ها</button>
@@ -489,6 +502,62 @@ const HTML = `<!doctype html>
         </div>
         <div class="chart-wrap" id="userDailyChart"></div>
         <div class="chart-legend" id="userChartLegend"></div>
+      </section>
+    </section>
+    <section class="page" id="analyticsPage" hidden>
+      <section class="analytics-panel">
+        <div class="chart-head">
+          <div>
+            <h2>تحلیل پاسخ‌گویی</h2>
+            <p>میانگین زمان پاسخ بر اساس ریپلای‌های واقعی که پیام والدشان در دیتابیس موجود است.</p>
+          </div>
+        </div>
+        <div class="analytics-summary">
+          <div class="analytics-card"><span>میانگین کل</span><strong id="analyticsAvg">-</strong></div>
+          <div class="analytics-card"><span>تعداد پاسخ‌های محاسبه‌شده</span><strong id="analyticsCount">۰</strong></div>
+          <div class="analytics-card"><span>کمترین زمان پاسخ</span><strong id="analyticsMin">-</strong></div>
+          <div class="analytics-card"><span>بیشترین زمان پاسخ</span><strong id="analyticsMax">-</strong></div>
+        </div>
+        <div class="analytics-section-title">
+          <div>
+            <h3>به تفکیک لیبل</h3>
+            <p>میانگین پاسخ‌گویی برای گروه‌های داخلی، مشتریان و پروایدرها</p>
+          </div>
+        </div>
+        <table class="analytics-table">
+          <thead>
+            <tr>
+              <th>لیبل</th>
+              <th>تعداد پاسخ</th>
+              <th>میانگین</th>
+              <th>میانه</th>
+              <th>کمترین</th>
+              <th>بیشترین</th>
+            </tr>
+          </thead>
+          <tbody id="analyticsLabelRows"></tbody>
+        </table>
+        <div class="analytics-section-title">
+          <div>
+            <h3>به تفکیک گروه</h3>
+            <p>فقط گروه‌هایی که حداقل یک پاسخ قابل محاسبه دارند نمایش داده می‌شوند.</p>
+          </div>
+        </div>
+        <table class="analytics-table">
+          <thead>
+            <tr>
+              <th>گروه</th>
+              <th>پلتفرم</th>
+              <th>لیبل</th>
+              <th>تعداد پاسخ</th>
+              <th>میانگین</th>
+              <th>میانه</th>
+              <th>کمترین</th>
+              <th>بیشترین</th>
+            </tr>
+          </thead>
+          <tbody id="analyticsGroupRows"></tbody>
+        </table>
       </section>
     </section>
     <section class="page" id="messagesPage">
@@ -784,6 +853,7 @@ const HTML = `<!doctype html>
     const userChartLegendEl = document.getElementById("userChartLegend");
     const statusEl = document.getElementById("status");
     const dashboardNavEl = document.getElementById("dashboardNav");
+    const analyticsNavEl = document.getElementById("analyticsNav");
     const messagesNavEl = document.getElementById("messagesNav");
     const groupsNavEl = document.getElementById("groupsNav");
     const threadsNavEl = document.getElementById("threadsNav");
@@ -791,6 +861,7 @@ const HTML = `<!doctype html>
     const botsNavEl = document.getElementById("botsNav");
     const accessNavEl = document.getElementById("accessNav");
     const dashboardPageEl = document.getElementById("dashboardPage");
+    const analyticsPageEl = document.getElementById("analyticsPage");
     const messagesPageEl = document.getElementById("messagesPage");
     const groupsPageEl = document.getElementById("groupsPage");
     const threadsPageEl = document.getElementById("threadsPage");
@@ -826,6 +897,12 @@ const HTML = `<!doctype html>
     const profileAvatarHintEl = document.getElementById("profileAvatarHint");
     const profileTelegramUsernameEl = document.getElementById("profileTelegramUsername");
     const profileMessageEl = document.getElementById("profileMessage");
+    const analyticsAvgEl = document.getElementById("analyticsAvg");
+    const analyticsCountEl = document.getElementById("analyticsCount");
+    const analyticsMinEl = document.getElementById("analyticsMin");
+    const analyticsMaxEl = document.getElementById("analyticsMax");
+    const analyticsLabelRowsEl = document.getElementById("analyticsLabelRows");
+    const analyticsGroupRowsEl = document.getElementById("analyticsGroupRows");
     const accessUsersTabEl = document.getElementById("accessUsersTab");
     const accessGroupsTabEl = document.getElementById("accessGroupsTab");
     const accessLogsTabEl = document.getElementById("accessLogsTab");
@@ -896,6 +973,7 @@ const HTML = `<!doctype html>
       return String(value || "").trim().replace(/^@+/, "");
     }
     function canOpen(page) {
+      if (page === "analytics") return currentUserPermissions.has("dashboard");
       return currentUserPermissions.has(page);
     }
     function selectedPermissions(root) {
@@ -1163,7 +1241,7 @@ const HTML = `<!doctype html>
       else if (isGroups) loadAccessGroupView();
       else loadAccessUsers();
     }
-    const routablePages = ["dashboard", "messages", "groups", "threads", "broadcast", "bots", "access", "profile"];
+    const routablePages = ["dashboard", "analytics", "threads", "messages", "groups", "broadcast", "bots", "access", "profile"];
     function pagePath(page) {
       return "/main/" + page;
     }
@@ -1173,11 +1251,11 @@ const HTML = `<!doctype html>
       return routablePages.includes(page) ? page : "messages";
     }
     function firstAccessiblePage() {
-      return ["dashboard", "threads", "messages", "groups", "broadcast", "bots", "access"].find(canOpen);
+      return ["dashboard", "analytics", "threads", "messages", "groups", "broadcast", "bots", "access"].find(canOpen);
     }
     function setupAccessShell() {
       accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
-      const navByPage = { dashboard:dashboardNavEl, threads:threadsNavEl, messages:messagesNavEl, groups:groupsNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
+      const navByPage = { dashboard:dashboardNavEl, analytics:analyticsNavEl, threads:threadsNavEl, messages:messagesNavEl, groups:groupsNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
       Object.entries(navByPage).forEach(([page, element]) => { element.hidden = !canOpen(page); });
       const firstPage = firstAccessiblePage();
       if (!firstPage) {
@@ -2059,6 +2137,61 @@ const HTML = `<!doctype html>
         setStatus(token, "خطا در دریافت نمودار");
       }
     }
+    function formatDuration(ms) {
+      const totalSeconds = Math.max(0, Math.round(Number(ms || 0) / 1000));
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor((totalSeconds % 86400) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      if (days) return days + " روز " + hours + " ساعت";
+      if (hours) return hours + " ساعت " + minutes + " دقیقه";
+      if (minutes) return minutes + " دقیقه " + seconds + " ثانیه";
+      return seconds + " ثانیه";
+    }
+    function analyticsMetricCells(row) {
+      return '<td class="metric-number" data-label="تعداد پاسخ">' + numberFmt.format(row.count || 0) + '</td>'
+        + '<td class="metric-number" data-label="میانگین">' + esc(formatDuration(row.avg_ms)) + '</td>'
+        + '<td class="metric-number" data-label="میانه">' + esc(formatDuration(row.median_ms)) + '</td>'
+        + '<td class="metric-number" data-label="کمترین">' + esc(formatDuration(row.min_ms)) + '</td>'
+        + '<td class="metric-number" data-label="بیشترین">' + esc(formatDuration(row.max_ms)) + '</td>';
+    }
+    async function loadAnalytics() {
+      const token = showLoading("در حال محاسبه تحلیل...");
+      try {
+        const res = await fetch("/api/analytics");
+        const data = await res.json();
+        if (!res.ok || !data.overall) {
+          analyticsLabelRowsEl.innerHTML = "";
+          analyticsGroupRowsEl.innerHTML = "";
+          setStatus(token, data.detail || data.error || "خطا در دریافت تحلیل");
+          return;
+        }
+        const overall = data.overall || {};
+        analyticsAvgEl.textContent = overall.count ? formatDuration(overall.avg_ms) : "-";
+        analyticsCountEl.textContent = numberFmt.format(overall.count || 0);
+        analyticsMinEl.textContent = overall.count ? formatDuration(overall.min_ms) : "-";
+        analyticsMaxEl.textContent = overall.count ? formatDuration(overall.max_ms) : "-";
+        analyticsLabelRowsEl.innerHTML = (data.labels || []).length
+          ? data.labels.map((row) => '<tr>'
+              + '<td data-label="لیبل">' + esc(row.label_text || "بدون لیبل") + '</td>'
+              + analyticsMetricCells(row)
+            + '</tr>').join("")
+          : '<tr><td colspan="6">پاسخ قابل محاسبه‌ای برای لیبل‌ها وجود ندارد.</td></tr>';
+        analyticsGroupRowsEl.innerHTML = (data.groups || []).length
+          ? data.groups.map((row) => '<tr>'
+              + '<td data-label="گروه">' + esc(row.chat_title || "بدون نام") + '</td>'
+              + '<td data-label="پلتفرم">' + esc(platformText(row.platform)) + '</td>'
+              + '<td data-label="لیبل">' + esc(groupLabelText(row.group_label)) + '</td>'
+              + analyticsMetricCells(row)
+            + '</tr>').join("")
+          : '<tr><td colspan="8">پاسخ قابل محاسبه‌ای برای گروه‌ها وجود ندارد.</td></tr>';
+        setStatus(token, numberFmt.format(overall.count || 0) + " پاسخ محاسبه‌شده");
+      } catch (error) {
+        analyticsLabelRowsEl.innerHTML = "";
+        analyticsGroupRowsEl.innerHTML = "";
+        setStatus(token, "خطا در دریافت تحلیل");
+      }
+    }
     async function load() {
       updateFilterButtons();
       const token = showLoading("در حال دریافت پیام‌ها...");
@@ -2347,6 +2480,7 @@ const HTML = `<!doctype html>
         window.history.replaceState({ page }, "", nextPath);
       }
       const isDashboard = page === "dashboard";
+      const isAnalytics = page === "analytics";
       const isGroups = page === "groups";
       const isThreads = page === "threads";
       const isBroadcast = page === "broadcast";
@@ -2354,7 +2488,8 @@ const HTML = `<!doctype html>
       const isAccess = page === "access";
       const isProfile = page === "profile";
       dashboardPageEl.hidden = !isDashboard;
-      messagesPageEl.hidden = isDashboard || isGroups || isThreads || isBroadcast || isBots || isAccess || isProfile;
+      analyticsPageEl.hidden = !isAnalytics;
+      messagesPageEl.hidden = isDashboard || isAnalytics || isGroups || isThreads || isBroadcast || isBots || isAccess || isProfile;
       groupsPageEl.hidden = !isGroups;
       threadsPageEl.hidden = !isThreads;
       broadcastPageEl.hidden = !isBroadcast;
@@ -2362,13 +2497,15 @@ const HTML = `<!doctype html>
       accessPageEl.hidden = !isAccess;
       profilePageEl.hidden = !isProfile;
       dashboardNavEl.classList.toggle("active", isDashboard);
-      messagesNavEl.classList.toggle("active", !isDashboard && !isGroups && !isThreads && !isBroadcast && !isBots && !isAccess && !isProfile);
+      analyticsNavEl.classList.toggle("active", isAnalytics);
+      messagesNavEl.classList.toggle("active", !isDashboard && !isAnalytics && !isGroups && !isThreads && !isBroadcast && !isBots && !isAccess && !isProfile);
       groupsNavEl.classList.toggle("active", isGroups);
       threadsNavEl.classList.toggle("active", isThreads);
       broadcastNavEl.classList.toggle("active", isBroadcast);
       botsNavEl.classList.toggle("active", isBots);
       accessNavEl.classList.toggle("active", isAccess);
       if (isDashboard) loadDashboard();
+      else if (isAnalytics) loadAnalytics();
       else if (isGroups) loadGroups();
       else if (isThreads) loadThreadFilterOptions().then(loadThreads);
       else if (isBroadcast) loadBroadcast();
@@ -2596,6 +2733,7 @@ const HTML = `<!doctype html>
       loadThreads();
     });
     dashboardNavEl.addEventListener("click", () => showPage("dashboard"));
+    analyticsNavEl.addEventListener("click", () => showPage("analytics"));
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
@@ -2837,7 +2975,7 @@ const HTML = `<!doctype html>
     window.addEventListener("scroll", () => document.querySelectorAll(".multi-filter.open").forEach((filter) => filter.classList.remove("open")), true);
     syncProfileUi();
     setupAccessShell();
-    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
+    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "analytics" && canOpen("analytics")) loadAnalytics(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
   </script>
 </body>
 </html>`;
@@ -3260,6 +3398,15 @@ function validTelegramUsername(value) {
 function normalizeGroupLabel(value) {
   const label = String(value || "").trim();
   return GROUP_LABELS.includes(label) ? label : null;
+}
+
+function groupLabelTextServer(value) {
+  const labels = {
+    internal_team: "گروه‌های داخلی شرکت",
+    customer: "گروه‌های مشتریان",
+    provider: "گروه‌های پروایدرهای ما",
+  };
+  return labels[String(value || "")] || "بدون لیبل";
 }
 
 const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboard", "bots"];
@@ -6188,6 +6335,116 @@ async function fetchDashboard(request, env, authUser) {
   return json(data);
 }
 
+function responseMetricBucket() {
+  return { count: 0, total_ms: 0, min_ms: null, max_ms: null, values: [] };
+}
+
+function addResponseMetric(bucket, ms) {
+  bucket.count += 1;
+  bucket.total_ms += ms;
+  bucket.min_ms = bucket.min_ms === null ? ms : Math.min(bucket.min_ms, ms);
+  bucket.max_ms = bucket.max_ms === null ? ms : Math.max(bucket.max_ms, ms);
+  bucket.values.push(ms);
+}
+
+function finishResponseMetric(bucket) {
+  const values = [...bucket.values].sort((a, b) => a - b);
+  const middle = Math.floor(values.length / 2);
+  const median = values.length
+    ? (values.length % 2 ? values[middle] : Math.round((values[middle - 1] + values[middle]) / 2))
+    : 0;
+  return {
+    count: bucket.count,
+    avg_ms: bucket.count ? Math.round(bucket.total_ms / bucket.count) : 0,
+    median_ms: median,
+    min_ms: bucket.min_ms ?? 0,
+    max_ms: bucket.max_ms ?? 0,
+  };
+}
+
+function isDashboardGeneratedMessage(row) {
+  const payload = row?.raw_payload_json || {};
+  return Boolean(row?.sender_is_bot || payload.dashboard_thread_reply === true || payload.dashboard_broadcast === true);
+}
+
+async function fetchAnalytics(request, env, authUser) {
+  const headers = supabaseHeaders(env);
+  const groupParams = new URLSearchParams();
+  groupParams.set("select", "platform,chat_id,chat_title,group_label");
+  groupParams.set("limit", "10000");
+  const messageParams = new URLSearchParams();
+  messageParams.set("select", "platform,chat_id,chat_title,message_id,reply_to_message_id,message_thread_id,is_topic_message,topic_name,sender_is_bot,sent_at_utc,raw_payload_json");
+  messageParams.set("sent_at_utc", "not.is.null");
+  messageParams.set("order", "sent_at_utc.asc");
+  messageParams.set("limit", "10000");
+  const [groupsResponse, messagesResponse] = await Promise.all([
+    fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${groupParams}`, { headers }),
+    fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${messageParams}`, { headers }),
+  ]);
+  if (!groupsResponse.ok) return json({ error: "درخواست گروه‌ها از دیتابیس انجام نشد", detail: await groupsResponse.text() }, 500);
+  if (!messagesResponse.ok) return json({ error: "درخواست پیام‌ها از دیتابیس انجام نشد", detail: await messagesResponse.text() }, 500);
+
+  const groupByKey = new Map((await groupsResponse.json()).map((group) => [chatKey(group), group]));
+  const allowedSet = await allowedChatKeySet(env, authUser);
+  const rows = (await messagesResponse.json()).filter((row) => rowAllowedByChatSet(row, allowedSet));
+  const byMessage = new Map();
+  for (const row of rows) {
+    const key = messageKey(row);
+    if (key) byMessage.set(key, row);
+  }
+
+  const overall = responseMetricBucket();
+  const byGroup = new Map();
+  const byLabel = new Map();
+
+  for (const row of rows) {
+    if (!row.reply_to_message_id || isTopicRootReplyRow(row) || isDashboardGeneratedMessage(row)) continue;
+    const parent = byMessage.get(messageKey(row, row.reply_to_message_id));
+    if (!parent || isDashboardGeneratedMessage(parent)) continue;
+    const replyAt = Date.parse(row.sent_at_utc);
+    const parentAt = Date.parse(parent.sent_at_utc);
+    const diff = replyAt - parentAt;
+    if (!Number.isFinite(diff) || diff <= 0) continue;
+
+    const groupKey = chatKey(row);
+    const group = groupByKey.get(groupKey) || row;
+    const label = group?.group_label || "";
+    if (!byGroup.has(groupKey)) {
+      byGroup.set(groupKey, {
+        platform: normalizePlatform(row.platform),
+        chat_id: row.chat_id,
+        chat_title: group?.chat_title || row.chat_title || "بدون نام",
+        group_label: label,
+        bucket: responseMetricBucket(),
+      });
+    }
+    if (!byLabel.has(label)) {
+      byLabel.set(label, {
+        group_label: label,
+        label_text: groupLabelTextServer(label),
+        bucket: responseMetricBucket(),
+      });
+    }
+    addResponseMetric(overall, diff);
+    addResponseMetric(byGroup.get(groupKey).bucket, diff);
+    addResponseMetric(byLabel.get(label).bucket, diff);
+  }
+
+  const groups = [...byGroup.values()]
+    .map((row) => ({ ...row, ...finishResponseMetric(row.bucket), bucket: undefined }))
+    .sort((a, b) => b.count - a.count || a.chat_title.localeCompare(b.chat_title));
+  const labels = [...byLabel.values()]
+    .map((row) => ({ ...row, ...finishResponseMetric(row.bucket), bucket: undefined }))
+    .sort((a, b) => b.count - a.count || a.label_text.localeCompare(b.label_text));
+  return json({
+    overall: finishResponseMetric(overall),
+    labels,
+    groups,
+    display_timezone: "Asia/Tehran",
+    rule: "response_time = reply.sent_at_utc - parent.sent_at_utc",
+  });
+}
+
 async function fetchThreadFilterOptions(request, env, authUser) {
   const restricted = !groupAccessForUser(authUser).unrestricted;
   if (!restricted && threadFilterOptionsApiCache && Date.now() - threadFilterOptionsApiCache.createdAt < API_CACHE_TTL_MS) {
@@ -6358,6 +6615,10 @@ export default {
     if (url.pathname === "/api/dashboard") {
       if (!hasAccessPermission(authUser, "dashboard")) return forbiddenAccess();
       return fetchDashboard(request, env, authUser);
+    }
+    if (url.pathname === "/api/analytics") {
+      if (!hasAccessPermission(authUser, "dashboard")) return forbiddenAccess();
+      return fetchAnalytics(request, env, authUser);
     }
     if (url.pathname === "/api/thread-filter-options") {
       if (!hasAnyAccessPermission(authUser, ["messages", "threads"])) return forbiddenAccess();
