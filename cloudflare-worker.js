@@ -4228,6 +4228,7 @@ function enrichMessageRows(rows, topicByThread) {
       : null;
     return {
       ...row,
+      reply_to_message_id: row.reply_to_message_id ?? replyTargetFromPayload(row),
       topic_name: row.topic_name || mappedTopicName || payloadTopicName || null,
       ...(date ? tehranParts(date) : { sent_date: null, sent_jalali_date: null, sent_time: null, display_timezone: "Asia/Tehran" }),
       registered_tehran_datetime: tehranDateTimeDisplay(registeredDate),
@@ -4242,6 +4243,53 @@ function embeddedReplyMessage(row) {
   return payload.message?.reply_to_message
     || payload.edited_message?.reply_to_message
     || null;
+}
+
+function replyTargetFromPayload(row) {
+  const payload = row?.raw_payload_json || {};
+  const explicitTarget = Number(payload.reply_target_message_id);
+  if (Number.isFinite(explicitTarget) && explicitTarget > 0) return explicitTarget;
+  const embeddedTarget = Number(embeddedReplyMessage(row)?.message_id);
+  if (Number.isFinite(embeddedTarget) && embeddedTarget > 0) return embeddedTarget;
+  return null;
+}
+
+function mergeEmbeddedReplyFields(target, source) {
+  if (!target || !source) return false;
+  let changed = false;
+  for (const field of [
+    "reply_to_message_id",
+    "message_thread_id",
+    "is_topic_message",
+    "topic_name",
+    "topic_icon_color",
+    "topic_icon_custom_emoji_id",
+    "bot_id",
+    "bot_username",
+    "bot_name",
+    "chat_title",
+    "chat_username",
+    "chat_type",
+    "sender_id",
+    "sender_username",
+    "sender_first_name",
+    "sender_last_name",
+    "sender_is_bot",
+    "body",
+    "caption",
+    "message_type",
+    "sent_at_utc",
+    "edited_at_utc",
+    "media_file_id",
+    "media_group_id",
+    "raw_payload_json",
+  ]) {
+    if ((target[field] === null || target[field] === undefined || target[field] === "") && source[field] !== null && source[field] !== undefined && source[field] !== "") {
+      target[field] = source[field];
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 function rowFromEmbeddedReplyMessage(parentMessage, childRow) {
@@ -4294,19 +4342,32 @@ function rowFromEmbeddedReplyMessage(parentMessage, childRow) {
   };
 }
 
-function embeddedReplyAncestorRows(messages, topicByThread) {
+function embeddedReplyAncestorRows(messages, topicByThread, knownRows = messages) {
   const knownKeys = new Set(messages.filter((row) => row.chat_id && row.message_id).map((row) => messageKey(row)));
+  const byKey = latestMessageMap(knownRows);
+  for (const [key, row] of latestMessageMap(messages)) byKey.set(key, row);
   const extras = [];
   const queue = [...messages];
+  const processed = new Set();
   while (queue.length) {
     const childRow = queue.shift();
     const parentMessage = embeddedReplyMessage(childRow);
     const parentRow = rowFromEmbeddedReplyMessage(parentMessage, childRow);
     if (!parentRow) continue;
     const key = messageKey(parentRow);
-    if (!key || knownKeys.has(key)) continue;
-    knownKeys.add(key);
+    const relationKey = `${messageKey(childRow) || "unknown"}>${key}`;
+    if (!key || processed.has(relationKey)) continue;
+    processed.add(relationKey);
     const enrichedParent = enrichMessageRows([parentRow], topicByThread)[0];
+    const existing = byKey.get(key);
+    if (existing) {
+      mergeEmbeddedReplyFields(existing, enrichedParent);
+      queue.push(existing);
+      continue;
+    }
+    if (knownKeys.has(key)) continue;
+    knownKeys.add(key);
+    byKey.set(key, enrichedParent);
     extras.push(enrichedParent);
     queue.push(enrichedParent);
   }
@@ -4336,7 +4397,7 @@ async function fetchMessageRowsByKeys(env, headers, keys) {
 async function withThreadAncestors(env, headers, messages, topicByThread) {
   const allRows = [...messages];
   const baseKeys = new Set(messages.filter((row) => row.chat_id && row.message_id).map((row) => messageKey(row)));
-  for (const row of embeddedReplyAncestorRows(messages, topicByThread)) {
+  for (const row of embeddedReplyAncestorRows(messages, topicByThread, allRows)) {
     const key = messageKey(row);
     if (key && !baseKeys.has(key)) {
       baseKeys.add(key);
@@ -4356,7 +4417,7 @@ async function withThreadAncestors(env, headers, messages, topicByThread) {
       baseKeys.add(key);
       return true;
     });
-    const embeddedRows = embeddedReplyAncestorRows(newRows, topicByThread).filter((row) => {
+    const embeddedRows = embeddedReplyAncestorRows(newRows, topicByThread, allRows).filter((row) => {
       const key = messageKey(row);
       if (!key || baseKeys.has(key)) return false;
       baseKeys.add(key);
@@ -4813,6 +4874,10 @@ function outgoingBotMessageRow(apiMessage, sourceRow, runtimeConfig, textValue, 
   const sender = apiMessage.from || {};
   const sentAt = isoFromUnix(apiMessage.date) || new Date().toISOString();
   const topic = topicData(apiMessage);
+  const parsedReplyToMessageId = Number(replyToMessageId);
+  const fallbackReplyToMessageId = Number.isFinite(parsedReplyToMessageId) && parsedReplyToMessageId > 0
+    ? parsedReplyToMessageId
+    : null;
   return {
     platform,
     bot_id: bot.bot_id,
@@ -4845,12 +4910,17 @@ function outgoingBotMessageRow(apiMessage, sourceRow, runtimeConfig, textValue, 
     sent_date: sentAt.slice(0, 10),
     sent_time: sentAt.slice(11, 19),
     edited_at_utc: isoFromUnix(apiMessage.edit_date),
-    reply_to_message_id: apiMessage.reply_to_message?.message_id ?? Number(replyToMessageId) ?? null,
+    reply_to_message_id: apiMessage.reply_to_message?.message_id ?? fallbackReplyToMessageId,
     forward_origin_json: apiMessage.forward_origin ?? null,
     entities_json: apiMessage.entities ?? apiMessage.caption_entities ?? null,
     media_file_id: mediaFileId(apiMessage),
     media_group_id: apiMessage.media_group_id ?? null,
-    raw_payload_json: { dashboard_outgoing: true, message: apiMessage },
+    raw_payload_json: {
+      dashboard_outgoing: true,
+      reply_target_message_id: fallbackReplyToMessageId,
+      reply_target_key: fallbackReplyToMessageId ? messageKey(sourceRow, fallbackReplyToMessageId) : null,
+      message: apiMessage,
+    },
     received_at_utc: new Date().toISOString(),
   };
 }
