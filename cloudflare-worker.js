@@ -5823,6 +5823,62 @@ async function fetchBroadcastGroups(env, authUser) {
   }
 }
 
+function broadcastBodyParts(textValue, fallbackEmail = "") {
+  const text = String(textValue || "");
+  const match = text.match(/^([^:\s]+@[^:\s]+)\s*:\s*\n?([\s\S]*)$/);
+  return {
+    sender: normalizeEmail(match?.[1] || fallbackEmail),
+    body: match ? match[2].trim() : text,
+  };
+}
+
+async function listBroadcastMessageLogs(env, authUser, allowedByKey, unrestricted) {
+  const params = new URLSearchParams({
+    select: "platform,bot_id,bot_username,bot_name,chat_id,chat_title,message_id,body,raw_payload_json,sent_at_utc,received_at_utc",
+    sender_is_bot: "eq.true",
+    order: "received_at_utc.desc",
+    limit: "500",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers: supabaseHeaders(env) });
+  if (!response.ok) return [];
+  const grouped = new Map();
+  for (const row of await response.json()) {
+    const payload = row.raw_payload_json || {};
+    if (payload.dashboard_broadcast !== true) continue;
+    const key = chatKey(row);
+    const group = allowedByKey.get(key);
+    if (!unrestricted && !group) continue;
+    const parts = broadcastBodyParts(row.body, payload.broadcast_sender_email || authUser.email);
+    const broadcastId = payload.broadcast_id
+      || `${parts.sender}:${parts.body}:${String(row.sent_at_utc || row.received_at_utc || "").slice(0, 16)}`;
+    const existing = grouped.get(broadcastId) || {
+      id: `message-${broadcastId}`,
+      sender_email: parts.sender,
+      created_at_utc: row.received_at_utc || row.sent_at_utc,
+      broadcast_id: payload.broadcast_id || "",
+      body: parts.body,
+      sent: 0,
+      failed: 0,
+      targets: [],
+      metadata: { source: "telegram_messages_fallback", broadcast_id: payload.broadcast_id || "" },
+    };
+    existing.sent += 1;
+    existing.targets.push({
+      key,
+      platform: normalizePlatform(row.platform),
+      chat_title: row.chat_title || group?.title || key,
+      ok: true,
+      error: "",
+      message_id: row.message_id || null,
+    });
+    if (Date.parse(row.received_at_utc || 0) > Date.parse(existing.created_at_utc || 0)) {
+      existing.created_at_utc = row.received_at_utc || row.sent_at_utc;
+    }
+    grouped.set(broadcastId, existing);
+  }
+  return [...grouped.values()];
+}
+
 async function fetchBroadcastLogs(env, authUser) {
   try {
     const params = new URLSearchParams({
@@ -5836,7 +5892,7 @@ async function fetchBroadcastLogs(env, authUser) {
     const allowedGroups = await listBroadcastGroups(env, authUser);
     const allowedByKey = new Map(allowedGroups.map((group) => [group.key, group]));
     const unrestricted = groupAccessForUser(authUser).unrestricted;
-    const logs = (await response.json()).map((row) => {
+    const auditLogs = (await response.json()).map((row) => {
       const metadata = row.metadata || {};
       const newValues = row.new_values || {};
       const resultItems = Array.isArray(metadata.results) ? metadata.results : [];
@@ -5876,6 +5932,12 @@ async function fetchBroadcastLogs(env, authUser) {
         metadata,
       };
     }).filter(Boolean);
+    const messageLogs = await listBroadcastMessageLogs(env, authUser, allowedByKey, unrestricted);
+    const auditBroadcastIds = new Set(auditLogs.map((log) => log.broadcast_id).filter(Boolean));
+    const logs = [
+      ...auditLogs,
+      ...messageLogs.filter((log) => !log.broadcast_id || !auditBroadcastIds.has(log.broadcast_id)),
+    ].sort((a, b) => Date.parse(b.created_at_utc || 0) - Date.parse(a.created_at_utc || 0));
     return json({ logs });
   } catch (error) {
     return json({ error: "درخواست لاگ اطلاع‌رسانی انجام نشد", detail: error.message || String(error) }, 500);
