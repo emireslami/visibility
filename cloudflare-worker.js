@@ -566,7 +566,7 @@ const HTML = `<!doctype html>
     }
     function groupLabelSelect(row) {
       const current = String(row.group_label || "");
-      return \`<select class="group-label-select" data-chat-id="\${esc(row.chat_id)}" data-previous="\${esc(current)}" aria-label="لیبل گروه">\${groupLabelOptions.map(([value, label]) => \`<option value="\${esc(value)}" \${current === value ? "selected" : ""}>\${esc(label)}</option>\`).join("")}</select>\`;
+      return \`<select class="group-label-select" data-platform="\${esc(row.platform || "telegram")}" data-chat-id="\${esc(row.chat_id)}" data-previous="\${esc(current)}" aria-label="لیبل گروه">\${groupLabelOptions.map(([value, label]) => \`<option value="\${esc(value)}" \${current === value ? "selected" : ""}>\${esc(label)}</option>\`).join("")}</select>\`;
     }
     function syncProfileUi() {
       headerEmailEl.textContent = currentUser.email;
@@ -949,6 +949,7 @@ const HTML = `<!doctype html>
     }
     function detailHtml(row) {
       const details = [
+        ["Platform", platformText(row.platform)],
         ["Update ID", row.update_id],
         ["Message ID", row.message_id],
         ["Group ID", row.chat_id],
@@ -995,6 +996,7 @@ const HTML = `<!doctype html>
     }
     function groupDetailHtml(row) {
       const details = [
+        ["Platform", platformText(row.platform)],
         ["Group ID", row.chat_id],
         ["Group Name", row.chat_title],
         ["Group Username", row.chat_username],
@@ -1012,6 +1014,18 @@ const HTML = `<!doctype html>
     }
     function messageContent(row) {
       return row.body || row.caption || (row.message_type ? "[" + row.message_type + "]" : "");
+    }
+    function platformText(value) {
+      const labels = { telegram: "Telegram", bale: "Bale", whatsapp: "WhatsApp" };
+      const key = String(value || "telegram").toLowerCase();
+      return labels[key] || key;
+    }
+    function rowPlatform(row) {
+      return String(row?.platform || "telegram").toLowerCase();
+    }
+    function rowMessageKey(row, messageId = row?.message_id) {
+      if (!row?.chat_id || !messageId) return "";
+      return \`\${rowPlatform(row)}:\${row.chat_id}:\${messageId}\`;
     }
     function topicLabel(row) {
       return row.topic_name || "";
@@ -1126,7 +1140,7 @@ const HTML = `<!doctype html>
         if (!row.chat_id || !row.message_id) continue;
         const keys = [row.message_id, ...(Array.isArray(row.album_message_ids) ? row.album_message_ids : [])]
           .filter((value) => value != null)
-          .map((messageId) => row.chat_id + ":" + messageId);
+          .map((messageId) => rowMessageKey(row, messageId));
         for (const key of keys) {
           const existing = latestByMessage.get(key);
           if (!existing || Date.parse(row.edited_at_utc || row.sent_at_utc || 0) > Date.parse(existing.edited_at_utc || existing.sent_at_utc || 0)) {
@@ -1136,13 +1150,13 @@ const HTML = `<!doctype html>
       }
       function parentKeyFor(row) {
         if (!row.reply_to_message_id || !row.chat_id || isTopicRootReply(row)) return null;
-        return row.chat_id + ":" + row.reply_to_message_id;
+        return rowMessageKey(row, row.reply_to_message_id);
       }
       function rootKeyFor(row) {
         let current = row;
         const seen = new Set();
         while (current) {
-          const currentKey = current.chat_id + ":" + current.message_id;
+          const currentKey = rowMessageKey(current);
           if (seen.has(currentKey)) return currentKey;
           seen.add(currentKey);
           const parentKey = parentKeyFor(current);
@@ -1151,12 +1165,12 @@ const HTML = `<!doctype html>
           if (!parent) return currentKey;
           current = parent;
         }
-        return row.chat_id + ":" + row.message_id;
+        return rowMessageKey(row);
       }
       const repliesByRoot = new Map();
       const rootKeys = new Set();
       for (const row of new Set(latestByMessage.values())) {
-        const rowKey = row.chat_id + ":" + row.message_id;
+        const rowKey = rowMessageKey(row);
         const rootKey = rootKeyFor(row);
         rootKeys.add(rootKey);
         if (rootKey !== rowKey) {
@@ -1166,7 +1180,8 @@ const HTML = `<!doctype html>
         }
       }
       return [...rootKeys].map((key) => {
-        const root = latestByMessage.get(key) || { missing: true, chat_id: key.split(":")[0], message_id: key.split(":")[1] };
+        const keyParts = key.split(":");
+        const root = latestByMessage.get(key) || { missing: true, platform: keyParts[0], chat_id: keyParts[1], message_id: keyParts[2] };
         const replies = (repliesByRoot.get(key) || []).sort((a, b) => Number(a.message_id || 0) - Number(b.message_id || 0));
         return { root, replies };
       }).sort((a, b) => {
@@ -1508,7 +1523,7 @@ const HTML = `<!doctype html>
         const res = await fetch("/api/groups/label", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ chat_id: select.dataset.chatId, group_label: select.value }),
+          body: JSON.stringify({ platform: select.dataset.platform || "telegram", chat_id: select.dataset.chatId, group_label: select.value }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "ذخیره لیبل انجام نشد");
@@ -2031,10 +2046,17 @@ const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboar
 const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS];
 const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
 const GROUP_LABELS = ["internal_team", "customer", "provider"];
+const DEFAULT_PLATFORM = "telegram";
+const PLATFORM_LABELS = {
+  telegram: "Telegram",
+  bale: "Bale",
+  whatsapp: "WhatsApp",
+};
 const API_CACHE_TTL_MS = 60 * 1000;
 let dashboardApiCache = null;
 let threadFilterOptionsApiCache = null;
 const TELEGRAM_MESSAGE_SELECT = [
+  "platform",
   "update_id",
   "message_id",
   "chat_id",
@@ -2066,6 +2088,50 @@ const TELEGRAM_MESSAGE_SELECT = [
   "raw_payload_json",
   "received_at_utc",
 ].join(",");
+
+function normalizePlatform(value) {
+  const platform = String(value || DEFAULT_PLATFORM).trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(PLATFORM_LABELS, platform) ? platform : DEFAULT_PLATFORM;
+}
+
+function platformLabel(value) {
+  const platform = normalizePlatform(value);
+  return PLATFORM_LABELS[platform] || platform;
+}
+
+function platformQuery(platform = DEFAULT_PLATFORM) {
+  return `eq.${normalizePlatform(platform)}`;
+}
+
+function messageKey(row, messageId = row?.message_id) {
+  if (!row?.chat_id || !messageId) return "";
+  return `${normalizePlatform(row.platform)}:${row.chat_id}:${messageId}`;
+}
+
+function chatKey(row, chatId = row?.chat_id) {
+  if (!chatId) return "";
+  return `${normalizePlatform(row?.platform)}:${chatId}`;
+}
+
+function mediaGroupKey(row) {
+  if (!row?.chat_id || !row?.media_group_id) return "";
+  return `${normalizePlatform(row.platform)}:${row.chat_id}:${row.media_group_id}`;
+}
+
+function topicThreadKey(row, messageThreadId = row?.message_thread_id) {
+  if (!row?.chat_id || !messageThreadId) return "";
+  return `${normalizePlatform(row.platform)}:${row.chat_id}:${messageThreadId}`;
+}
+
+function parseMessageKey(key) {
+  const [platform, chatId, messageId] = String(key || "").split(":");
+  return { platform: normalizePlatform(platform), chatId, messageId };
+}
+
+function parseMediaGroupKey(key) {
+  const [platform, chatId, mediaGroupId] = String(key || "").split(":");
+  return { platform: normalizePlatform(platform), chatId, mediaGroupId };
+}
 
 function isAccessOwnerEmail(email) {
   return normalizeEmail(email) === ACCESS_OWNER_EMAIL;
@@ -2790,7 +2856,7 @@ function withEditHistory(messages, historyRows = messages) {
   const byMessage = new Map();
   for (const row of historyRows) {
     if (!row.chat_id || !row.message_id) continue;
-    const key = `${row.chat_id}:${row.message_id}`;
+    const key = messageKey(row);
     const list = byMessage.get(key) || [];
     list.push(row);
     byMessage.set(key, list);
@@ -2804,7 +2870,7 @@ function withEditHistory(messages, historyRows = messages) {
     });
     const original = list.find((row) => !row.edited_at_utc) || list[0];
     const latestEdited = [...list].reverse().find((row) => row.edited_at_utc) || null;
-    for (const row of messages.filter((message) => `${message.chat_id}:${message.message_id}` === `${original.chat_id}:${original.message_id}`)) {
+    for (const row of messages.filter((message) => messageKey(message) === messageKey(original))) {
       row.original_message_content = rowContent(original);
       row.latest_edited_message_content = latestEdited ? rowContent(latestEdited) : null;
     }
@@ -2816,14 +2882,14 @@ function withReactions(messages, reactionRows = []) {
   const byMessage = new Map();
   for (const reaction of reactionRows) {
     if (!reaction.chat_id || !reaction.message_id) continue;
-    const key = `${reaction.chat_id}:${reaction.message_id}`;
+    const key = messageKey(reaction);
     const list = byMessage.get(key) || [];
     list.push(reaction);
     byMessage.set(key, list);
   }
   return messages.map((message) => ({
     ...message,
-    reactions: byMessage.get(`${message.chat_id}:${message.message_id}`) || [],
+    reactions: byMessage.get(messageKey(message)) || [],
   }));
 }
 
@@ -2852,7 +2918,7 @@ function isTopicRootReplyRow(row) {
 
 function threadParentKey(row) {
   if (!row?.chat_id || !row?.reply_to_message_id || isTopicRootReplyRow(row)) return null;
-  return `${row.chat_id}:${row.reply_to_message_id}`;
+  return messageKey(row, row.reply_to_message_id);
 }
 
 function latestRowScore(row) {
@@ -2863,7 +2929,7 @@ function latestMessageMap(rows) {
   const byKey = new Map();
   for (const row of rows) {
     if (!row?.chat_id || !row?.message_id) continue;
-    const key = `${row.chat_id}:${row.message_id}`;
+    const key = messageKey(row);
     const existing = byKey.get(key);
     if (!existing || latestRowScore(row) >= latestRowScore(existing)) byKey.set(key, row);
   }
@@ -2875,7 +2941,7 @@ function enrichMessageRows(rows, topicByThread) {
     const date = row.sent_at_utc ? new Date(row.sent_at_utc) : null;
     const registeredDate = row.received_at_utc ? new Date(row.received_at_utc) : null;
     const mappedTopicName = row.message_thread_id
-      ? topicByThread.get(`${row.chat_id}:${row.message_thread_id}`)
+      ? topicByThread.get(topicThreadKey(row))
       : null;
     const payloadTopicName = topicNameFromPayload(row.raw_payload_json);
     const receiveDelaySeconds = date && registeredDate
@@ -2902,8 +2968,8 @@ async function fetchMessageRowsByKeys(env, headers, keys) {
     params.set("order", "edited_at_utc.desc.nullslast,sent_at_utc.desc.nullslast,update_id.desc");
     params.set("limit", "10000");
     params.set("or", `(${chunk.map((key) => {
-      const [chatId, messageId] = key.split(":");
-      return `and(chat_id.eq.${chatId},message_id.eq.${messageId})`;
+      const { platform, chatId, messageId } = parseMessageKey(key);
+      return `and(platform.eq.${platform},chat_id.eq.${chatId},message_id.eq.${messageId})`;
     }).join(",")})`);
     const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers });
     if (!response.ok) throw new Error(await response.text());
@@ -2914,7 +2980,7 @@ async function fetchMessageRowsByKeys(env, headers, keys) {
 
 async function withThreadAncestors(env, headers, messages, topicByThread) {
   const allRows = [...messages];
-  const baseKeys = new Set(messages.filter((row) => row.chat_id && row.message_id).map((row) => `${row.chat_id}:${row.message_id}`));
+  const baseKeys = new Set(messages.filter((row) => row.chat_id && row.message_id).map((row) => messageKey(row)));
   for (let depth = 0; depth < 12; depth += 1) {
     const latest = latestMessageMap(allRows);
     const missingParentKeys = [...new Set([...latest.values()]
@@ -2923,7 +2989,7 @@ async function withThreadAncestors(env, headers, messages, topicByThread) {
     if (!missingParentKeys.length) break;
     const parentRows = await fetchMessageRowsByKeys(env, headers, missingParentKeys);
     const newRows = enrichMessageRows(parentRows, topicByThread).filter((row) => {
-      const key = `${row.chat_id}:${row.message_id}`;
+      const key = messageKey(row);
       if (baseKeys.has(key)) return false;
       baseKeys.add(key);
       return true;
@@ -2944,8 +3010,8 @@ async function fetchMediaGroupRows(env, headers, groupKeys) {
     params.set("order", "sent_at_utc.asc.nullslast,message_id.asc");
     params.set("limit", "10000");
     params.set("or", `(${chunk.map((key) => {
-      const [chatId, mediaGroupId] = key.split(":");
-      return `and(chat_id.eq.${chatId},media_group_id.eq.${mediaGroupId})`;
+      const { platform, chatId, mediaGroupId } = parseMediaGroupKey(key);
+      return `and(platform.eq.${platform},chat_id.eq.${chatId},media_group_id.eq.${mediaGroupId})`;
     }).join(",")})`);
     const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers });
     if (!response.ok) throw new Error(await response.text());
@@ -2957,12 +3023,12 @@ async function fetchMediaGroupRows(env, headers, groupKeys) {
 async function withMediaGroupRows(env, headers, messages, topicByThread) {
   const keys = [...new Set(messages
     .filter((row) => row.chat_id && row.media_group_id)
-    .map((row) => `${row.chat_id}:${row.media_group_id}`))];
+    .map((row) => mediaGroupKey(row)))];
   if (!keys.length) return messages;
-  const existingKeys = new Set(messages.filter((row) => row.chat_id && row.message_id).map((row) => `${row.chat_id}:${row.message_id}`));
+  const existingKeys = new Set(messages.filter((row) => row.chat_id && row.message_id).map((row) => messageKey(row)));
   const rows = await fetchMediaGroupRows(env, headers, keys);
   const extras = enrichMessageRows(rows, topicByThread).filter((row) => {
-    const key = `${row.chat_id}:${row.message_id}`;
+    const key = messageKey(row);
     if (existingKeys.has(key)) return false;
     existingKeys.add(key);
     return true;
@@ -2989,7 +3055,7 @@ function aggregateMediaGroups(messages) {
       passthrough.push(row);
       continue;
     }
-    const key = `${row.chat_id}:${row.media_group_id}`;
+    const key = mediaGroupKey(row);
     const list = groups.get(key) || [];
     list.push(row);
     groups.set(key, list);
@@ -3049,6 +3115,7 @@ function customEmojiId(reaction) {
 }
 
 async function deletePreviousReactions(env, reactionUpdate) {
+  const platform = DEFAULT_PLATFORM;
   const chatId = reactionUpdate.chat?.id;
   const messageId = reactionUpdate.message_id;
   const userId = reactionUpdate.user?.id;
@@ -3056,6 +3123,7 @@ async function deletePreviousReactions(env, reactionUpdate) {
   if (!chatId || !messageId || (!userId && !actorChatId)) return;
 
   const params = new URLSearchParams();
+  params.set("platform", platformQuery(platform));
   params.set("chat_id", `eq.${chatId}`);
   params.set("message_id", `eq.${messageId}`);
   if (userId) params.set("user_id", `eq.${userId}`);
@@ -3083,6 +3151,7 @@ async function handleMessageReaction(env, update) {
   const reactedAt = isoFromUnix(reactionUpdate.date);
   const rows = newReactions.map((reaction) => ({
     update_id: update.update_id,
+    platform: DEFAULT_PLATFORM,
     chat_id: reactionUpdate.chat.id,
     message_id: reactionUpdate.message_id,
     user_id: user.id ?? null,
@@ -3233,7 +3302,7 @@ function leftMemberStatus(status) {
 
 async function insertChat(env, row) {
   if (!row.chat_id) return;
-  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_chats?on_conflict=chat_id`, {
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_chats?on_conflict=platform,chat_id`, {
     method: "POST",
     headers: supabaseHeaders(env, "resolution=ignore-duplicates,return=minimal"),
     body: JSON.stringify(row),
@@ -3243,7 +3312,8 @@ async function insertChat(env, row) {
 
 async function patchChat(env, chatId, row) {
   if (!chatId) return;
-  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_chats?chat_id=eq.${chatId}`, {
+  const platform = normalizePlatform(row.platform);
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_chats?platform=eq.${platform}&chat_id=eq.${chatId}`, {
     method: "PATCH",
     headers: supabaseHeaders(env, "return=minimal"),
     body: JSON.stringify(row),
@@ -3257,6 +3327,7 @@ async function upsertChatFromMessage(env, message, update) {
   const now = new Date().toISOString();
   const seenAt = isoFromUnix(message.date) || now;
   await insertChat(env, {
+    platform: DEFAULT_PLATFORM,
     chat_id: chat.id,
     chat_title: chat.title ?? null,
     chat_username: chat.username ?? null,
@@ -3268,6 +3339,7 @@ async function upsertChatFromMessage(env, message, update) {
     updated_at_utc: now,
   });
   await patchChat(env, chat.id, {
+    platform: DEFAULT_PLATFORM,
     chat_title: chat.title ?? null,
     chat_username: chat.username ?? null,
     chat_type: chat.type ?? null,
@@ -3289,6 +3361,7 @@ async function upsertChatFromMembership(env, update) {
   const now = new Date().toISOString();
 
   await insertChat(env, {
+    platform: DEFAULT_PLATFORM,
     chat_id: chat.id,
     chat_title: chat.title ?? null,
     chat_username: chat.username ?? null,
@@ -3301,6 +3374,7 @@ async function upsertChatFromMembership(env, update) {
   });
 
   const patch = {
+    platform: DEFAULT_PLATFORM,
     chat_title: chat.title ?? null,
     chat_username: chat.username ?? null,
     chat_type: chat.type ?? null,
@@ -3318,10 +3392,11 @@ async function upsertTopic(env, message, update) {
   const topic = topicData(message);
   if (!chat.id || !topic.messageThreadId || !topic.topicName) return;
 
-  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?on_conflict=chat_id,message_thread_id`, {
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?on_conflict=platform,chat_id,message_thread_id`, {
     method: "POST",
     headers: supabaseHeaders(env, "resolution=merge-duplicates,return=minimal"),
     body: JSON.stringify({
+      platform: DEFAULT_PLATFORM,
       chat_id: chat.id,
       message_thread_id: topic.messageThreadId,
       topic_name: topic.topicName,
@@ -3414,6 +3489,7 @@ async function handleTelegramWebhook(request, env) {
   const senderPhoto = await fetchSenderProfilePhoto(env, sender.id);
 
   const row = {
+    platform: DEFAULT_PLATFORM,
     update_id: update.update_id,
     message_id: message.message_id ?? null,
     chat_id: chat.id ?? null,
@@ -3449,7 +3525,7 @@ async function handleTelegramWebhook(request, env) {
     raw_payload_json: update,
   };
 
-  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?on_conflict=update_id,message_id`, {
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?on_conflict=platform,update_id,message_id`, {
     method: "POST",
     headers: supabaseHeaders(env, "resolution=ignore-duplicates,return=minimal"),
     body: JSON.stringify(row),
@@ -3462,8 +3538,10 @@ async function handleTelegramWebhook(request, env) {
 
 async function fetchMessages(request, env) {
   const url = new URL(request.url);
+  const platform = normalizePlatform(url.searchParams.get("platform"));
   const params = new URLSearchParams();
   params.set("select", TELEGRAM_MESSAGE_SELECT);
+  params.set("platform", platformQuery(platform));
   params.set("order", "sent_at_utc.desc.nullslast,id.desc");
   params.set("limit", "500");
 
@@ -3491,7 +3569,7 @@ async function fetchMessages(request, env) {
     return json({ error: "Supabase request failed", detail: await response.text() }, 500);
   }
 
-  const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?select=chat_id,message_thread_id,topic_name&limit=10000`, {
+  const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?select=platform,chat_id,message_thread_id,topic_name&platform=${platformQuery(platform)}&limit=10000`, {
     headers,
   });
   if (!topicsResponse.ok) {
@@ -3500,7 +3578,7 @@ async function fetchMessages(request, env) {
 
   const topics = await topicsResponse.json();
   const topicByThread = new Map(
-    topics.map((topicRow) => [`${topicRow.chat_id}:${topicRow.message_thread_id}`, topicRow.topic_name])
+    topics.map((topicRow) => [topicThreadKey(topicRow), topicRow.topic_name])
   );
   const rows = await response.json();
   let messages = enrichMessageRows(rows, topicByThread);
@@ -3531,16 +3609,16 @@ async function fetchMessages(request, env) {
   const editedKeys = [...new Set(
     messages
       .filter((row) => row.edited_at_utc && row.chat_id && row.message_id)
-      .map((row) => `${row.chat_id}:${row.message_id}`)
+      .map((row) => messageKey(row))
   )];
   if (editedKeys.length) {
     const historyParams = new URLSearchParams();
-    historyParams.set("select", "update_id,message_id,chat_id,body,caption,message_type,edited_at_utc");
+    historyParams.set("select", "platform,update_id,message_id,chat_id,body,caption,message_type,edited_at_utc");
     historyParams.set("order", "edited_at_utc.asc.nullsfirst,update_id.asc");
     historyParams.set("limit", "10000");
     historyParams.set("or", `(${editedKeys.map((key) => {
-      const [chatIdValue, messageIdValue] = key.split(":");
-      return `and(chat_id.eq.${chatIdValue},message_id.eq.${messageIdValue})`;
+      const { platform: keyPlatform, chatId: chatIdValue, messageId: messageIdValue } = parseMessageKey(key);
+      return `and(platform.eq.${keyPlatform},chat_id.eq.${chatIdValue},message_id.eq.${messageIdValue})`;
     }).join(",")})`);
     const historyResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${historyParams}`, {
       headers,
@@ -3551,11 +3629,12 @@ async function fetchMessages(request, env) {
   const reactionKeys = [...new Set(
     messages
       .filter((row) => row.chat_id && row.message_id)
-      .map((row) => `${row.chat_id}:${row.message_id}`)
+      .map((row) => messageKey(row))
   )];
   if (reactionKeys.length) {
     const reactionParams = new URLSearchParams();
     reactionParams.set("select", [
+      "platform",
       "chat_id",
       "message_id",
       "user_id",
@@ -3574,8 +3653,8 @@ async function fetchMessages(request, env) {
     reactionParams.set("limit", "10000");
     reactionParams.set("order", "reacted_at_utc.asc.nullslast,id.asc");
     reactionParams.set("or", `(${reactionKeys.map((key) => {
-      const [chatIdValue, messageIdValue] = key.split(":");
-      return `and(chat_id.eq.${chatIdValue},message_id.eq.${messageIdValue})`;
+      const { platform: keyPlatform, chatId: chatIdValue, messageId: messageIdValue } = parseMessageKey(key);
+      return `and(platform.eq.${keyPlatform},chat_id.eq.${chatIdValue},message_id.eq.${messageIdValue})`;
     }).join(",")})`);
     const reactionsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_message_reactions?${reactionParams}`, {
       headers,
@@ -3587,8 +3666,11 @@ async function fetchMessages(request, env) {
 }
 
 async function fetchGroups(request, env) {
+  const url = new URL(request.url);
+  const platform = normalizePlatform(url.searchParams.get("platform"));
   const params = new URLSearchParams();
-  params.set("select", "chat_id,chat_title,chat_username,chat_type,group_label,joined_at_utc,first_seen_at_utc,last_seen_at_utc,message_count,last_message_at_utc");
+  params.set("select", "platform,chat_id,chat_title,chat_username,chat_type,group_label,joined_at_utc,first_seen_at_utc,last_seen_at_utc,message_count,last_message_at_utc");
+  params.set("platform", platformQuery(platform));
   params.set("order", "first_seen_at_utc.desc.nullslast,joined_at_utc.desc.nullslast,last_seen_at_utc.desc.nullslast");
   params.set("limit", "1000");
 
@@ -3598,7 +3680,11 @@ async function fetchGroups(request, env) {
     return json({ error: "Supabase groups request failed", detail: await response.text() }, 500);
   }
 
-  const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?select=chat_id,topic_name,message_thread_id&limit=10000`, { headers });
+  const topicParams = new URLSearchParams();
+  topicParams.set("select", "platform,chat_id,topic_name,message_thread_id");
+  topicParams.set("platform", platformQuery(platform));
+  topicParams.set("limit", "10000");
+  const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?${topicParams}`, { headers });
   if (!topicsResponse.ok) {
     return json({ error: "Supabase topics request failed", detail: await topicsResponse.text() }, 500);
   }
@@ -3606,9 +3692,9 @@ async function fetchGroups(request, env) {
   for (const topic of await topicsResponse.json()) {
     const topicName = realTopicName(topic.topic_name);
     if (!topic.chat_id || !topicName) continue;
-    const list = topicsByChat.get(String(topic.chat_id)) || [];
+    const list = topicsByChat.get(chatKey(topic)) || [];
     if (!list.includes(topicName)) list.push(topicName);
-    topicsByChat.set(String(topic.chat_id), list);
+    topicsByChat.set(chatKey(topic), list);
   }
 
   const rows = await response.json();
@@ -3619,7 +3705,7 @@ async function fetchGroups(request, env) {
     const lastMessage = row.last_message_at_utc ? tehranParts(new Date(row.last_message_at_utc)) : { sent_date: null, sent_time: null };
     return {
       ...row,
-      topic_names: (topicsByChat.get(String(row.chat_id)) || []).join(", "),
+      topic_names: (topicsByChat.get(chatKey(row)) || []).join(", "),
       message_count: Number(row.message_count || 0),
       joined_date: joined.sent_date,
       joined_time: joined.sent_time,
@@ -3641,12 +3727,13 @@ async function updateGroupLabel(request, env) {
     return json({ error: "درخواست نامعتبر است" }, 400);
   }
   const chatId = String(body.chat_id || "").trim();
+  const platform = normalizePlatform(body.platform);
   if (!/^-?\d+$/.test(chatId)) return json({ error: "شناسه گروه نامعتبر است" }, 400);
   const groupLabel = normalizeGroupLabel(body.group_label);
   if (body.group_label && !groupLabel) {
     return json({ error: "لیبل گروه نامعتبر است" }, 400);
   }
-  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_chats?chat_id=eq.${encodeURIComponent(chatId)}`, {
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_chats?platform=eq.${platform}&chat_id=eq.${encodeURIComponent(chatId)}`, {
     method: "PATCH",
     headers: supabaseHeaders(env, "return=representation"),
     body: JSON.stringify({
@@ -3667,6 +3754,7 @@ async function fetchDashboard(request, env) {
   }
   const params = new URLSearchParams();
   params.set("select", "sent_at_utc,chat_title");
+  params.set("platform", platformQuery(DEFAULT_PLATFORM));
   params.set("sent_at_utc", "not.is.null");
   params.set("order", "sent_at_utc.asc");
   params.set("limit", "10000");
@@ -3705,7 +3793,8 @@ async function fetchThreadFilterOptions(request, env) {
   }
   const headers = supabaseHeaders(env);
   const groupParams = new URLSearchParams();
-  groupParams.set("select", "chat_id,chat_title,message_count,last_seen_at_utc");
+  groupParams.set("select", "platform,chat_id,chat_title,message_count,last_seen_at_utc");
+  groupParams.set("platform", platformQuery(DEFAULT_PLATFORM));
   groupParams.set("order", "message_count.desc,last_seen_at_utc.desc");
   groupParams.set("limit", "1000");
   const groupsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${groupParams}`, { headers });
@@ -3715,6 +3804,7 @@ async function fetchThreadFilterOptions(request, env) {
 
   const dateParams = new URLSearchParams();
   dateParams.set("select", "sent_at_utc");
+  dateParams.set("platform", platformQuery(DEFAULT_PLATFORM));
   dateParams.set("sent_at_utc", "not.is.null");
   dateParams.set("order", "sent_at_utc.desc");
   dateParams.set("limit", "10000");
@@ -3724,20 +3814,22 @@ async function fetchThreadFilterOptions(request, env) {
   }
 
   const topicsParams = new URLSearchParams();
-  topicsParams.set("select", "chat_id,topic_name,message_thread_id");
+  topicsParams.set("select", "platform,chat_id,topic_name,message_thread_id");
+  topicsParams.set("platform", platformQuery(DEFAULT_PLATFORM));
   topicsParams.set("limit", "10000");
   const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?${topicsParams}`, { headers });
   if (!topicsResponse.ok) {
     return json({ error: "Supabase topics request failed", detail: await topicsResponse.text() }, 500);
   }
   const groups = (await groupsResponse.json()).filter((group) => group.chat_title);
-  const groupTitleById = new Map(groups.map((group) => [String(group.chat_id), group.chat_title]));
+  const groupTitleById = new Map(groups.map((group) => [chatKey(group), group.chat_title]));
   const topicsByKey = new Map();
   for (const topic of await topicsResponse.json()) {
     const topicName = realTopicName(topic.topic_name);
-    const chatTitle = groupTitleById.get(String(topic.chat_id)) || "";
+    const chatTitle = groupTitleById.get(chatKey(topic)) || "";
     if (!chatTitle || !topicName) continue;
-    topicsByKey.set(`${topic.chat_id}:${topic.message_thread_id || topicName}`, {
+    topicsByKey.set(`${normalizePlatform(topic.platform)}:${topic.chat_id}:${topic.message_thread_id || topicName}`, {
+      platform: normalizePlatform(topic.platform),
       chat_id: topic.chat_id,
       chat_title: chatTitle,
       topic_name: topicName,
