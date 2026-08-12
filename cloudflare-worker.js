@@ -1671,6 +1671,21 @@ const HTML = `<!doctype html>
           const data = await res.json();
           if (!res.ok) {
             accessMessageEl.textContent = data.error || "ارسال دوباره ایمیل انجام نشد";
+            if (data.retry_after_seconds) {
+              let remaining = Number(data.retry_after_seconds);
+              resendButton.textContent = remaining + "s";
+              const timer = setInterval(() => {
+                remaining -= 1;
+                if (remaining <= 0) {
+                  clearInterval(timer);
+                  resendButton.textContent = "Resend Email";
+                  resendButton.disabled = false;
+                  return;
+                }
+                resendButton.textContent = remaining + "s";
+              }, 1000);
+              return;
+            }
             resendButton.disabled = false;
             return;
           }
@@ -2031,6 +2046,21 @@ function text(value, status = 200, contentType = "text/plain; charset=utf-8") {
       "cache-control": "no-store",
     },
   });
+}
+
+function authEmailError(message, fallback = "ارسال ایمیل انجام نشد") {
+  const raw = String(message || fallback);
+  const waitMatch = raw.match(/after\s+(\d+)\s+seconds?/i);
+  if (waitMatch) {
+    const seconds = Number(waitMatch[1]);
+    const error = new Error(`برای امنیت، ارسال دوباره ایمیل بعد از ${seconds} ثانیه ممکن است.`);
+    error.status = 429;
+    error.retry_after_seconds = seconds;
+    return error;
+  }
+  const error = new Error(raw || fallback);
+  error.status = 500;
+  return error;
 }
 
 function htmlEscape(value) {
@@ -2524,7 +2554,7 @@ async function sendSupabaseRecoveryEmail(env, email, redirectTo) {
   if (response.ok) return;
   const body = await readSupabaseJson(response);
   const message = body?.msg || body?.message || body?.error_description || "ارسال ایمیل بازیابی انجام نشد";
-  throw new Error(message);
+  throw authEmailError(message, "ارسال ایمیل بازیابی انجام نشد");
 }
 
 async function sendAccessInviteEmail(env, email, origin) {
@@ -2567,7 +2597,7 @@ async function handleForgotPassword(request, env) {
       message: "ایمیل بازیابی ارسال شد. لطفاً inbox یا spam را بررسی کنید.",
     }), 200, "text/html; charset=utf-8");
   } catch (error) {
-    return text(forgotPasswordHtml({ error: error.message || "ارسال ایمیل بازیابی انجام نشد", email }), 500, "text/html; charset=utf-8");
+    return text(forgotPasswordHtml({ error: error.message || "ارسال ایمیل بازیابی انجام نشد", email }), error.status || 500, "text/html; charset=utf-8");
   }
 }
 
@@ -2785,7 +2815,10 @@ async function resendAccessInviteEmail(request, env, authUser) {
         invite_email_error: error.message || "ارسال ایمیل دعوت انجام نشد",
       },
     }).catch(() => {});
-    return json({ error: error.message || "ارسال دوباره ایمیل انجام نشد" }, 500);
+    return json({
+      error: error.message || "ارسال دوباره ایمیل انجام نشد",
+      ...(error.retry_after_seconds ? { retry_after_seconds: error.retry_after_seconds } : {}),
+    }, error.status || 500);
   }
 }
 
