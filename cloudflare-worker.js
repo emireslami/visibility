@@ -59,6 +59,17 @@ const HTML = `<!doctype html>
     .groups-table col.group-messages { width:4%; }
     .groups-table col.group-details { width:6%; }
     .groups-table .group-name-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.5; }
+    .senders-table col.sender-id { width:11%; }
+    .senders-table col.sender-name { width:10%; }
+    .senders-table col.sender-last-name { width:10%; }
+    .senders-table col.sender-username { width:10%; }
+    .senders-table col.sender-platform { width:7%; }
+    .senders-table col.sender-label { width:13%; }
+    .senders-table col.sender-last-group { width:23%; }
+    .senders-table col.sender-messages { width:7%; }
+    .senders-table col.sender-last-message { width:6%; }
+    .senders-table col.sender-details { width:5%; }
+    .senders-table .sender-last-group-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.45; }
     .group-label-filter { width:100%; min-width:0; }
     .group-label-filter .multi-button { min-height:32px; font-size:12px; }
     td.body { direction:rtl; text-align:right; }
@@ -367,11 +378,11 @@ const HTML = `<!doctype html>
       .thread-filters button { grid-column:1 / -1; }
       .multi-panel { width:min(var(--dropdown-w, 100%), calc(100vw - 28px)); max-height:45vh; z-index:1200; }
       .analytics-summary { grid-template-columns:repeat(2, minmax(120px, 1fr)); }
-      .messages-table, .groups-table, .bots-table, .access-log-table, .broadcast-log-table, .access-users-table, .analytics-table { display:block; border:0; background:transparent; box-shadow:none; }
-      .messages-table colgroup, .groups-table colgroup, .bots-table colgroup, .access-log-table colgroup, .broadcast-log-table colgroup, .access-users-table colgroup, .analytics-table colgroup,
-      .messages-table thead, .groups-table thead, .bots-table thead, .access-log-table thead, .broadcast-log-table thead, .access-users-table thead, .analytics-table thead { display:none; }
-      .messages-table tbody, .groups-table tbody, .bots-table tbody, .access-log-table tbody, .broadcast-log-table tbody, .access-users-table tbody, .analytics-table tbody { display:grid; gap:10px; }
-      .messages-table tr, .groups-table tr, .bots-table tr, .access-log-table tr, .broadcast-log-table tr, .access-users-table tr, .analytics-table tr {
+      .messages-table, .groups-table, .senders-table, .bots-table, .access-log-table, .broadcast-log-table, .access-users-table, .analytics-table { display:block; border:0; background:transparent; box-shadow:none; }
+      .messages-table colgroup, .groups-table colgroup, .senders-table colgroup, .bots-table colgroup, .access-log-table colgroup, .broadcast-log-table colgroup, .access-users-table colgroup, .analytics-table colgroup,
+      .messages-table thead, .groups-table thead, .senders-table thead, .bots-table thead, .access-log-table thead, .broadcast-log-table thead, .access-users-table thead, .analytics-table thead { display:none; }
+      .messages-table tbody, .groups-table tbody, .senders-table tbody, .bots-table tbody, .access-log-table tbody, .broadcast-log-table tbody, .access-users-table tbody, .analytics-table tbody { display:grid; gap:10px; }
+      .messages-table tr, .groups-table tr, .senders-table tr, .bots-table tr, .access-log-table tr, .broadcast-log-table tr, .access-users-table tr, .analytics-table tr {
         display:grid;
         gap:8px;
         padding:12px;
@@ -379,7 +390,7 @@ const HTML = `<!doctype html>
         background:#fff;
         box-shadow:0 1px 2px rgba(9,30,66,.08);
       }
-      .messages-table td, .groups-table td, .bots-table td, .access-log-table td, .broadcast-log-table td, .access-users-table td, .analytics-table td {
+      .messages-table td, .groups-table td, .senders-table td, .bots-table td, .access-log-table td, .broadcast-log-table td, .access-users-table td, .analytics-table td {
         min-height:0;
         height:auto;
         display:grid;
@@ -396,7 +407,7 @@ const HTML = `<!doctype html>
         font-size:12px;
         text-align:right;
       }
-      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before, .access-users-table td::before, .analytics-table td::before {
+      .messages-table td::before, .groups-table td::before, .senders-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before, .access-users-table td::before, .analytics-table td::before {
         content:attr(data-label);
         color:#525252;
         font-weight:800;
@@ -451,8 +462,8 @@ const HTML = `<!doctype html>
       .thread-filters { grid-template-columns:1fr; }
       .signals { grid-template-columns:1fr; }
       .analytics-summary { grid-template-columns:1fr; }
-      .messages-table td, .groups-table td, .bots-table td, .access-log-table td, .broadcast-log-table td, .access-users-table td, .analytics-table td { grid-template-columns:1fr; gap:4px; }
-      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before, .access-users-table td::before, .analytics-table td::before { font-size:10px; }
+      .messages-table td, .groups-table td, .senders-table td, .bots-table td, .access-log-table td, .broadcast-log-table td, .access-users-table td, .analytics-table td { grid-template-columns:1fr; gap:4px; }
+      .messages-table td::before, .groups-table td::before, .senders-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before, .access-users-table td::before, .analytics-table td::before { font-size:10px; }
     }
   </style>
 </head>
@@ -466,6 +477,7 @@ const HTML = `<!doctype html>
         <button class="nav-button" id="threadsNav" type="button">تردها</button>
         <button class="nav-button active" id="messagesNav" type="button">پیام‌ها</button>
         <button class="nav-button" id="groupsNav" type="button">گروه‌ها</button>
+        <button class="nav-button" id="sendersNav" type="button">ارسال‌کننده‌ها</button>
         <button class="nav-button" id="broadcastNav" type="button">اطلاع‌رسانی</button>
         <button class="nav-button" id="botsNav" type="button">بات‌ها</button>
         <button class="nav-button" id="accessNav" type="button">دسترسی</button>
@@ -631,6 +643,37 @@ const HTML = `<!doctype html>
           </tr>
         </thead>
         <tbody id="groupRows"></tbody>
+      </table>
+    </section>
+    <section class="page" id="sendersPage" hidden>
+      <table class="senders-table">
+        <colgroup>
+          <col class="sender-id" />
+          <col class="sender-name" />
+          <col class="sender-last-name" />
+          <col class="sender-username" />
+          <col class="sender-platform" />
+          <col class="sender-label" />
+          <col class="sender-last-group" />
+          <col class="sender-messages" />
+          <col class="sender-last-message" />
+          <col class="sender-details" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>شناسه فرستنده</th>
+            <th>نام</th>
+            <th>نام خانوادگی</th>
+            <th>یوزرنیم</th>
+            <th>پلتفرم</th>
+            <th>لیبل</th>
+            <th>آخرین گروه</th>
+            <th>پیام‌ها</th>
+            <th>آخرین پیام</th>
+            <th>جزئیات</th>
+          </tr>
+        </thead>
+        <tbody id="senderRows"></tbody>
       </table>
     </section>
     <section class="page" id="threadsPage" hidden>
@@ -842,6 +885,7 @@ const HTML = `<!doctype html>
   <script>
     const rowsEl = document.getElementById("rows");
     const groupRowsEl = document.getElementById("groupRows");
+    const senderRowsEl = document.getElementById("senderRows");
     const threadRowsEl = document.getElementById("threadRows");
     const dailyChartEl = document.getElementById("dailyChart");
     const chartLegendEl = document.getElementById("chartLegend");
@@ -852,6 +896,7 @@ const HTML = `<!doctype html>
     const analyticsNavEl = document.getElementById("analyticsNav");
     const messagesNavEl = document.getElementById("messagesNav");
     const groupsNavEl = document.getElementById("groupsNav");
+    const sendersNavEl = document.getElementById("sendersNav");
     const threadsNavEl = document.getElementById("threadsNav");
     const broadcastNavEl = document.getElementById("broadcastNav");
     const botsNavEl = document.getElementById("botsNav");
@@ -860,6 +905,7 @@ const HTML = `<!doctype html>
     const analyticsPageEl = document.getElementById("analyticsPage");
     const messagesPageEl = document.getElementById("messagesPage");
     const groupsPageEl = document.getElementById("groupsPage");
+    const sendersPageEl = document.getElementById("sendersPage");
     const threadsPageEl = document.getElementById("threadsPage");
     const broadcastPageEl = document.getElementById("broadcastPage");
     const botsPageEl = document.getElementById("botsPage");
@@ -969,6 +1015,7 @@ const HTML = `<!doctype html>
     }
     function canOpen(page) {
       if (page === "analytics") return currentUserPermissions.has("dashboard");
+      if (page === "senders") return currentUserPermissions.has("messages");
       return currentUserPermissions.has(page);
     }
     function selectedPermissions(root) {
@@ -1013,6 +1060,15 @@ const HTML = `<!doctype html>
         provider: "پروایدر",
       };
       return labels[String(value || "")] || "";
+    }
+    const senderLabelOptions = [
+      ["", "بدون لیبل"],
+      ["internal_team", "افراد داخلی شرکت"],
+      ["customer", "افراد مشتری"],
+      ["provider", "افراد پروایدرها"],
+    ];
+    function senderLabelText(value) {
+      return senderLabelOptions.find(([key]) => key === String(value || ""))?.[1] || "بدون لیبل";
     }
     function groupAccessHtml(user) {
       const access = user.group_access || { labels: [], groups: [] };
@@ -1156,6 +1212,38 @@ const HTML = `<!doctype html>
         filter.setValue(root.dataset.current || "");
       });
     }
+    function senderLabelSelect(row) {
+      const current = String(row.sender_label || "");
+      return \`<div class="multi-filter single-filter group-label-filter" data-sender-label-filter data-platform="\${esc(row.platform || "telegram")}" data-sender-id="\${esc(row.sender_id)}" data-current="\${esc(current)}"></div>\`;
+    }
+    function mountSenderLabelFilters() {
+      senderRowsEl.querySelectorAll("[data-sender-label-filter]").forEach((root) => {
+        const filter = createSingleFilter(root, "بدون لیبل", async () => {
+          const previous = root.dataset.current || "";
+          const nextValue = filter.value();
+          root.classList.add("loading");
+          try {
+            const res = await fetch("/api/senders/label", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ platform: root.dataset.platform || "telegram", sender_id: root.dataset.senderId, sender_label: nextValue }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "ذخیره لیبل انجام نشد");
+            root.dataset.current = data.sender_label || "";
+            filter.setValue(root.dataset.current);
+            setStatus(loadingToken, "لیبل ارسال‌کننده ذخیره شد");
+          } catch (error) {
+            filter.setValue(previous);
+            setStatus(loadingToken, error.message || "ذخیره لیبل انجام نشد");
+          } finally {
+            root.classList.remove("loading");
+          }
+        });
+        filter.setOptions(senderLabelOptions.map(([value, label]) => ({ value, label })));
+        filter.setValue(root.dataset.current || "");
+      });
+    }
     function accessActionText(action) {
       const labels = {
         invite: "دعوت",
@@ -1245,7 +1333,7 @@ const HTML = `<!doctype html>
       else if (isGroups) loadAccessGroupView();
       else loadAccessUsers();
     }
-    const routablePages = ["dashboard", "analytics", "threads", "messages", "groups", "broadcast", "bots", "access", "profile"];
+    const routablePages = ["dashboard", "analytics", "threads", "messages", "groups", "senders", "broadcast", "bots", "access", "profile"];
     function pagePath(page) {
       return "/main/" + page;
     }
@@ -1255,11 +1343,11 @@ const HTML = `<!doctype html>
       return routablePages.includes(page) ? page : "messages";
     }
     function firstAccessiblePage() {
-      return ["dashboard", "analytics", "threads", "messages", "groups", "broadcast", "bots", "access"].find(canOpen);
+      return ["dashboard", "analytics", "threads", "messages", "groups", "senders", "broadcast", "bots", "access"].find(canOpen);
     }
     function setupAccessShell() {
       accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
-      const navByPage = { dashboard:dashboardNavEl, analytics:analyticsNavEl, threads:threadsNavEl, messages:messagesNavEl, groups:groupsNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
+      const navByPage = { dashboard:dashboardNavEl, analytics:analyticsNavEl, threads:threadsNavEl, messages:messagesNavEl, groups:groupsNavEl, senders:sendersNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
       Object.entries(navByPage).forEach(([page, element]) => { element.hidden = !canOpen(page); });
       const firstPage = firstAccessiblePage();
       if (!firstPage) {
@@ -2295,6 +2383,52 @@ const HTML = `<!doctype html>
         setStatus(token, "خطا در دریافت گروه‌ها");
       }
     }
+    function senderDetailHtml(row) {
+      const details = [
+        ["پلتفرم", platformText(row.platform)],
+        ["شناسه فرستنده", row.sender_id],
+        ["نام", row.sender_first_name],
+        ["نام خانوادگی", row.sender_last_name],
+        ["یوزرنیم", row.sender_username ? "@" + row.sender_username : ""],
+        ["فرستنده بات است", row.sender_is_bot],
+        ["لیبل", senderLabelText(row.sender_label)],
+        ["تعداد پیام‌ها", row.message_count],
+        ["آخرین گروه", [row.last_chat_title, row.last_chat_id].filter(Boolean).join(" | ")],
+        ["آخرین پیام", row.last_message_tehran],
+      ];
+      return \`<div class="details-grid">\${details.map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
+    }
+    async function loadSenders() {
+      const token = showLoading("در حال دریافت ارسال‌کننده‌ها...");
+      try {
+        const res = await fetch("/api/senders");
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.senders)) {
+          senderRowsEl.innerHTML = "";
+          setStatus(token, data.detail || data.error || "خطا در دریافت ارسال‌کننده‌ها");
+          return;
+        }
+        detailByKey.clear();
+        senderRowsEl.innerHTML = data.senders.length ? data.senders.map((row) => \`
+          <tr>
+            <td data-label="شناسه فرستنده">\${esc(row.sender_id)}</td>
+            <td data-label="نام">\${esc(row.sender_first_name || "")}</td>
+            <td data-label="نام خانوادگی">\${esc(row.sender_last_name || "")}</td>
+            <td data-label="یوزرنیم">\${esc(row.sender_username ? "@" + row.sender_username : "")}</td>
+            <td data-label="پلتفرم">\${esc(platformText(row.platform))}</td>
+            <td data-label="لیبل">\${senderLabelSelect(row)}</td>
+            <td class="sender-last-group-cell" data-label="آخرین گروه">\${esc(row.last_chat_title || "-")}<br><span class="thread-muted">\${esc(row.last_chat_id || "")}</span></td>
+            <td data-label="پیام‌ها">\${esc(row.message_count)}</td>
+            <td data-label="آخرین پیام">\${esc(row.last_message_tehran || "-")}</td>
+            <td data-label="جزئیات"><button class="details-button" type="button" data-detail-key="sender-\${esc(row.platform || "telegram")}:\${esc(row.sender_id)}">جزئیات</button></td>
+          </tr>\`).join("") : '<tr><td colspan="10" class="empty">ارسال‌کننده‌ای پیدا نشد.</td></tr>';
+        data.senders.forEach(row => detailByKey.set("sender-" + (row.platform || "telegram") + ":" + row.sender_id, senderDetailHtml(row)));
+        mountSenderLabelFilters();
+        setStatus(token, data.senders.length + " ارسال‌کننده");
+      } catch (error) {
+        setStatus(token, "خطا در دریافت ارسال‌کننده‌ها");
+      }
+    }
     async function loadAccessUsers() {
       const token = showLoading("در حال دریافت کاربران...");
       try {
@@ -2516,6 +2650,7 @@ const HTML = `<!doctype html>
       const isDashboard = page === "dashboard";
       const isAnalytics = page === "analytics";
       const isGroups = page === "groups";
+      const isSenders = page === "senders";
       const isThreads = page === "threads";
       const isBroadcast = page === "broadcast";
       const isBots = page === "bots";
@@ -2523,8 +2658,9 @@ const HTML = `<!doctype html>
       const isProfile = page === "profile";
       dashboardPageEl.hidden = !isDashboard;
       analyticsPageEl.hidden = !isAnalytics;
-      messagesPageEl.hidden = isDashboard || isAnalytics || isGroups || isThreads || isBroadcast || isBots || isAccess || isProfile;
+      messagesPageEl.hidden = isDashboard || isAnalytics || isGroups || isSenders || isThreads || isBroadcast || isBots || isAccess || isProfile;
       groupsPageEl.hidden = !isGroups;
+      sendersPageEl.hidden = !isSenders;
       threadsPageEl.hidden = !isThreads;
       broadcastPageEl.hidden = !isBroadcast;
       botsPageEl.hidden = !isBots;
@@ -2532,8 +2668,9 @@ const HTML = `<!doctype html>
       profilePageEl.hidden = !isProfile;
       dashboardNavEl.classList.toggle("active", isDashboard);
       analyticsNavEl.classList.toggle("active", isAnalytics);
-      messagesNavEl.classList.toggle("active", !isDashboard && !isAnalytics && !isGroups && !isThreads && !isBroadcast && !isBots && !isAccess && !isProfile);
+      messagesNavEl.classList.toggle("active", !isDashboard && !isAnalytics && !isGroups && !isSenders && !isThreads && !isBroadcast && !isBots && !isAccess && !isProfile);
       groupsNavEl.classList.toggle("active", isGroups);
+      sendersNavEl.classList.toggle("active", isSenders);
       threadsNavEl.classList.toggle("active", isThreads);
       broadcastNavEl.classList.toggle("active", isBroadcast);
       botsNavEl.classList.toggle("active", isBots);
@@ -2541,6 +2678,7 @@ const HTML = `<!doctype html>
       if (isDashboard) loadDashboard();
       else if (isAnalytics) loadAnalytics();
       else if (isGroups) loadGroups();
+      else if (isSenders) loadSenders();
       else if (isThreads) loadThreadFilterOptions().then(loadThreads);
       else if (isBroadcast) loadBroadcast();
       else if (isBots) loadBots();
@@ -2569,6 +2707,10 @@ const HTML = `<!doctype html>
     groupRowsEl.addEventListener("click", event => {
       const detailsButton = event.target.closest("[data-detail-key]");
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات گروه");
+    });
+    senderRowsEl.addEventListener("click", event => {
+      const detailsButton = event.target.closest("[data-detail-key]");
+      if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات ارسال‌کننده");
     });
     botRowsEl.addEventListener("click", event => {
       const detailsButton = event.target.closest("[data-detail-key]");
@@ -2779,6 +2921,7 @@ const HTML = `<!doctype html>
     analyticsNavEl.addEventListener("click", () => showPage("analytics"));
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
+    sendersNavEl.addEventListener("click", () => showPage("senders"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
     broadcastNavEl.addEventListener("click", () => showPage("broadcast"));
     botsNavEl.addEventListener("click", () => showPage("bots"));
@@ -3018,7 +3161,7 @@ const HTML = `<!doctype html>
     window.addEventListener("scroll", () => document.querySelectorAll(".multi-filter.open").forEach((filter) => filter.classList.remove("open")), true);
     syncProfileUi();
     setupAccessShell();
-    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "analytics" && canOpen("analytics")) loadAnalytics(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
+    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "analytics" && canOpen("analytics")) loadAnalytics(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "senders" && canOpen("senders")) loadSenders(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
   </script>
 </body>
 </html>`;
@@ -5998,6 +6141,86 @@ async function fetchGroups(request, env, authUser) {
   return json({ groups });
 }
 
+async function fetchSenders(request, env, authUser) {
+  const headers = supabaseHeaders(env);
+  const params = new URLSearchParams();
+  params.set("select", [
+    "platform",
+    "update_id",
+    "sender_id",
+    "sender_username",
+    "sender_first_name",
+    "sender_last_name",
+    "sender_is_bot",
+    "sender_photo_file_id",
+    "sender_photo_file_unique_id",
+    "chat_id",
+    "chat_title",
+    "sent_at_utc",
+    "received_at_utc",
+  ].join(","));
+  params.set("order", "sent_at_utc.desc.nullslast,received_at_utc.desc.nullslast,update_id.desc");
+  params.set("limit", "10000");
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers });
+  if (!response.ok) {
+    return json({ error: "درخواست ارسال‌کننده‌ها از دیتابیس انجام نشد", detail: await response.text() }, 500);
+  }
+
+  const labelParams = new URLSearchParams();
+  labelParams.set("select", "platform,sender_id,sender_label");
+  labelParams.set("limit", "10000");
+  const labelsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_sender_labels?${labelParams}`, { headers });
+  if (!labelsResponse.ok) {
+    return json({ error: "درخواست لیبل ارسال‌کننده‌ها انجام نشد", detail: await labelsResponse.text() }, 500);
+  }
+
+  const labelsBySender = new Map(
+    (await labelsResponse.json()).map((row) => [`${normalizePlatform(row.platform)}:${row.sender_id}`, row.sender_label || ""])
+  );
+  const allowedSet = await allowedChatKeySet(env, authUser);
+  const sendersByKey = new Map();
+  for (const row of (await response.json()).filter((item) => rowAllowedByChatSet(item, allowedSet))) {
+    if (row.sender_id === null || row.sender_id === undefined || row.sender_id === "") continue;
+    const platform = normalizePlatform(row.platform);
+    const senderId = String(row.sender_id);
+    const key = `${platform}:${senderId}`;
+    const sentAt = row.sent_at_utc || row.received_at_utc || null;
+    const existing = sendersByKey.get(key);
+    if (!existing) {
+      sendersByKey.set(key, {
+        platform,
+        sender_id: senderId,
+        sender_username: row.sender_username || "",
+        sender_first_name: row.sender_first_name || "",
+        sender_last_name: row.sender_last_name || "",
+        sender_is_bot: row.sender_is_bot,
+        sender_photo_file_id: row.sender_photo_file_id || "",
+        sender_photo_file_unique_id: row.sender_photo_file_unique_id || "",
+        sender_label: labelsBySender.get(key) || "",
+        message_count: 1,
+        last_chat_id: row.chat_id === null || row.chat_id === undefined ? "" : String(row.chat_id),
+        last_chat_title: row.chat_title || "",
+        last_message_at_utc: sentAt,
+        last_message_tehran: sentAt ? tehranDateTimeDisplay(new Date(sentAt)) : "",
+        display_timezone: "Asia/Tehran",
+      });
+      continue;
+    }
+    existing.message_count += 1;
+    if (!existing.sender_username && row.sender_username) existing.sender_username = row.sender_username;
+    if (!existing.sender_first_name && row.sender_first_name) existing.sender_first_name = row.sender_first_name;
+    if (!existing.sender_last_name && row.sender_last_name) existing.sender_last_name = row.sender_last_name;
+    if (!existing.sender_photo_file_id && row.sender_photo_file_id) existing.sender_photo_file_id = row.sender_photo_file_id;
+    if (!existing.sender_photo_file_unique_id && row.sender_photo_file_unique_id) existing.sender_photo_file_unique_id = row.sender_photo_file_unique_id;
+  }
+  const senders = [...sendersByKey.values()].sort((a, b) => {
+    const byDate = Date.parse(b.last_message_at_utc || 0) - Date.parse(a.last_message_at_utc || 0);
+    if (byDate) return byDate;
+    return String(a.sender_first_name || a.sender_username || a.sender_id).localeCompare(String(b.sender_first_name || b.sender_username || b.sender_id));
+  });
+  return json({ senders });
+}
+
 async function listBroadcastGroups(env, authUser) {
   const params = new URLSearchParams();
   params.set("select", "platform,bot_id,bot_username,bot_name,chat_id,chat_title,chat_username,chat_type,group_label,message_count,last_message_at_utc");
@@ -6297,6 +6520,37 @@ async function updateGroupLabel(request, env) {
   }
   const rows = await response.json();
   return json({ group_label: rows?.[0]?.group_label || "" });
+}
+
+async function updateSenderLabel(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const platform = normalizePlatform(body.platform);
+  const senderId = String(body.sender_id || "").trim();
+  if (!senderId || senderId.length > 128) return json({ error: "شناسه ارسال‌کننده نامعتبر است" }, 400);
+  const senderLabel = normalizeGroupLabel(body.sender_label);
+  if (body.sender_label && !senderLabel) {
+    return json({ error: "لیبل ارسال‌کننده نامعتبر است" }, 400);
+  }
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_sender_labels?on_conflict=platform,sender_id`, {
+    method: "POST",
+    headers: supabaseHeaders(env, "resolution=merge-duplicates,return=representation"),
+    body: JSON.stringify({
+      platform,
+      sender_id: senderId,
+      sender_label: senderLabel,
+      updated_at_utc: new Date().toISOString(),
+    }),
+  });
+  if (!response.ok) {
+    return json({ error: "ذخیره لیبل ارسال‌کننده انجام نشد", detail: await response.text() }, 500);
+  }
+  const rows = await response.json();
+  return json({ sender_label: rows?.[0]?.sender_label || "" });
 }
 
 async function fetchBots(env) {
@@ -6646,6 +6900,14 @@ export default {
     if (url.pathname === "/api/groups/label" && request.method === "POST") {
       if (!hasAccessPermission(authUser, "groups")) return forbiddenAccess();
       return updateGroupLabel(request, env);
+    }
+    if (url.pathname === "/api/senders") {
+      if (!hasAccessPermission(authUser, "messages")) return forbiddenAccess();
+      return fetchSenders(request, env, authUser);
+    }
+    if (url.pathname === "/api/senders/label" && request.method === "POST") {
+      if (!hasAccessPermission(authUser, "messages")) return forbiddenAccess();
+      return updateSenderLabel(request, env);
     }
     if (url.pathname === "/api/bots" && request.method === "GET") {
       if (!hasAccessPermission(authUser, "bots")) return forbiddenAccess();
