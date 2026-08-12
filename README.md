@@ -98,6 +98,36 @@ Permissionهای عملیاتی:
 - Database migrations: `supabase/migrations`
 - Worker entrypoint: `cloudflare-worker.js`
 
+## تکنولوژی‌ها و dependencyها
+
+هسته production پروژه بسیار سبک است و به جای یک backend جداگانه، داخل Cloudflare Worker اجرا می‌شود.
+
+تکنولوژی‌های اصلی:
+
+- Cloudflare Workers برای runtime، routing، webhookها، APIهای داخلی و سرو HTML.
+- Cloudflare Workers Assets برای سرو فونت‌ها و assetهای ثابت.
+- Supabase Postgres برای ذخیره پیام‌ها، گروه‌ها، تردها، کاربران، دسترسی‌ها، بات‌ها و لاگ‌ها.
+- Supabase Auth/Admin API برای دعوت کاربر، recovery و مدیریت ورود.
+- Supabase REST/PostgREST برای خواندن و نوشتن داده‌ها از داخل Worker.
+- Telegram Bot API برای دریافت webhook، ارسال reply، دریافت فایل، عکس پروفایل و واکنش‌ها.
+- Bale Bot API برای دریافت و ارسال پیام در بله.
+- Vanilla HTML/CSS/JavaScript برای UI؛ فریم‌ورک frontend جداگانه مثل React یا Next.js استفاده نشده است.
+- Web Crypto API داخل Worker برای session signing، hash پسوردها و رمزنگاری credential بات‌ها.
+- IRANSans به عنوان فونت فارسی پروژه در `assets/fonts`.
+
+dependencyهای `package.json`:
+
+- `@supabase/supabase-js` - برای اسکریپت‌ها و کارهای کمکی Supabase.
+- `pg` - برای اسکریپت‌های legacy/import/migration مبتنی بر اتصال مستقیم Postgres.
+
+ابزارهای توسعه و دیپلوی:
+
+- `pnpm` برای نصب وابستگی‌ها و اجرای ابزارها.
+- `wrangler` برای اجرای لوکال و دیپلوی Cloudflare Worker.
+- Supabase CLI برای link و push کردن migrationها.
+
+نکته: مسیر production اصلی `cloudflare-worker.js` است و برای اجرای UI یا API به Node server جدا نیاز ندارد. فایل‌های `collector.js`، `dashboard.js`، `migrate.js` و `bot.py` بیشتر نقش legacy یا ابزار کمکی دارند.
+
 ## متغیرها و Secretها
 
 مقادیر واقعی نباید داخل Git ذخیره شوند. روی Cloudflare Workers از `wrangler secret put` استفاده کنید.
