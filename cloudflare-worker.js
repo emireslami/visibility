@@ -2108,6 +2108,7 @@ const HTML = `<!doctype html>
 </html>`;
 
 const AUTH_FONT_FACE = HTML.match(/@font-face\s*\{[^}]+\}/)?.[0] || "";
+const SESSION_MAX_AGE_SECONDS = 24 * 60 * 60;
 
 function loginHtml(error = "", email = "", message = "", authUser = null) {
   const profile = authUser ? publicUserProfile(authUser) : null;
@@ -2750,7 +2751,7 @@ async function signSessionPayload(payload, env) {
 async function makeSessionCookie(user, env) {
   const payload = base64UrlEncode(JSON.stringify({
     email: user.email,
-    exp: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    exp: Date.now() + SESSION_MAX_AGE_SECONDS * 1000,
     ph: String(user.password_hash || "").slice(0, 16),
   }));
   const signature = await signSessionPayload(payload, env);
@@ -2806,7 +2807,7 @@ async function handleLogin(request, env) {
     status: 303,
     headers: {
       location: user.must_change_password ? "/set-password" : "/main",
-      "set-cookie": `visibility_session=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+      "set-cookie": `visibility_session=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_SECONDS}`,
     },
   });
 }
