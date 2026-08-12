@@ -1726,8 +1726,7 @@ const HTML = `<!doctype html>
         const isBotLike = Boolean(row.sender_is_bot || botText(row) || /bot$/i.test(String(row.sender_username || "")));
         return isBotLike
           && hasReplyChild
-          && payload.dashboard_broadcast !== true
-          && /^[^@\s]+@toman\.ir\s*:/i.test(messageContent(row));
+          && payload.dashboard_broadcast !== true;
       }
       function inferredDashboardReplyParentId(row) {
         if (row.reply_to_message_id || !looksLikeDashboardReply(row)) return null;
@@ -1765,7 +1764,9 @@ const HTML = `<!doctype html>
       }
       const repliesByRoot = new Map();
       const rootKeys = new Set();
-      for (const row of new Set(latestByMessage.values())) {
+      const uniqueRows = [...new Set(latestByMessage.values())];
+      for (const row of uniqueRows) rootKeyFor(row);
+      for (const row of uniqueRows) {
         const rowKey = rowMessageKey(row);
         const rootKey = rootKeyFor(row);
         rootKeys.add(rootKey);
