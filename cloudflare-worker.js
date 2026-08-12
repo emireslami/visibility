@@ -15,7 +15,7 @@ const HTML = `<!doctype html>
     .brand { display:flex; gap:14px; align-items:center; }
     .header-tools { display:flex; align-items:center; gap:12px; }
     h1 { margin: 0; font-size: 20px; }
-    nav { display:flex; gap:8px; direction:ltr; }
+    nav { display:flex; gap:8px; direction:rtl; }
     .nav-button { height:32px; padding:0 12px; background:#fff; color:var(--ink); border-color:var(--line); }
     .nav-button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
     main { padding: 18px 24px; }
@@ -430,9 +430,9 @@ const HTML = `<!doctype html>
       <h1>دیدپذیری</h1>
       <nav aria-label="صفحه‌های داشبورد">
         <button class="nav-button" id="dashboardNav" type="button">داشبورد</button>
+        <button class="nav-button" id="threadsNav" type="button">تردها</button>
         <button class="nav-button active" id="messagesNav" type="button">پیام‌ها</button>
         <button class="nav-button" id="groupsNav" type="button">گروه‌ها</button>
-        <button class="nav-button" id="threadsNav" type="button">تردها</button>
         <button class="nav-button" id="broadcastNav" type="button">اطلاع‌رسانی</button>
         <button class="nav-button" id="botsNav" type="button">بات‌ها</button>
         <button class="nav-button" id="accessNav" type="button">دسترسی</button>
@@ -797,14 +797,14 @@ const HTML = `<!doctype html>
     const currentUserPermissions = new Set(__CURRENT_USER_PERMISSIONS__);
     const currentUser = __CURRENT_USER__;
     const permissionOptions = [
-      { key:"access", label:"دسترسی" },
-      { key:"threads", label:"تردها" },
-      { key:"groups", label:"گروه‌ها" },
-      { key:"messages", label:"پیام‌ها" },
       { key:"dashboard", label:"داشبورد" },
-      { key:"bots", label:"بات‌ها" },
-      { key:"reply", label:"پاسخ" },
+      { key:"threads", label:"تردها" },
+      { key:"messages", label:"پیام‌ها" },
+      { key:"groups", label:"گروه‌ها" },
       { key:"broadcast", label:"اطلاع‌رسانی" },
+      { key:"bots", label:"بات‌ها" },
+      { key:"access", label:"دسترسی" },
+      { key:"reply", label:"پاسخ" },
     ];
     const fullTextByKey = new Map();
     const detailByKey = new Map();
@@ -1043,11 +1043,11 @@ const HTML = `<!doctype html>
       return routablePages.includes(page) ? page : "messages";
     }
     function firstAccessiblePage() {
-      return ["messages", "threads", "groups", "dashboard", "broadcast", "bots", "access"].find(canOpen);
+      return ["dashboard", "threads", "messages", "groups", "broadcast", "bots", "access"].find(canOpen);
     }
     function setupAccessShell() {
       accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
-      const navByPage = { dashboard:dashboardNavEl, messages:messagesNavEl, groups:groupsNavEl, threads:threadsNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
+      const navByPage = { dashboard:dashboardNavEl, threads:threadsNavEl, messages:messagesNavEl, groups:groupsNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
       Object.entries(navByPage).forEach(([page, element]) => { element.hidden = !canOpen(page); });
       const firstPage = firstAccessiblePage();
       if (!firstPage) {
