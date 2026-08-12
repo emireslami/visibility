@@ -183,6 +183,12 @@ const HTML = `<!doctype html>
     .broadcast-option input { width:15px; height:15px; flex:0 0 auto; }
     .broadcast-option .group-label-chip { margin-inline-start:auto; padding:2px 6px; border:1px solid var(--line); border-radius:999px; background:#eef4f8; color:var(--muted); font-size:10px; font-weight:700; white-space:nowrap; }
     .broadcast-result { min-height:24px; color:var(--muted); font-size:12px; white-space:pre-wrap; }
+    .broadcast-log-panel { margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
+    .broadcast-log-table { margin-top:10px; }
+    .broadcast-log-table th, .broadcast-log-table td { text-align:right; direction:rtl; }
+    .broadcast-log-table .details-cell { text-align:center; }
+    .broadcast-targets-detail { display:grid; gap:6px; }
+    .broadcast-target-detail { display:grid; grid-template-columns:minmax(180px, 1fr) auto auto; gap:8px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; }
     .access-tabs { display:flex; justify-content:flex-start; gap:8px; margin:14px 0; direction:ltr; }
     .access-tab { height:32px; padding:0 12px; background:#fff; color:var(--ink); border-color:var(--line); }
     .access-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
@@ -337,11 +343,11 @@ const HTML = `<!doctype html>
       .thread-filters { grid-template-columns:1fr 1fr; }
       .thread-filters button { grid-column:1 / -1; }
       .multi-panel { width:min(var(--dropdown-w, 100%), calc(100vw - 28px)); max-height:45vh; z-index:1200; }
-      .messages-table, .groups-table, .bots-table, .access-log-table { display:block; border:0; background:transparent; box-shadow:none; }
-      .messages-table colgroup, .groups-table colgroup, .bots-table colgroup, .access-log-table colgroup,
-      .messages-table thead, .groups-table thead, .bots-table thead, .access-log-table thead { display:none; }
-      .messages-table tbody, .groups-table tbody, .bots-table tbody, .access-log-table tbody { display:grid; gap:10px; }
-      .messages-table tr, .groups-table tr, .bots-table tr, .access-log-table tr {
+      .messages-table, .groups-table, .bots-table, .access-log-table, .broadcast-log-table { display:block; border:0; background:transparent; box-shadow:none; }
+      .messages-table colgroup, .groups-table colgroup, .bots-table colgroup, .access-log-table colgroup, .broadcast-log-table colgroup,
+      .messages-table thead, .groups-table thead, .bots-table thead, .access-log-table thead, .broadcast-log-table thead { display:none; }
+      .messages-table tbody, .groups-table tbody, .bots-table tbody, .access-log-table tbody, .broadcast-log-table tbody { display:grid; gap:10px; }
+      .messages-table tr, .groups-table tr, .bots-table tr, .access-log-table tr, .broadcast-log-table tr {
         display:grid;
         gap:8px;
         padding:12px;
@@ -349,7 +355,7 @@ const HTML = `<!doctype html>
         background:#fff;
         box-shadow:0 1px 2px rgba(9,30,66,.08);
       }
-      .messages-table td, .groups-table td, .bots-table td, .access-log-table td {
+      .messages-table td, .groups-table td, .bots-table td, .access-log-table td, .broadcast-log-table td {
         min-height:0;
         height:auto;
         display:grid;
@@ -366,7 +372,7 @@ const HTML = `<!doctype html>
         font-size:12px;
         text-align:right;
       }
-      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before {
+      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before {
         content:attr(data-label);
         color:#525252;
         font-weight:800;
@@ -385,6 +391,7 @@ const HTML = `<!doctype html>
       .group-label-filter .multi-button { min-height:36px; }
       .access-log-table { margin-top:10px; direction:rtl; }
       .access-log-table th, .access-log-table td { direction:rtl; text-align:right; }
+      .broadcast-log-table { margin-top:10px; direction:rtl; }
       .chart-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel { padding:14px; }
       .chart-head { align-items:flex-start; flex-direction:column; }
       .legend-grid { grid-template-columns:1fr; }
@@ -419,8 +426,8 @@ const HTML = `<!doctype html>
       nav { grid-template-columns:repeat(2, minmax(0, 1fr)); }
       .thread-filters { grid-template-columns:1fr; }
       .signals { grid-template-columns:1fr; }
-      .messages-table td, .groups-table td, .bots-table td, .access-log-table td { grid-template-columns:1fr; gap:4px; }
-      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before { font-size:10px; }
+      .messages-table td, .groups-table td, .bots-table td, .access-log-table td, .broadcast-log-table td { grid-template-columns:1fr; gap:4px; }
+      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before { font-size:10px; }
     }
   </style>
 </head>
@@ -623,6 +630,34 @@ const HTML = `<!doctype html>
           </div>
           <div class="broadcast-result" id="broadcastResult"></div>
         </form>
+        <section class="broadcast-log-panel">
+          <div class="group-access-title">
+            <strong>لاگ اطلاع‌رسانی‌ها</strong>
+            <button class="secondary-button" id="broadcastLogRefresh" type="button">به‌روزرسانی لاگ</button>
+          </div>
+          <div class="access-message" id="broadcastLogMessage"></div>
+          <table class="broadcast-log-table">
+            <colgroup>
+              <col style="width:18%" />
+              <col style="width:18%" />
+              <col style="width:22%" />
+              <col style="width:24%" />
+              <col style="width:10%" />
+              <col style="width:8%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>فرستنده</th>
+                <th>زمان</th>
+                <th>گروه‌های هدف</th>
+                <th>متن</th>
+                <th>نتیجه</th>
+                <th>جزئیات</th>
+              </tr>
+            </thead>
+            <tbody id="broadcastLogRows"></tbody>
+          </table>
+        </section>
       </section>
     </section>
     <section class="page" id="accessPage" hidden>
@@ -794,6 +829,9 @@ const HTML = `<!doctype html>
     const broadcastPasswordEl = document.getElementById("broadcastPassword");
     const broadcastPasswordToggleEl = document.getElementById("broadcastPasswordToggle");
     const broadcastResultEl = document.getElementById("broadcastResult");
+    const broadcastLogRefreshEl = document.getElementById("broadcastLogRefresh");
+    const broadcastLogMessageEl = document.getElementById("broadcastLogMessage");
+    const broadcastLogRowsEl = document.getElementById("broadcastLogRows");
     const currentUserPermissions = new Set(__CURRENT_USER_PERMISSIONS__);
     const currentUser = __CURRENT_USER__;
     const permissionOptions = [
@@ -931,11 +969,46 @@ const HTML = `<!doctype html>
         broadcastGroupOptions = data.groups;
         renderBroadcastGroups();
         broadcastResultEl.textContent = "";
+        loadBroadcastLogs(false);
         setStatus(token, data.groups.length + " گروه مجاز");
       } catch (error) {
         broadcastGroupOptions = [];
         renderBroadcastGroups();
         setStatus(token, "خطا در دریافت گروه‌ها");
+      }
+    }
+    async function loadBroadcastLogs(showStatus = true) {
+      const token = showStatus ? showLoading("در حال دریافت لاگ اطلاع‌رسانی‌ها...") : null;
+      try {
+        const res = await fetch("/api/broadcast-logs");
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.logs)) {
+          broadcastLogRowsEl.innerHTML = "";
+          broadcastLogMessageEl.textContent = data.detail || data.error || "خطا در دریافت لاگ اطلاع‌رسانی‌ها";
+          if (showStatus) setStatus(token, data.detail || data.error || "خطا در دریافت لاگ اطلاع‌رسانی‌ها");
+          return;
+        }
+        broadcastLogRowsEl.innerHTML = data.logs.map((log, index) => {
+          const key = "broadcast-log-" + index;
+          detailByKey.set(key, broadcastLogDetailsHtml(log));
+          const targets = Array.isArray(log.targets) ? log.targets : [];
+          const targetText = targets.map((target) => target.chat_title || target.key).filter(Boolean).join("، ");
+          const bodyKey = "broadcast-log-body-" + index;
+          return \`<tr>
+            <td data-label="فرستنده">\${esc(log.sender_email || "-")}</td>
+            <td data-label="زمان">\${esc(log.created_at_utc ? tehranDisplay(log.created_at_utc) : "-")}</td>
+            <td class="full-cell" data-label="گروه‌های هدف">\${esc(shortText(targetText || "-", 110))}</td>
+            <td class="body message-cell" data-label="متن"><div class="message-inner">\${textCell(log.body || "متن در لاگ قدیمی ذخیره نشده است.", bodyKey, 90)}</div></td>
+            <td data-label="نتیجه">\${esc((log.sent || 0) + " / " + (log.failed || 0))}</td>
+            <td class="details-cell" data-label="جزئیات"><button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button></td>
+          </tr>\`;
+        }).join("") || '<tr><td colspan="6" class="empty">اطلاع‌رسانی ثبت نشده است</td></tr>';
+        broadcastLogMessageEl.textContent = "";
+        if (showStatus) setStatus(token, data.logs.length + " لاگ اطلاع‌رسانی");
+      } catch (error) {
+        broadcastLogRowsEl.innerHTML = "";
+        broadcastLogMessageEl.textContent = "خطا در دریافت لاگ اطلاع‌رسانی‌ها";
+        if (showStatus) setStatus(token, "خطا در دریافت لاگ اطلاع‌رسانی‌ها");
       }
     }
     function groupLabelSelect(row) {
@@ -1017,6 +1090,25 @@ const HTML = `<!doctype html>
         <div class="detail-row"><div class="detail-label">زمان (تهران)</div><div class="detail-value">\${esc(log.created_at_utc ? tehranDisplay(log.created_at_utc) : "-")}</div></div>
         <div class="detail-row"><div class="detail-label">مقدارهای قبلی</div><pre class="detail-value detail-pre">\${esc(JSON.stringify(log.old_values || {}, null, 2))}</pre></div>
         <div class="detail-row"><div class="detail-label">مقدارهای جدید</div><pre class="detail-value detail-pre">\${esc(JSON.stringify(log.new_values || {}, null, 2))}</pre></div>
+        <div class="detail-row"><div class="detail-label">متادیتا</div><pre class="detail-value detail-pre">\${esc(JSON.stringify(log.metadata || {}, null, 2))}</pre></div>
+      </div>\`;
+    }
+    function broadcastLogDetailsHtml(log) {
+      const targets = Array.isArray(log.targets) ? log.targets : [];
+      const targetHtml = targets.length
+        ? targets.map((target) => \`<div class="broadcast-target-detail">
+            <strong>\${esc(target.chat_title || target.key || "-")}</strong>
+            <span>\${esc(platformText(target.platform || ""))}</span>
+            <span>\${target.ok ? "موفق" : "ناموفق"}\${target.error ? " · " + esc(target.error) : ""}</span>
+          </div>\`).join("")
+        : '<span class="thread-muted">گروهی ثبت نشده است.</span>';
+      return \`<div class="details-grid">
+        \${detailRow("فرستنده", log.sender_email || "-")}
+        \${detailRow("زمان (تهران)", log.created_at_utc ? tehranDisplay(log.created_at_utc) : "-")}
+        \${detailRow("شناسه اطلاع‌رسانی", log.broadcast_id || "-")}
+        \${detailRow("نتیجه", \`\${log.sent || 0} موفق / \${log.failed || 0} ناموفق\`)}
+        \${detailRow("متن", log.body || "متن در لاگ قدیمی ذخیره نشده است.")}
+        <div class="detail-row"><div class="detail-label">گروه‌های هدف</div><div class="detail-value broadcast-targets-detail">\${targetHtml}</div></div>
         <div class="detail-row"><div class="detail-label">متادیتا</div><pre class="detail-value detail-pre">\${esc(JSON.stringify(log.metadata || {}, null, 2))}</pre></div>
       </div>\`;
     }
@@ -2263,6 +2355,16 @@ const HTML = `<!doctype html>
       const detailsButton = event.target.closest("[data-detail-key]");
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات بات");
     });
+    broadcastLogRowsEl.addEventListener("click", event => {
+      const fullButton = event.target.closest("[data-full-key]");
+      if (fullButton) {
+        openModal(fullTextByKey.get(fullButton.dataset.fullKey) || "");
+        return;
+      }
+      const detailsButton = event.target.closest("[data-detail-key]");
+      if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات اطلاع‌رسانی");
+    });
+    broadcastLogRefreshEl.addEventListener("click", () => loadBroadcastLogs(true));
     botTokenToggleEl.addEventListener("click", () => {
       botTokenEl.type = botTokenEl.type === "password" ? "text" : "password";
     });
@@ -2324,6 +2426,7 @@ const HTML = `<!doctype html>
           broadcastBodyEl.value = "";
           broadcastPasswordEl.value = "";
         }
+        loadBroadcastLogs(false);
         setTimeout(() => loadBroadcast(), 800);
       } catch (error) {
         broadcastResultEl.textContent = "ارسال گروهی انجام نشد";
@@ -5672,6 +5775,65 @@ async function fetchBroadcastGroups(env, authUser) {
   }
 }
 
+async function fetchBroadcastLogs(env, authUser) {
+  try {
+    const params = new URLSearchParams({
+      select: "id,actor_email,target_email,action,old_values,new_values,metadata,created_at_utc",
+      action: "eq.group_broadcast",
+      order: "created_at_utc.desc",
+      limit: "200",
+    });
+    const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_access_audit_logs?${params}`, { headers: supabaseHeaders(env) });
+    if (!response.ok) return json({ error: "درخواست لاگ اطلاع‌رسانی انجام نشد", detail: await response.text() }, 500);
+    const allowedGroups = await listBroadcastGroups(env, authUser);
+    const allowedByKey = new Map(allowedGroups.map((group) => [group.key, group]));
+    const unrestricted = groupAccessForUser(authUser).unrestricted;
+    const logs = (await response.json()).map((row) => {
+      const metadata = row.metadata || {};
+      const newValues = row.new_values || {};
+      const resultItems = Array.isArray(metadata.results) ? metadata.results : [];
+      const groupKeys = Array.isArray(newValues.groups) ? newValues.groups : [];
+      const titles = Array.isArray(metadata.group_titles) ? metadata.group_titles : [];
+      const targets = resultItems.length ? resultItems : groupKeys.map((key, index) => ({
+        key,
+        chat_title: titles[index] || allowedByKey.get(key)?.title || key,
+        ok: true,
+      }));
+      const visibleTargets = targets
+        .map((target) => {
+          const key = target.key || "";
+          const group = allowedByKey.get(key);
+          if (!unrestricted && !group) return null;
+          const [platform] = String(key).split(":");
+          return {
+            key,
+            platform: normalizePlatform(target.platform || group?.platform || platform),
+            chat_title: target.chat_title || group?.title || key,
+            ok: target.ok !== false,
+            error: target.error || "",
+            message_id: target.message_id || null,
+          };
+        })
+        .filter(Boolean);
+      if (!unrestricted && !visibleTargets.length) return null;
+      return {
+        id: row.id,
+        sender_email: row.actor_email,
+        created_at_utc: row.created_at_utc,
+        broadcast_id: metadata.broadcast_id || "",
+        body: metadata.message_body || metadata.body || "",
+        sent: Number(newValues.sent || visibleTargets.filter((target) => target.ok).length || 0),
+        failed: Number(newValues.failed || visibleTargets.filter((target) => !target.ok).length || 0),
+        targets: visibleTargets,
+        metadata,
+      };
+    }).filter(Boolean);
+    return json({ logs });
+  } catch (error) {
+    return json({ error: "درخواست لاگ اطلاع‌رسانی انجام نشد", detail: error.message || String(error) }, 500);
+  }
+}
+
 async function sendGroupBroadcast(request, env, authUser) {
   let body;
   try {
@@ -5698,6 +5860,7 @@ async function sendGroupBroadcast(request, env, authUser) {
     const groupByKey = new Map(allowedGroups.map((group) => [group.key, group]));
     const disallowed = requestedGroups.filter((key) => !groupByKey.has(key));
     if (disallowed.length) return forbiddenAccess();
+    const broadcastId = randomHex(8);
     const outgoingText = `${normalizeEmail(authUser.email)} :\n${messageBody}`;
     const results = [];
     for (const key of requestedGroups) {
@@ -5706,13 +5869,13 @@ async function sendGroupBroadcast(request, env, authUser) {
         const runtimeConfig = await runtimeConfigForMessageBot(env, group);
         const sent = await sendBotMessage(env, group.platform, group.chat_id, outgoingText, runtimeConfig);
         if (!sent.ok) {
-          results.push({ key, chat_title: group.chat_title, ok: false, error: sent.body?.description || sent.body?.error || "ارسال توسط بات انجام نشد" });
+          results.push({ key, platform: group.platform, chat_title: group.chat_title, ok: false, error: sent.body?.description || sent.body?.error || "ارسال توسط بات انجام نشد" });
           continue;
         }
-        await persistOutgoingBotMessage(env, sent.result, group, runtimeConfig, outgoingText, null, { dashboard_broadcast: true });
-        results.push({ key, chat_title: group.chat_title, ok: true, message_id: sent.result?.message_id || null });
+        await persistOutgoingBotMessage(env, sent.result, group, runtimeConfig, outgoingText, null, { dashboard_broadcast: true, broadcast_id: broadcastId, broadcast_sender_email: normalizeEmail(authUser.email) });
+        results.push({ key, platform: group.platform, chat_title: group.chat_title, ok: true, message_id: sent.result?.message_id || null });
       } catch (error) {
-        results.push({ key, chat_title: group?.chat_title || key, ok: false, error: error.message || String(error) });
+        results.push({ key, platform: group?.platform || key.split(":")[0], chat_title: group?.chat_title || key, ok: false, error: error.message || String(error) });
       }
     }
     dashboardApiCache = null;
@@ -5725,7 +5888,7 @@ async function sendGroupBroadcast(request, env, authUser) {
         targetEmail: authUser.email,
         action: "group_broadcast",
         newValues: { groups: requestedGroups, sent: sentCount, failed: failedCount },
-        metadata: { group_titles: results.map((result) => result.chat_title), message_length: messageBody.length },
+        metadata: { broadcast_id: broadcastId, group_titles: results.map((result) => result.chat_title), results, message_body: messageBody, message_length: messageBody.length },
       });
     } catch (auditError) {
       console.error("group broadcast audit failed", auditError?.message || auditError);
@@ -6043,6 +6206,10 @@ export default {
     if (url.pathname === "/api/broadcast-groups" && request.method === "GET") {
       if (!hasAccessPermission(authUser, "broadcast")) return forbiddenAccess();
       return fetchBroadcastGroups(env, authUser);
+    }
+    if (url.pathname === "/api/broadcast-logs" && request.method === "GET") {
+      if (!hasAccessPermission(authUser, "broadcast")) return forbiddenAccess();
+      return fetchBroadcastLogs(env, authUser);
     }
     if (url.pathname === "/api/group-broadcast" && request.method === "POST") {
       if (!hasAccessPermission(authUser, "broadcast")) return forbiddenAccess();
