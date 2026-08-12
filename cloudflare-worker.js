@@ -198,6 +198,8 @@ const HTML = `<!doctype html>
     .analytics-table th, .analytics-table td { text-align:right; direction:rtl; }
     .analytics-table .metric-number { direction:rtl; text-align:right; white-space:nowrap; }
     .analytics-table .metric-count { direction:ltr; }
+    .analytics-table [data-analytics-detail] { cursor:pointer; }
+    .analytics-table [data-analytics-detail]:hover { background:#eef4f8; color:var(--ink); }
     .analytics-detail-note { margin:0 0 12px; color:var(--muted); font-size:12px; white-space:normal; }
     .access-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
     .access-panel h2 { margin:0 0 6px; font-size:18px; }
@@ -555,11 +557,11 @@ const HTML = `<!doctype html>
           <thead>
             <tr>
               <th>لیبل</th>
-              <th>تعداد پاسخ</th>
-              <th>میانگین</th>
-              <th>میانه</th>
-              <th>کمترین</th>
-              <th>بیشترین</th>
+              <th data-analytics-detail="count">تعداد پاسخ</th>
+              <th data-analytics-detail="avg">میانگین</th>
+              <th data-analytics-detail="median">میانه</th>
+              <th data-analytics-detail="min">کمترین</th>
+              <th data-analytics-detail="max">بیشترین</th>
             </tr>
           </thead>
           <tbody id="analyticsLabelRows"></tbody>
@@ -574,11 +576,11 @@ const HTML = `<!doctype html>
           <thead>
             <tr>
               <th>لیبل فرد</th>
-              <th>تعداد پاسخ</th>
-              <th>میانگین</th>
-              <th>میانه</th>
-              <th>کمترین</th>
-              <th>بیشترین</th>
+              <th data-analytics-detail="count">تعداد پاسخ</th>
+              <th data-analytics-detail="avg">میانگین</th>
+              <th data-analytics-detail="median">میانه</th>
+              <th data-analytics-detail="min">کمترین</th>
+              <th data-analytics-detail="max">بیشترین</th>
             </tr>
           </thead>
           <tbody id="analyticsSenderLabelRows"></tbody>
@@ -595,11 +597,11 @@ const HTML = `<!doctype html>
               <th>گروه</th>
               <th>پلتفرم</th>
               <th>لیبل</th>
-              <th>تعداد پاسخ</th>
-              <th>میانگین</th>
-              <th>میانه</th>
-              <th>کمترین</th>
-              <th>بیشترین</th>
+              <th data-analytics-detail="count">تعداد پاسخ</th>
+              <th data-analytics-detail="avg">میانگین</th>
+              <th data-analytics-detail="median">میانه</th>
+              <th data-analytics-detail="min">کمترین</th>
+              <th data-analytics-detail="max">بیشترین</th>
             </tr>
           </thead>
           <tbody id="analyticsGroupRows"></tbody>
@@ -2307,16 +2309,17 @@ const HTML = `<!doctype html>
       return seconds + " ثانیه";
     }
     function analyticsMetricCells(row) {
-      return '<td class="metric-number metric-count" data-label="تعداد پاسخ">' + numberFmt.format(row.count || 0) + '</td>'
-        + '<td class="metric-number" data-label="میانگین">' + esc(formatDuration(row.avg_ms)) + '</td>'
-        + '<td class="metric-number" data-label="میانه">' + esc(formatDuration(row.median_ms)) + '</td>'
-        + '<td class="metric-number" data-label="کمترین">' + esc(formatDuration(row.min_ms)) + '</td>'
-        + '<td class="metric-number" data-label="بیشترین">' + esc(formatDuration(row.max_ms)) + '</td>';
+      return '<td class="metric-number metric-count" data-label="تعداد پاسخ" data-analytics-detail="count">' + numberFmt.format(row.count || 0) + '</td>'
+        + '<td class="metric-number" data-label="میانگین" data-analytics-detail="avg">' + esc(formatDuration(row.avg_ms)) + '</td>'
+        + '<td class="metric-number" data-label="میانه" data-analytics-detail="median">' + esc(formatDuration(row.median_ms)) + '</td>'
+        + '<td class="metric-number" data-label="کمترین" data-analytics-detail="min">' + esc(formatDuration(row.min_ms)) + '</td>'
+        + '<td class="metric-number" data-label="بیشترین" data-analytics-detail="max">' + esc(formatDuration(row.max_ms)) + '</td>';
     }
     function analyticsDetailRows(kind) {
       const groups = [...(analyticsData.groups || [])].filter((row) => row.count);
       if (kind === "min") return groups.filter((row) => row.min_ms > 0).sort((a, b) => a.min_ms - b.min_ms).slice(0, 12);
       if (kind === "max") return groups.sort((a, b) => b.max_ms - a.max_ms).slice(0, 12);
+      if (kind === "median") return groups.sort((a, b) => b.median_ms - a.median_ms || b.count - a.count).slice(0, 12);
       if (kind === "count") return groups.sort((a, b) => b.count - a.count || b.total_ms - a.total_ms).slice(0, 12);
       return groups.sort((a, b) => b.total_ms - a.total_ms || b.avg_ms - a.avg_ms).slice(0, 12);
     }
@@ -2324,6 +2327,7 @@ const HTML = `<!doctype html>
       const labels = {
         avg: ["اثرگذارترین گروه‌ها روی میانگین کل", "مرتب‌سازی بر اساس سهم هر گروه از کل زمان پاسخ‌گویی انجام شده است."],
         count: ["بیشترین تعداد پاسخ‌های محاسبه‌شده", "گروه‌هایی که بیشترین تعداد reply قابل محاسبه را داشته‌اند."],
+        median: ["بیشترین میانه زمان پاسخ مربوط به کدام گروه‌هاست", "گروه‌ها بر اساس میانه زمان پاسخ‌گویی مرتب شده‌اند."],
         min: ["کمترین زمان پاسخ مربوط به کدام گروه‌هاست", "گروه‌ها بر اساس سریع‌ترین پاسخ ثبت‌شده مرتب شده‌اند."],
         max: ["بیشترین زمان پاسخ مربوط به کدام گروه‌هاست", "گروه‌ها بر اساس کندترین پاسخ ثبت‌شده مرتب شده‌اند."],
       };
@@ -2338,15 +2342,16 @@ const HTML = `<!doctype html>
           + '<td data-label="لیبل">' + esc(groupLabelText(row.group_label)) + '</td>'
           + '<td class="metric-number metric-count" data-label="تعداد">' + numberFmt.format(row.count || 0) + '</td>'
           + '<td class="metric-number" data-label="میانگین">' + esc(formatDuration(row.avg_ms)) + '</td>'
+          + '<td class="metric-number" data-label="میانه">' + esc(formatDuration(row.median_ms)) + '</td>'
           + '<td class="metric-number" data-label="کمترین">' + esc(formatDuration(row.min_ms)) + '</td>'
           + '<td class="metric-number" data-label="بیشترین">' + esc(formatDuration(row.max_ms)) + '</td>'
           + '<td class="metric-number" data-label="سهم از کل">' + (overallTotal ? numberFmt.format(share) + "٪" : "-") + '</td>'
         + '</tr>';
-      }).join("") : '<tr><td colspan="8">داده‌ای برای نمایش وجود ندارد.</td></tr>';
+      }).join("") : '<tr><td colspan="9">داده‌ای برای نمایش وجود ندارد.</td></tr>';
       openDetails(
         '<p class="analytics-detail-note">' + esc(note) + '</p>'
         + '<div class="modal-table-wrap"><table class="modal-table"><thead><tr>'
-          + '<th>گروه</th><th>پلتفرم</th><th>لیبل</th><th>تعداد</th><th>میانگین</th><th>کمترین</th><th>بیشترین</th><th>سهم از کل</th>'
+          + '<th>گروه</th><th>پلتفرم</th><th>لیبل</th><th>تعداد</th><th>میانگین</th><th>میانه</th><th>کمترین</th><th>بیشترین</th><th>سهم از کل</th>'
         + '</tr></thead><tbody>' + tableRows + '</tbody></table></div>',
         title
       );
