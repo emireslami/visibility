@@ -91,12 +91,43 @@ CREATE TABLE IF NOT EXISTS public.visibility_access_users (
     password_salt TEXT NOT NULL,
     must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    permissions JSONB NOT NULL DEFAULT '["access", "threads", "groups", "messages", "dashboard", "bots"]'::jsonb,
     avatar_data_url TEXT,
     last_login_at_utc TIMESTAMPTZ,
     created_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT visibility_access_users_email_domain_chk
-        CHECK (email = lower(email) AND email ~ '^[^@\s]+@toman\.ir$')
+        CHECK (email = lower(email) AND email ~ '^[^@\s]+@toman\.ir$'),
+    CONSTRAINT visibility_access_users_permissions_chk
+        CHECK (
+            (
+                jsonb_typeof(permissions) = 'array'
+                AND permissions <@ '["access", "threads", "groups", "messages", "dashboard", "bots"]'::jsonb
+            )
+            OR
+            (
+                jsonb_typeof(permissions) = 'object'
+                AND jsonb_typeof(permissions -> 'pages') = 'array'
+                AND (permissions -> 'pages') <@ '["access", "threads", "groups", "messages", "dashboard", "bots"]'::jsonb
+                AND (
+                    NOT (permissions ? 'group_access')
+                    OR (
+                        jsonb_typeof(permissions -> 'group_access') = 'object'
+                        AND (
+                            NOT ((permissions -> 'group_access') ? 'labels')
+                            OR (
+                                jsonb_typeof(permissions -> 'group_access' -> 'labels') = 'array'
+                                AND (permissions -> 'group_access' -> 'labels') <@ '["internal_team", "customer", "provider"]'::jsonb
+                            )
+                        )
+                        AND (
+                            NOT ((permissions -> 'group_access') ? 'groups')
+                            OR jsonb_typeof(permissions -> 'group_access' -> 'groups') = 'array'
+                        )
+                    )
+                )
+            )
+        )
 );
 
 ALTER TABLE public.telegram_messages
