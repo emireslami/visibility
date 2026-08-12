@@ -24,6 +24,10 @@ const HTML = `<!doctype html>
     .thread-filters { grid-template-columns: minmax(200px, 1fr) minmax(170px, .8fr) 105px 105px 105px minmax(150px, .7fr) 110px; max-width:none; margin:0 -24px 18px; }
     input, select, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
+    .password-wrap { position:relative; display:block; }
+    .password-wrap input { width:100%; padding-left:48px; }
+    .password-toggle { position:absolute; left:6px; top:5px; width:34px; height:28px; margin:0; padding:0; display:grid; place-items:center; border:1px solid var(--line); background:#fff; color:var(--muted); }
+    .password-toggle svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; }
     .multi-filter { position:relative; min-width:0; }
     .multi-control { position:relative; }
     .multi-button { width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; background:#fff; color:var(--ink); border-color:var(--line); text-align:right; padding-inline-start:38px; }
@@ -149,6 +153,9 @@ const HTML = `<!doctype html>
     .bots-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1180px; margin:0 auto; }
     .bots-panel h2 { margin:0 0 6px; font-size:18px; }
     .bots-panel p { margin:0 0 16px; }
+    .bot-form { display:grid; grid-template-columns:130px minmax(150px, 1fr) minmax(150px, 1fr) minmax(220px, 1.3fr) 110px; gap:10px; align-items:center; margin:14px 0 16px; }
+    .bot-form .password-wrap { margin:0; }
+    .bot-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
     .bots-table td:last-child, .bots-table th:last-child { padding-left:12px; }
     .access-tabs { display:flex; justify-content:flex-start; gap:8px; margin:14px 0; direction:ltr; }
     .access-tab { height:32px; padding:0 12px; background:#fff; color:var(--ink); border-color:var(--line); }
@@ -403,6 +410,22 @@ const HTML = `<!doctype html>
       <section class="bots-panel">
         <h2>مدیریت بات‌ها</h2>
         <p class="thread-muted">بات‌های هر پلتفرم و تعداد گروه‌ها و پیام‌هایی که با هر بات ثبت شده است.</p>
+        <form class="bot-form" id="botForm">
+          <select id="botPlatform">
+            <option value="telegram">تلگرام</option>
+            <option value="bale">بله</option>
+          </select>
+          <input id="botName" type="text" placeholder="نام بات" autocomplete="off" />
+          <input id="botUsername" type="text" placeholder="یوزرنیم بات" autocomplete="off" dir="ltr" />
+          <span class="password-wrap">
+            <input id="botToken" type="password" placeholder="توکن بات" autocomplete="off" dir="ltr" />
+            <button class="password-toggle" id="botTokenToggle" type="button" aria-label="نمایش توکن">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </span>
+          <button type="submit">افزودن بات</button>
+        </form>
+        <div class="bot-message" id="botMessage"></div>
         <table class="bots-table">
           <colgroup>
             <col style="width:12%" />
@@ -568,6 +591,13 @@ const HTML = `<!doctype html>
     const accessLogMessageEl = document.getElementById("accessLogMessage");
     const accessLogRowsEl = document.getElementById("accessLogRows");
     const botRowsEl = document.getElementById("botRows");
+    const botFormEl = document.getElementById("botForm");
+    const botPlatformEl = document.getElementById("botPlatform");
+    const botNameEl = document.getElementById("botName");
+    const botUsernameEl = document.getElementById("botUsername");
+    const botTokenEl = document.getElementById("botToken");
+    const botTokenToggleEl = document.getElementById("botTokenToggle");
+    const botMessageEl = document.getElementById("botMessage");
     const currentUserPermissions = new Set(__CURRENT_USER_PERMISSIONS__);
     const currentUser = __CURRENT_USER__;
     const permissionOptions = [
@@ -984,6 +1014,7 @@ const HTML = `<!doctype html>
     function fileUrl(row, download = false) {
       if (!row.media_file_id) return "";
       const params = new URLSearchParams({ platform: row.platform || "telegram", file_id: row.media_file_id });
+      if (row.bot_id) params.set("bot_id", row.bot_id);
       if (download) params.set("download", "1");
       return "/api/file?" + params.toString();
     }
@@ -1130,6 +1161,9 @@ const HTML = `<!doctype html>
         ["شناسه بات", row.bot_id],
         ["مسیر وبهوک", row.webhook_path],
         ["وضعیت", row.is_active ? "فعال" : "غیرفعال"],
+        ["چهار رقم آخر credential", row.credential_last4],
+        ["آخرین تغییر credential", row.credential_updated_tehran],
+        ["ثبت‌کننده", row.created_by_email],
         ["گروه‌ها", row.group_count],
         ["پیام‌ها", row.message_count],
         ["اولین مشاهده", row.first_seen_tehran],
@@ -1207,7 +1241,9 @@ const HTML = `<!doctype html>
     }
     function avatar(row) {
       if (row.sender_photo_file_id) {
-        return \`<img class="thread-avatar" src="/api/profile-photo?file_id=\${encodeURIComponent(row.sender_photo_file_id)}" alt="" loading="lazy" />\`;
+        const params = new URLSearchParams({ platform: row.platform || "telegram", file_id: row.sender_photo_file_id });
+        if (row.bot_id) params.set("bot_id", row.bot_id);
+        return \`<img class="thread-avatar" src="/api/profile-photo?\${params.toString()}" alt="" loading="lazy" />\`;
       }
       return \`<span class="thread-avatar">\${esc(initials(row))}</span>\`;
     }
@@ -1690,6 +1726,38 @@ const HTML = `<!doctype html>
     botRowsEl.addEventListener("click", event => {
       const detailsButton = event.target.closest("[data-detail-key]");
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات بات");
+    });
+    botTokenToggleEl.addEventListener("click", () => {
+      botTokenEl.type = botTokenEl.type === "password" ? "text" : "password";
+    });
+    botFormEl.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      botMessageEl.textContent = "در حال تست و ثبت بات...";
+      const payload = {
+        platform: botPlatformEl.value,
+        bot_name: botNameEl.value.trim(),
+        bot_username: botUsernameEl.value.trim(),
+        token: botTokenEl.value.trim(),
+      };
+      try {
+        const res = await fetch("/api/bots", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          botMessageEl.textContent = data.detail || data.error || "ثبت بات انجام نشد";
+          return;
+        }
+        botMessageEl.textContent = "بات ثبت شد و webhook آن تنظیم شد.";
+        botTokenEl.value = "";
+        botNameEl.value = "";
+        botUsernameEl.value = "";
+        await loadBots();
+      } catch (error) {
+        botMessageEl.textContent = "ثبت بات انجام نشد";
+      }
     });
     groupRowsEl.addEventListener("change", async event => {
       const select = event.target.closest(".group-label-select");
@@ -2441,8 +2509,51 @@ function base64UrlDecode(value) {
   return atob(padded);
 }
 
+function bytesToBase64Url(bytes) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return base64UrlEncode(binary);
+}
+
+function base64UrlToBytes(value) {
+  const binary = base64UrlDecode(value);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
 async function sha256Hex(value) {
   return bytesToHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
+}
+
+async function botCredentialKey(env) {
+  const secret = env.BOT_CREDENTIAL_ENCRYPTION_KEY;
+  if (!secret || String(secret).length < 24) {
+    throw new Error("کلید رمزنگاری بات تنظیم نشده است");
+  }
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret));
+  return crypto.subtle.importKey("raw", digest, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+
+async function encryptBotCredential(env, token) {
+  const iv = new Uint8Array(12);
+  crypto.getRandomValues(iv);
+  const key = await botCredentialKey(env);
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(token));
+  return {
+    credential_ciphertext: bytesToBase64Url(new Uint8Array(ciphertext)),
+    credential_iv: bytesToBase64Url(iv),
+    credential_last4: String(token).slice(-4),
+  };
+}
+
+async function decryptBotCredential(env, row) {
+  if (!row?.credential_ciphertext || !row?.credential_iv) return null;
+  const key = await botCredentialKey(env);
+  const plaintext = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: base64UrlToBytes(row.credential_iv) },
+    key,
+    base64UrlToBytes(row.credential_ciphertext),
+  );
+  return new TextDecoder().decode(plaintext);
 }
 
 async function hashPassword(password, salt) {
@@ -3554,6 +3665,23 @@ function botIdentity(config) {
   };
 }
 
+function botPlatformRuntimeConfig(platform, token, overrides = {}) {
+  const normalizedPlatform = normalizePlatform(platform);
+  const base = botPlatformConfig({}, normalizedPlatform);
+  return {
+    ...base,
+    platform: normalizedPlatform,
+    token,
+    apiBase: overrides.apiBase || overrides.api_base || base.apiBase,
+    fileBase: overrides.fileBase || overrides.file_base || base.fileBase,
+    webhookPath: overrides.webhookPath || overrides.webhook_path || base.webhookPath,
+    secret: overrides.secret || base.secret,
+    botId: overrides.botId || overrides.bot_id || `${normalizedPlatform}_stored`,
+    botUsername: overrides.botUsername || overrides.bot_username || null,
+    botName: overrides.botName || overrides.bot_name || platformLabel(normalizedPlatform),
+  };
+}
+
 async function upsertBot(env, config, update = null) {
   const bot = botIdentity(config);
   const now = new Date().toISOString();
@@ -3574,8 +3702,145 @@ async function upsertBot(env, config, update = null) {
   return bot;
 }
 
-async function sendBotMessage(env, platform, chatId, textValue) {
-  const config = botPlatformConfig(env, platform);
+async function getStoredBot(env, platform, botId) {
+  const params = new URLSearchParams({
+    select: "platform,bot_id,bot_username,bot_name,webhook_path,is_active,credential_ciphertext,credential_iv,credential_last4,webhook_secret_hash,api_base,file_base",
+    platform: `eq.${normalizePlatform(platform)}`,
+    bot_id: `eq.${botId}`,
+    limit: "1",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_bots?${params}`, { headers: supabaseHeaders(env) });
+  if (!response.ok) throw new Error(await response.text());
+  const rows = await response.json();
+  return rows[0] || null;
+}
+
+async function botApiWithToken(platform, token, method, payload = null) {
+  const config = botPlatformRuntimeConfig(platform, token);
+  const init = payload ? {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  } : {};
+  const response = await fetch(`${config.apiBase}/bot${token}/${method}`, init);
+  const body = await readSupabaseJson(response);
+  if (!response.ok || body?.ok === false) {
+    throw new Error(body?.description || body?.message || `${platformLabel(platform)} ${method} failed`);
+  }
+  return body;
+}
+
+async function setStoredBotWebhook(request, platform, token, botId, webhookSecret) {
+  const origin = new URL(request.url).origin;
+  const webhookUrl = new URL(`${origin}/bot-webhook/${normalizePlatform(platform)}/${encodeURIComponent(botId)}`);
+  const normalizedPlatform = normalizePlatform(platform);
+  if (normalizedPlatform === "telegram") {
+    const payload = {
+      url: webhookUrl.toString(),
+      allowed_updates: TELEGRAM_ALLOWED_UPDATES,
+      drop_pending_updates: false,
+      secret_token: webhookSecret,
+    };
+    return botApiWithToken(normalizedPlatform, token, "setWebhook", payload);
+  }
+  if (normalizedPlatform === "bale") {
+    webhookUrl.searchParams.set("secret", webhookSecret);
+    return botApiWithToken(normalizedPlatform, token, "setWebhook", { url: webhookUrl.toString() });
+  }
+  throw new Error("این پلتفرم هنوز برای افزودن بات پشتیبانی نمی‌شود");
+}
+
+async function addBotFromDashboard(request, env, authUser) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const platform = normalizePlatform(body.platform);
+  if (!["telegram", "bale"].includes(platform)) return json({ error: "فعلاً فقط تلگرام و بله پشتیبانی می‌شود" }, 400);
+  const token = String(body.token || "").trim();
+  if (token.length < 20) return json({ error: "توکن بات نامعتبر است" }, 400);
+  const inputUsername = normalizeBotUsername(body.bot_username);
+  const inputName = String(body.bot_name || "").trim();
+
+  try {
+    const me = await botApiWithToken(platform, token, "getMe");
+    const result = me?.result || {};
+    const botId = String(result.id || inputUsername || `${platform}_${randomHex(6)}`);
+    const botUsername = normalizeBotUsername(result.username || inputUsername);
+    const botName = inputName || result.first_name || result.name || botUsername || platformLabel(platform);
+    const encrypted = await encryptBotCredential(env, token);
+    const webhookSecret = randomHex(24);
+    await setStoredBotWebhook(request, platform, token, botId, webhookSecret);
+    const now = new Date().toISOString();
+    const webhookPath = `/bot-webhook/${platform}/${encodeURIComponent(botId)}`;
+    const row = {
+      platform,
+      bot_id: botId,
+      bot_username: botUsername,
+      bot_name: botName,
+      webhook_path: webhookPath,
+      webhook_secret_hash: await sha256Hex(webhookSecret),
+      created_by_email: normalizeEmail(authUser.email),
+      api_base: botPlatformConfig(env, platform).apiBase,
+      file_base: botPlatformConfig(env, platform).fileBase,
+      is_active: true,
+      credential_updated_at_utc: now,
+      updated_at_utc: now,
+      ...encrypted,
+    };
+    const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_bots?on_conflict=platform,bot_id`, {
+      method: "POST",
+      headers: supabaseHeaders(env, "resolution=merge-duplicates,return=representation"),
+      body: JSON.stringify(row),
+    });
+    const saved = await readSupabaseJson(response);
+    if (!response.ok) throw new Error(saved?.message || "ذخیره بات انجام نشد");
+    await insertAccessAuditLog(env, {
+      actorEmail: authUser.email,
+      targetEmail: authUser.email,
+      action: "bot_create",
+      newValues: { platform, bot_id: botId, bot_username: botUsername, bot_name: botName },
+      metadata: { webhook_path: webhookPath, credential_last4: encrypted.credential_last4 },
+    });
+    return json({ bot: Array.isArray(saved) ? saved[0] : saved });
+  } catch (error) {
+    return json({ error: error.message || "ثبت بات انجام نشد" }, 400);
+  }
+}
+
+async function handleStoredBotWebhook(request, env) {
+  const url = new URL(request.url);
+  const [, , platformPart, ...botIdParts] = url.pathname.split("/");
+  const platform = normalizePlatform(platformPart);
+  const botId = decodeURIComponent(botIdParts.join("/"));
+  if (!botId) return text("not found", 404);
+  const stored = await getStoredBot(env, platform, botId);
+  if (!stored || !stored.is_active) return text("not found", 404);
+  if (stored.webhook_secret_hash) {
+    const incomingSecret = platform === "telegram"
+      ? request.headers.get("x-telegram-bot-api-secret-token")
+      : url.searchParams.get("secret");
+    if (!incomingSecret || await sha256Hex(incomingSecret) !== stored.webhook_secret_hash) {
+      return text("unauthorized", 401);
+    }
+  }
+  const token = await decryptBotCredential(env, stored);
+  if (!token) return text("credential missing", 503);
+  const config = botPlatformRuntimeConfig(platform, token, {
+    botId: stored.bot_id,
+    botUsername: stored.bot_username,
+    botName: stored.bot_name,
+    apiBase: stored.api_base || undefined,
+    fileBase: stored.file_base || undefined,
+    webhookPath: stored.webhook_path,
+  });
+  return handleBotWebhookWithConfig(request, env, config);
+}
+
+async function sendBotMessage(env, platform, chatId, textValue, runtimeConfig = null) {
+  const config = runtimeConfig || botPlatformConfig(env, platform);
   if (!config.token || !chatId) return false;
   const response = await fetch(`${config.apiBase}/bot${config.token}/sendMessage`, {
     method: "POST",
@@ -3589,8 +3854,8 @@ async function sendBotMessage(env, platform, chatId, textValue) {
   return response.ok;
 }
 
-async function fetchSenderProfilePhoto(env, platform, senderId) {
-  const config = botPlatformConfig(env, platform);
+async function fetchSenderProfilePhoto(env, platform, senderId, runtimeConfig = null) {
+  const config = runtimeConfig || botPlatformConfig(env, platform);
   if (config.platform !== "telegram" || !config.token || !senderId) return {};
   try {
     const url = new URL(`${config.apiBase}/bot${config.token}/getUserProfilePhotos`);
@@ -3612,18 +3877,29 @@ async function fetchSenderProfilePhoto(env, platform, senderId) {
 }
 
 async function fetchTelegramProfilePhoto(request, env) {
-  if (!env.TELEGRAM_BOT_TOKEN) return text("توکن تلگرام تنظیم نشده است", 503);
   const url = new URL(request.url);
+  const platform = normalizePlatform(url.searchParams.get("platform"));
+  const botId = url.searchParams.get("bot_id");
+  let token = env.TELEGRAM_BOT_TOKEN;
+  let apiBase = "https://api.telegram.org";
+  let fileBase = "https://api.telegram.org/file";
+  if (botId && botId !== "telegram_default") {
+    const stored = await getStoredBot(env, platform, botId);
+    token = await decryptBotCredential(env, stored);
+    apiBase = stored?.api_base || botPlatformConfig(env, platform).apiBase;
+    fileBase = stored?.file_base || botPlatformConfig(env, platform).fileBase;
+  }
+  if (!token) return text("توکن تلگرام تنظیم نشده است", 503);
   const fileId = url.searchParams.get("file_id");
   if (!fileId) return text("شناسه فایل ارسال نشده است", 400);
 
-  const fileResponse = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${encodeURIComponent(fileId)}`);
+  const fileResponse = await fetch(`${apiBase}/bot${token}/getFile?file_id=${encodeURIComponent(fileId)}`);
   if (!fileResponse.ok) return text("دریافت اطلاعات عکس پروفایل انجام نشد", 502);
   const fileData = await fileResponse.json();
   const filePath = fileData?.result?.file_path;
   if (!filePath) return text("عکس پروفایل پیدا نشد", 404);
 
-  const imageResponse = await fetch(`https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${filePath}`);
+  const imageResponse = await fetch(`${fileBase}/bot${token}/${filePath}`);
   if (!imageResponse.ok || !imageResponse.body) return text("دریافت عکس پروفایل انجام نشد", 502);
   return new Response(imageResponse.body, {
     status: 200,
@@ -3647,7 +3923,19 @@ function contentTypeFromPath(filePath, fallback = "application/octet-stream") {
 async function fetchBotFile(request, env) {
   const url = new URL(request.url);
   const platform = normalizePlatform(url.searchParams.get("platform"));
-  const config = botPlatformConfig(env, platform);
+  const botId = url.searchParams.get("bot_id");
+  let config = botPlatformConfig(env, platform);
+  if (botId && botId !== `${platform}_default`) {
+    const stored = await getStoredBot(env, platform, botId);
+    const token = await decryptBotCredential(env, stored);
+    config = botPlatformRuntimeConfig(platform, token, {
+      botId: stored?.bot_id,
+      botUsername: stored?.bot_username,
+      botName: stored?.bot_name,
+      apiBase: stored?.api_base || undefined,
+      fileBase: stored?.file_base || undefined,
+    });
+  }
   if (!config.token) return text(`توکن ${platformLabel(platform)} تنظیم نشده است`, 503);
   const fileId = url.searchParams.get("file_id");
   if (!fileId) return text("شناسه فایل ارسال نشده است", 400);
@@ -3672,9 +3960,9 @@ async function fetchBotFile(request, env) {
   return new Response(fileDownloadResponse.body, { status: 200, headers });
 }
 
-async function rejectPrivateUser(env, platform, message) {
+async function rejectPrivateUser(env, platform, message, runtimeConfig = null) {
   try {
-    await sendBotMessage(env, platform, message.chat?.id, "مجاز به ادامه عملیات نیستید.");
+    await sendBotMessage(env, platform, message.chat?.id, "مجاز به ادامه عملیات نیستید.", runtimeConfig);
   } catch {
     return false;
   }
@@ -3882,9 +4170,8 @@ async function resetBaleWebhook(request, env) {
   }
 }
 
-async function handleBotWebhook(request, env, platform = DEFAULT_PLATFORM) {
-  const normalizedPlatform = normalizePlatform(platform);
-  const config = botPlatformConfig(env, normalizedPlatform);
+async function handleBotWebhookWithConfig(request, env, config) {
+  const normalizedPlatform = normalizePlatform(config.platform);
   if (request.method !== "POST") return text("ok");
   const url = new URL(request.url);
   if (normalizedPlatform === "telegram" && config.secret && request.headers.get("x-telegram-bot-api-secret-token") !== config.secret) {
@@ -3907,7 +4194,7 @@ async function handleBotWebhook(request, env, platform = DEFAULT_PLATFORM) {
   if (!message) return json({ ok: true, ignored: true });
 
   if (isPrivateChat(message)) {
-    await rejectPrivateUser(env, normalizedPlatform, message);
+    await rejectPrivateUser(env, normalizedPlatform, message, config);
     return json({ ok: true, rejected: "private_chat" });
   }
   if (isBotCommand(message)) {
@@ -3923,7 +4210,7 @@ async function handleBotWebhook(request, env, platform = DEFAULT_PLATFORM) {
   const sentAt = isoFromUnix(message.date);
   const editedAt = isoFromUnix(message.edit_date);
   const topic = topicData(message);
-  const senderPhoto = await fetchSenderProfilePhoto(env, normalizedPlatform, sender.id);
+  const senderPhoto = await fetchSenderProfilePhoto(env, normalizedPlatform, sender.id, config);
 
   const row = {
     platform: normalizedPlatform,
@@ -3974,6 +4261,10 @@ async function handleBotWebhook(request, env, platform = DEFAULT_PLATFORM) {
     return json({ ok: false, error: await response.text() }, 500);
   }
   return json({ ok: true });
+}
+
+async function handleBotWebhook(request, env, platform = DEFAULT_PLATFORM) {
+  return handleBotWebhookWithConfig(request, env, botPlatformConfig(env, platform));
 }
 
 async function handleTelegramWebhook(request, env) {
@@ -4195,7 +4486,7 @@ async function updateGroupLabel(request, env) {
 
 async function fetchBots(env) {
   const params = new URLSearchParams();
-  params.set("select", "platform,bot_id,bot_username,bot_name,webhook_path,is_active,first_seen_at_utc,last_seen_at_utc,last_update_at_utc,message_count,group_count,last_message_at_utc");
+  params.set("select", "platform,bot_id,bot_username,bot_name,webhook_path,is_active,first_seen_at_utc,last_seen_at_utc,last_update_at_utc,credential_last4,credential_updated_at_utc,created_by_email,message_count,group_count,last_message_at_utc");
   params.set("order", "last_seen_at_utc.desc.nullslast,platform.asc");
   params.set("limit", "1000");
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_bot_stats?${params}`, {
@@ -4211,6 +4502,7 @@ async function fetchBots(env) {
     first_seen_tehran: row.first_seen_at_utc ? tehranDateTimeDisplay(new Date(row.first_seen_at_utc)) : null,
     last_seen_tehran: row.last_seen_at_utc ? tehranDateTimeDisplay(new Date(row.last_seen_at_utc)) : null,
     last_message_tehran: row.last_message_at_utc ? tehranDateTimeDisplay(new Date(row.last_message_at_utc)) : null,
+    credential_updated_tehran: row.credential_updated_at_utc ? tehranDateTimeDisplay(new Date(row.credential_updated_at_utc)) : null,
     display_timezone: "Asia/Tehran",
   }));
   return json({ bots });
@@ -4324,6 +4616,7 @@ export default {
     }
     if (url.pathname === "/telegram-webhook") return handleTelegramWebhook(request, env);
     if (url.pathname === "/bale-webhook") return handleBaleWebhook(request, env);
+    if (url.pathname.startsWith("/bot-webhook/")) return handleStoredBotWebhook(request, env);
     if (url.pathname === "/login") return handleLogin(request, env);
     if (url.pathname === "/forgot-password") return handleForgotPassword(request, env);
     if (url.pathname === "/recovery") return handleRecoveryPassword(request, env);
@@ -4387,9 +4680,13 @@ export default {
       if (!hasAccessPermission(authUser, "groups")) return forbiddenAccess();
       return updateGroupLabel(request, env);
     }
-    if (url.pathname === "/api/bots") {
+    if (url.pathname === "/api/bots" && request.method === "GET") {
       if (!hasAccessPermission(authUser, "bots")) return forbiddenAccess();
       return fetchBots(env);
+    }
+    if (url.pathname === "/api/bots" && request.method === "POST") {
+      if (!hasAccessPermission(authUser, "bots")) return forbiddenAccess();
+      return addBotFromDashboard(request, env, authUser);
     }
     if (url.pathname === "/api/dashboard") {
       if (!hasAccessPermission(authUser, "dashboard")) return forbiddenAccess();
