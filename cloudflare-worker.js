@@ -59,7 +59,8 @@ const HTML = `<!doctype html>
     .groups-table col.group-messages { width:4%; }
     .groups-table col.group-details { width:6%; }
     .groups-table .group-name-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.5; }
-    .group-label-select { width:100%; min-width:0; height:32px; padding:0 8px; font-size:12px; }
+    .group-label-filter { width:100%; min-width:0; }
+    .group-label-filter .multi-button { min-height:32px; font-size:12px; }
     td.body { direction:rtl; text-align:right; }
     .full-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.45; }
     .message-cell { min-width:0; }
@@ -361,7 +362,7 @@ const HTML = `<!doctype html>
       .message-inner { align-items:flex-start; }
       .message-inner .clip { white-space:normal; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; }
       .details-button { width:100%; }
-      .group-label-select { height:36px; }
+      .group-label-filter .multi-button { min-height:36px; }
       .access-log-table { margin-top:10px; direction:rtl; }
       .access-log-table th, .access-log-table td { direction:rtl; text-align:right; }
       .chart-panel, .access-panel, .profile-panel, .bots-panel { padding:14px; }
@@ -537,10 +538,7 @@ const HTML = `<!doctype html>
         <h2>مدیریت بات‌ها</h2>
         <p class="thread-muted">بات‌های هر پلتفرم و تعداد گروه‌ها و پیام‌هایی که با هر بات ثبت شده است.</p>
         <form class="bot-form" id="botForm">
-          <select id="botPlatform">
-            <option value="telegram">تلگرام</option>
-            <option value="bale">بله</option>
-          </select>
+          <div id="botPlatform" class="multi-filter single-filter"></div>
           <input id="botName" type="text" placeholder="نام بات" autocomplete="off" />
           <input id="botUsername" type="text" placeholder="یوزرنیم بات" autocomplete="off" dir="ltr" />
           <span class="password-wrap">
@@ -599,9 +597,7 @@ const HTML = `<!doctype html>
         </section>
         <section class="access-section" id="accessGroupsSection" hidden>
           <div class="access-group-view">
-            <select id="accessGroupSelect" aria-label="انتخاب گروه">
-              <option value="">انتخاب گروه</option>
-            </select>
+            <div id="accessGroupSelect" class="multi-filter single-filter"></div>
             <button class="secondary-button" id="accessGroupRefresh" type="button">به‌روزرسانی</button>
           </div>
           <div class="access-group-summary" id="accessGroupSummary"></div>
@@ -839,7 +835,35 @@ const HTML = `<!doctype html>
     }
     function groupLabelSelect(row) {
       const current = String(row.group_label || "");
-      return \`<select class="group-label-select" data-platform="\${esc(row.platform || "telegram")}" data-chat-id="\${esc(row.chat_id)}" data-previous="\${esc(current)}" aria-label="لیبل گروه">\${groupLabelOptions.map(([value, label]) => \`<option value="\${esc(value)}" \${current === value ? "selected" : ""}>\${esc(label)}</option>\`).join("")}</select>\`;
+      return \`<div class="multi-filter single-filter group-label-filter" data-group-label-filter data-platform="\${esc(row.platform || "telegram")}" data-chat-id="\${esc(row.chat_id)}" data-current="\${esc(current)}"></div>\`;
+    }
+    function mountGroupLabelFilters() {
+      groupRowsEl.querySelectorAll("[data-group-label-filter]").forEach((root) => {
+        const filter = createSingleFilter(root, "بدون لیبل", async () => {
+          const previous = root.dataset.current || "";
+          const nextValue = filter.value();
+          root.classList.add("loading");
+          try {
+            const res = await fetch("/api/groups/label", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ platform: root.dataset.platform || "telegram", chat_id: root.dataset.chatId, group_label: nextValue }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "ذخیره لیبل انجام نشد");
+            root.dataset.current = data.group_label || "";
+            filter.setValue(root.dataset.current);
+            setStatus(loadingToken, "لیبل گروه ذخیره شد");
+          } catch (error) {
+            filter.setValue(previous);
+            setStatus(loadingToken, error.message || "ذخیره لیبل انجام نشد");
+          } finally {
+            root.classList.remove("loading");
+          }
+        });
+        filter.setOptions(groupLabelOptions.map(([value, label]) => ({ value, label })));
+        filter.setValue(root.dataset.current || "");
+      });
     }
     function accessActionText(action) {
       const labels = {
@@ -1004,8 +1028,15 @@ const HTML = `<!doctype html>
       const clearButton = root.querySelector(".multi-clear");
       const label = root.querySelector(".multi-label");
       const panel = root.querySelector(".multi-panel");
+      function normalizeOption(option) {
+        if (option && typeof option === "object") return { value: String(option.value || ""), label: String(option.label || option.value || "") };
+        return { value: String(option || ""), label: String(option || "") };
+      }
+      function selectedLabel() {
+        return state.options.find((option) => option.value === state.selected)?.label || "";
+      }
       function syncLabel() {
-        label.textContent = state.selected || placeholder;
+        label.textContent = selectedLabel() || placeholder;
         root.classList.toggle("has-value", Boolean(state.selected));
       }
       function render() {
@@ -1013,7 +1044,7 @@ const HTML = `<!doctype html>
           panel.innerHTML = \`<div class="multi-empty">موردی نیست</div>\`;
           return;
         }
-        panel.innerHTML = state.options.map((value) => \`<button class="single-option \${state.selected === value ? "selected" : ""}" type="button" data-value="\${esc(value)}">\${esc(value)}</button>\`).join("");
+        panel.innerHTML = state.options.map((option) => \`<button class="single-option \${state.selected === option.value ? "selected" : ""}" type="button" data-value="\${esc(option.value)}">\${esc(option.label)}</button>\`).join("");
       }
       button.addEventListener("click", () => root.classList.toggle("open"));
       clearButton.addEventListener("click", () => {
@@ -1034,8 +1065,14 @@ const HTML = `<!doctype html>
       });
       return {
         setOptions(values) {
-          state.options = [...new Set(values.filter(Boolean))];
-          if (!state.options.includes(state.selected)) state.selected = "";
+          const seen = new Set();
+          state.options = values.map(normalizeOption).filter((option) => option.value && !seen.has(option.value) && seen.add(option.value));
+          if (!state.options.some((option) => option.value === state.selected)) state.selected = "";
+          render();
+          syncLabel();
+        },
+        setValue(value) {
+          state.selected = state.options.some((option) => option.value === value) ? value : "";
           render();
           syncLabel();
         },
@@ -1071,6 +1108,10 @@ const HTML = `<!doctype html>
     const threadYearFilter = createSingleFilter(threadYearEl, "سال", () => { updateThreadDateOptions(); updateFilterButtons(); loadThreads(); });
     const threadMonthFilter = createSingleFilter(threadMonthEl, "ماه", () => { updateThreadDateOptions(); updateFilterButtons(); loadThreads(); });
     const threadDayFilter = createSingleFilter(threadDayEl, "روز", () => { updateFilterButtons(); loadThreads(); });
+    const botPlatformFilter = createSingleFilter(botPlatformEl, "پلتفرم بات");
+    botPlatformFilter.setOptions([{ value: "telegram", label: "تلگرام" }, { value: "bale", label: "بله" }]);
+    botPlatformFilter.setValue("telegram");
+    const accessGroupFilter = createSingleFilter(accessGroupSelectEl, "انتخاب گروه", () => renderAccessGroupUsers());
     function appendFilterValues(params, key, values) {
       values.forEach((value) => params.append(key, value));
     }
@@ -1772,6 +1813,7 @@ const HTML = `<!doctype html>
             <td data-label="جزئیات"><button class="details-button" type="button" data-detail-key="group-\${esc(row.platform || "telegram")}:\${esc(row.chat_id)}">جزئیات</button></td>
           </tr>\`).join("") : '<tr><td colspan="9" class="empty">شما به هیچ چیز دسترسی ندارید.</td></tr>';
         data.groups.forEach(row => detailByKey.set("group-" + (row.platform || "telegram") + ":" + row.chat_id, groupDetailHtml(row)));
+        mountGroupLabelFilters();
         setStatus(token, data.groups.length + " گروه");
       } catch (error) {
         setStatus(token, "خطا در دریافت گروه‌ها");
@@ -1824,7 +1866,7 @@ const HTML = `<!doctype html>
       return "";
     }
     function renderAccessGroupUsers() {
-      const selectedKey = accessGroupSelectEl.value;
+      const selectedKey = accessGroupFilter.value();
       const group = accessGroupOptions.find((item) => item.key === selectedKey);
       if (!group) {
         accessGroupSummaryEl.innerHTML = "";
@@ -1862,11 +1904,11 @@ const HTML = `<!doctype html>
           setStatus(token, groupsData.detail || groupsData.error || usersData.detail || usersData.error || "خطا در دریافت دسترسی گروه‌ها");
           return;
         }
-        const previous = accessGroupSelectEl.value;
+        const previous = accessGroupFilter.value();
         accessGroupOptions = groupsData.groups;
         accessUserOptions = usersData.users;
-        accessGroupSelectEl.innerHTML = '<option value="">انتخاب گروه</option>' + accessGroupOptions.map((group) => \`<option value="\${esc(group.key)}">\${esc(group.title)} · \${esc(platformText(group.platform))}\${groupLabelShort(group.group_label) ? " · " + esc(groupLabelShort(group.group_label)) : ""}</option>\`).join("");
-        if (previous && accessGroupOptions.some((group) => group.key === previous)) accessGroupSelectEl.value = previous;
+        accessGroupFilter.setOptions(accessGroupOptions.map((group) => ({ value: group.key, label: \`\${group.title} · \${platformText(group.platform)}\${groupLabelShort(group.group_label) ? " · " + groupLabelShort(group.group_label) : ""}\` })));
+        if (previous && accessGroupOptions.some((group) => group.key === previous)) accessGroupFilter.setValue(previous);
         renderAccessGroupUsers();
         setStatus(token, accessGroupOptions.length + " گروه");
       } catch (error) {
@@ -2045,7 +2087,7 @@ const HTML = `<!doctype html>
       event.preventDefault();
       botMessageEl.textContent = "در حال تست و ثبت بات...";
       const payload = {
-        platform: botPlatformEl.value,
+        platform: botPlatformFilter.value() || "telegram",
         bot_name: botNameEl.value.trim(),
         bot_username: botUsernameEl.value.trim(),
         token: botTokenEl.value.trim(),
@@ -2068,28 +2110,6 @@ const HTML = `<!doctype html>
         await loadBots();
       } catch (error) {
         botMessageEl.textContent = "ثبت بات انجام نشد";
-      }
-    });
-    groupRowsEl.addEventListener("change", async event => {
-      const select = event.target.closest(".group-label-select");
-      if (!select) return;
-      const previous = select.dataset.previous ?? "";
-      select.disabled = true;
-      try {
-        const res = await fetch("/api/groups/label", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ platform: select.dataset.platform || "telegram", chat_id: select.dataset.chatId, group_label: select.value }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "ذخیره لیبل انجام نشد");
-        select.dataset.previous = data.group_label || "";
-        setStatus(loadingToken, "لیبل گروه ذخیره شد");
-      } catch (error) {
-        select.value = previous;
-        setStatus(loadingToken, error.message || "ذخیره لیبل انجام نشد");
-      } finally {
-        select.disabled = false;
       }
     });
     accessLogRowsEl.addEventListener("click", event => {
@@ -2176,7 +2196,6 @@ const HTML = `<!doctype html>
     accessUsersTabEl.addEventListener("click", () => showAccessSection("users"));
     accessGroupsTabEl.addEventListener("click", () => showAccessSection("groups"));
     accessLogsTabEl.addEventListener("click", () => showAccessSection("logs"));
-    accessGroupSelectEl.addEventListener("change", () => renderAccessGroupUsers());
     accessGroupRefreshEl.addEventListener("click", () => loadAccessGroupView());
     accessFormEl.addEventListener("submit", async (event) => {
       event.preventDefault();
