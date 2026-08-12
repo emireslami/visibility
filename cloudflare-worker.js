@@ -1392,6 +1392,7 @@ const HTML = `<!doctype html>
               <span class="access-email">\${esc(user.email)}</span>
               <span class="access-state">\${!user.is_active ? "Revoked" : (user.must_change_password ? "نیازمند تغییر پسورد" : "فعال")} · \${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</span>
               <span class="access-actions">
+                <button class="secondary-button" type="button" data-resend-email="\${esc(user.email)}">Resend Email</button>
                 \${user.is_owner
                   ? '<span class="owner-badge">Owner</span>'
                   : user.is_active
@@ -1656,6 +1657,30 @@ const HTML = `<!doctype html>
       }
     });
     accessRowsEl.addEventListener("click", async (event) => {
+      const resendButton = event.target.closest("[data-resend-email]");
+      if (resendButton && !resendButton.disabled) {
+        const email = resendButton.dataset.resendEmail;
+        resendButton.disabled = true;
+        accessMessageEl.textContent = "در حال ارسال دوباره ایمیل...";
+        try {
+          const res = await fetch("/api/access-users/resend-invite", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ email }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            accessMessageEl.textContent = data.error || "ارسال دوباره ایمیل انجام نشد";
+            resendButton.disabled = false;
+            return;
+          }
+          accessMessageEl.textContent = "ایمیل دعوت دوباره ارسال شد.";
+        } catch (error) {
+          accessMessageEl.textContent = "ارسال دوباره ایمیل انجام نشد";
+          resendButton.disabled = false;
+        }
+        return;
+      }
       const revokeButton = event.target.closest("[data-revoke-email]");
       const reactivateButton = event.target.closest("[data-reactivate-email]");
       const button = revokeButton || reactivateButton;
@@ -2718,6 +2743,49 @@ async function revokeAccessUser(request, env, authUser) {
     return json({ user: { email: user.email, is_active: user.is_active } });
   } catch (error) {
     return json({ error: error.message || "Revoke انجام نشد" }, 500);
+  }
+}
+
+async function resendAccessInviteEmail(request, env, authUser) {
+  let body = {};
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const email = normalizeEmail(body.email);
+  if (!validAccessEmail(email)) return json({ error: "ایمیل نامعتبر است" }, 400);
+  try {
+    const existing = await getAccessUserByEmail(env, email);
+    if (!existing) return json({ error: "کاربر پیدا نشد" }, 404);
+    await sendAccessInviteEmail(env, email, new URL(request.url).origin);
+    await insertAccessAuditLog(env, {
+      actorEmail: authUser?.email,
+      targetEmail: email,
+      action: "invite_email",
+      metadata: {
+        invite_email_sent: true,
+        invite_email_provider: "supabase_auth_recovery",
+        resend: true,
+        target_was_active: existing.is_active,
+        target_must_change_password: existing.must_change_password,
+        target_had_login: Boolean(existing.last_login_at_utc),
+      },
+    });
+    return json({ email, invite_email_sent: true });
+  } catch (error) {
+    await insertAccessAuditLog(env, {
+      actorEmail: authUser?.email,
+      targetEmail: email,
+      action: "invite_email",
+      metadata: {
+        invite_email_sent: false,
+        invite_email_provider: "supabase_auth_recovery",
+        resend: true,
+        invite_email_error: error.message || "ارسال ایمیل دعوت انجام نشد",
+      },
+    }).catch(() => {});
+    return json({ error: error.message || "ارسال دوباره ایمیل انجام نشد" }, 500);
   }
 }
 
@@ -3993,6 +4061,7 @@ export default {
     if (url.pathname === "/api/access-logs" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname === "/api/access-users" && request.method === "GET") return fetchAccessUsers(env);
     if (url.pathname === "/api/access-users" && request.method === "POST") return addAccessUser(request, env, authUser);
+    if (url.pathname === "/api/access-users/resend-invite" && request.method === "POST") return resendAccessInviteEmail(request, env, authUser);
     if (url.pathname === "/api/access-users/revoke" && request.method === "POST") return revokeAccessUser(request, env, authUser);
     if (url.pathname === "/api/access-users/reactivate" && request.method === "POST") return reactivateAccessUser(request, env, authUser);
     if (url.pathname === "/api/access-users/permissions" && request.method === "POST") return updateAccessUserPermissions(request, env, authUser);
