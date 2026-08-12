@@ -133,6 +133,7 @@ const HTML = `<!doctype html>
     .detail-value { min-width:0; overflow-wrap:anywhere; white-space:pre-wrap; }
     .detail-pre { direction:ltr; text-align:left; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px; line-height:1.55; }
     .chart-panel { max-width:1180px; margin:0 auto; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+    .chart-panel.secondary-chart-panel { margin-top:18px; }
     .chart-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:18px; }
     .chart-head h2 { margin:0; font-size:18px; }
     .chart-head p { margin:4px 0 0; color:var(--muted); font-size:12px; }
@@ -433,6 +434,16 @@ const HTML = `<!doctype html>
         <div class="chart-wrap" id="dailyChart"></div>
         <div class="chart-legend" id="chartLegend"></div>
       </section>
+      <section class="chart-panel secondary-chart-panel">
+        <div class="chart-head">
+          <div>
+            <h2>کاربران پیام‌دهنده</h2>
+            <p>تعداد پیام‌ها بر اساس روز، با تفکیک رنگی کاربران</p>
+          </div>
+        </div>
+        <div class="chart-wrap" id="userDailyChart"></div>
+        <div class="chart-legend" id="userChartLegend"></div>
+      </section>
     </section>
     <section class="page" id="messagesPage">
       <section class="filters">
@@ -654,6 +665,8 @@ const HTML = `<!doctype html>
     const threadRowsEl = document.getElementById("threadRows");
     const dailyChartEl = document.getElementById("dailyChart");
     const chartLegendEl = document.getElementById("chartLegend");
+    const userDailyChartEl = document.getElementById("userDailyChart");
+    const userChartLegendEl = document.getElementById("userChartLegend");
     const statusEl = document.getElementById("status");
     const dashboardNavEl = document.getElementById("dashboardNav");
     const messagesNavEl = document.getElementById("messagesNav");
@@ -1587,22 +1600,23 @@ const HTML = `<!doctype html>
       syncProfileUi();
       setStatus(++loadingToken, "پروفایل");
     }
-    function renderDailyChart(days, groups) {
+    function renderStackedDailyChart(chartEl, legendEl, days, series, valueKey) {
       if (!Array.isArray(days) || !days.length) {
-        dailyChartEl.innerHTML = '<div class="empty-chart">شما به هیچ چیز دسترسی ندارید.</div>';
-        chartLegendEl.innerHTML = "";
+        chartEl.innerHTML = '<div class="empty-chart">شما به هیچ چیز دسترسی ندارید.</div>';
+        legendEl.innerHTML = "";
         return;
       }
-      const colorByGroup = new Map(groups.map((group, index) => [group, chartColors[index % chartColors.length]]));
+      const colorByGroup = new Map(series.map((item, index) => [item, chartColors[index % chartColors.length]]));
       const maxTotal = Math.max(...days.map((day) => Number(day.total || 0)), 1);
-      dailyChartEl.innerHTML = \`<div class="stacked-chart">\${days.map((day) => {
+      chartEl.innerHTML = \`<div class="stacked-chart">\${days.map((day) => {
         const total = Number(day.total || 0);
         const height = Math.max(2, Math.round((total / maxTotal) * 275));
-        const segments = groups.map((group) => {
-          const count = Number(day.groups?.[group] || 0);
+        const values = day[valueKey] || {};
+        const segments = series.map((item) => {
+          const count = Number(values[item] || 0);
           if (!count) return "";
           const segmentHeight = Math.max(2, (count / total) * height);
-          return \`<div class="bar-segment" style="height:\${segmentHeight}px;background:\${colorByGroup.get(group)}" title="\${esc(group)}: \${count}"></div>\`;
+          return \`<div class="bar-segment" style="height:\${segmentHeight}px;background:\${colorByGroup.get(item)}" title="\${esc(item)}: \${count}"></div>\`;
         }).join("");
         return \`<div class="day-bar">
           <div class="bar-total">\${total}</div>
@@ -1610,7 +1624,13 @@ const HTML = `<!doctype html>
           <div class="bar-label">\${esc(day.jalali_date || day.date)}<br />\${esc(day.date)}</div>
         </div>\`;
       }).join("")}</div>\`;
-      chartLegendEl.innerHTML = groups.map((group) => \`<span class="legend-item"><span class="legend-swatch" style="background:\${colorByGroup.get(group)}"></span>\${esc(group)}</span>\`).join("");
+      legendEl.innerHTML = series.map((item) => \`<span class="legend-item"><span class="legend-swatch" style="background:\${colorByGroup.get(item)}"></span>\${esc(item)}</span>\`).join("");
+    }
+    function renderDailyChart(days, groups) {
+      renderStackedDailyChart(dailyChartEl, chartLegendEl, days, groups, "groups");
+    }
+    function renderUserDailyChart(days, users) {
+      renderStackedDailyChart(userDailyChartEl, userChartLegendEl, days, users, "users");
     }
     async function loadDashboard() {
       const token = showLoading("در حال دریافت نمودار...");
@@ -1620,10 +1640,13 @@ const HTML = `<!doctype html>
         if (!res.ok || !Array.isArray(data.days)) {
           dailyChartEl.innerHTML = "";
           chartLegendEl.innerHTML = "";
+          userDailyChartEl.innerHTML = "";
+          userChartLegendEl.innerHTML = "";
           setStatus(token, data.detail || data.error || "خطا در دریافت نمودار");
           return;
         }
         renderDailyChart(data.days, data.groups || []);
+        renderUserDailyChart(data.user_days || [], data.users || []);
         setStatus(token, data.total_messages + " پیام در " + data.days.length + " روز");
       } catch (error) {
         setStatus(token, "خطا در دریافت نمودار");
@@ -5014,7 +5037,7 @@ async function fetchDashboard(request, env, authUser) {
     return json(dashboardApiCache.data);
   }
   const params = new URLSearchParams();
-  params.set("select", "platform,chat_id,sent_at_utc,chat_title");
+  params.set("select", "platform,chat_id,sent_at_utc,chat_title,sender_id,sender_username,sender_first_name,sender_last_name");
   params.set("sent_at_utc", "not.is.null");
   params.set("order", "sent_at_utc.asc");
   params.set("limit", "10000");
@@ -5025,7 +5048,9 @@ async function fetchDashboard(request, env, authUser) {
     return json({ error: "درخواست داشبورد از دیتابیس انجام نشد", detail: await response.text() }, 500);
   }
   const byDate = new Map();
+  const byUserDate = new Map();
   const groupTotals = new Map();
+  const userTotals = new Map();
   let totalMessages = 0;
   const allowedSet = await allowedChatKeySet(env, authUser);
   for (const row of (await response.json()).filter((item) => rowAllowedByChatSet(item, allowedSet))) {
@@ -5033,17 +5058,27 @@ async function fetchDashboard(request, env, authUser) {
     const sentDate = new Date(row.sent_at_utc);
     const tehranDate = tehranIsoDateFast(sentDate);
     const group = `${platformLabel(row.platform)} / ${row.chat_title || "بدون نام"}`;
+    const senderName = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ").trim();
+    const user = senderName || (row.sender_username ? `@${row.sender_username}` : (row.sender_id ? `کاربر ${row.sender_id}` : "کاربر ناشناس"));
     const day = byDate.get(tehranDate) || { date: tehranDate, jalali_date: null, total: 0, groups: {} };
     if (!day.jalali_date) day.jalali_date = jalaliDateFast(sentDate);
     day.total += 1;
     day.groups[group] = (day.groups[group] || 0) + 1;
     byDate.set(tehranDate, day);
+    const userDay = byUserDate.get(tehranDate) || { date: tehranDate, jalali_date: null, total: 0, users: {} };
+    if (!userDay.jalali_date) userDay.jalali_date = jalaliDateFast(sentDate);
+    userDay.total += 1;
+    userDay.users[user] = (userDay.users[user] || 0) + 1;
+    byUserDate.set(tehranDate, userDay);
     groupTotals.set(group, (groupTotals.get(group) || 0) + 1);
+    userTotals.set(user, (userTotals.get(user) || 0) + 1);
     totalMessages += 1;
   }
   const days = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  const userDays = [...byUserDate.values()].sort((a, b) => a.date.localeCompare(b.date));
   const groups = [...groupTotals.entries()].sort((a, b) => b[1] - a[1]).map(([group]) => group);
-  const data = { days, groups, total_messages: totalMessages, display_timezone: "Asia/Tehran" };
+  const users = [...userTotals.entries()].sort((a, b) => b[1] - a[1]).map(([user]) => user);
+  const data = { days, groups, user_days: userDays, users, total_messages: totalMessages, display_timezone: "Asia/Tehran" };
   if (!restricted) dashboardApiCache = { createdAt: Date.now(), data };
   return json(data);
 }
