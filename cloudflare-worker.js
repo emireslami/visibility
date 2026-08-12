@@ -36,8 +36,10 @@ const HTML = `<!doctype html>
     .multi-filter.has-value .multi-clear { display:grid; place-items:center; }
     .multi-clear:hover { background:#dde6e9; color:var(--ink); }
     .multi-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .multi-panel { position:fixed; z-index:1200; display:none; width:var(--dropdown-w, 220px); max-height:min(260px, calc(100vh - var(--dropdown-top, 0px) - 12px)); overflow:auto; padding:6px; border:1px solid var(--line); border-radius:8px; background:#fff; box-shadow:0 12px 36px rgba(23,32,38,.16); }
-    .multi-filter.open .multi-panel { display:grid; gap:2px; }
+    .multi-panel { position:fixed; z-index:1200; display:none; width:var(--dropdown-w, 220px); max-height:min(320px, calc(100vh - var(--dropdown-top, 0px) - 12px)); overflow:hidden; padding:6px; border:1px solid var(--line); border-radius:8px; background:#fff; box-shadow:0 12px 36px rgba(23,32,38,.16); }
+    .multi-filter.open .multi-panel { display:grid; grid-template-rows:auto minmax(0, 1fr); gap:6px; }
+    .multi-search { width:100%; height:32px; padding:0 8px; border:1px solid var(--line); border-radius:6px; background:#fff; direction:rtl; text-align:right; font-size:12px; }
+    .multi-options { min-height:0; overflow:auto; display:grid; gap:2px; overscroll-behavior:contain; }
     .multi-option { min-height:32px; display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; }
     .multi-option:hover { background:#f2f6f7; }
     .multi-option input { width:16px; height:16px; flex:0 0 auto; }
@@ -1418,32 +1420,44 @@ const HTML = `<!doctype html>
       panel.style.left = left + "px";
       panel.style.top = top + "px";
     }
+    function positionOpenFilterPanels() {
+      document.querySelectorAll(".multi-filter.open").forEach((root) => {
+        const panel = root.querySelector(".multi-panel");
+        const button = root.querySelector(".multi-button");
+        if (panel && button) positionFilterPanel(root, panel, button);
+      });
+    }
     function openFilterPanel(root, panel, button) {
+      const wasOpen = root.classList.contains("open");
       document.querySelectorAll(".multi-filter.open").forEach((item) => {
         if (item !== root) item.classList.remove("open");
       });
       positionFilterPanel(root, panel, button);
       root.classList.toggle("open");
-      if (root.classList.contains("open")) positionFilterPanel(root, panel, button);
+      if (root.classList.contains("open")) {
+        positionFilterPanel(root, panel, button);
+        if (!wasOpen) requestAnimationFrame(() => panel.querySelector(".multi-search")?.focus());
+      }
     }
       function createMultiFilter(root, placeholder, onChange) {
-      const state = { options: [], selected: new Set() };
+      const state = { options: [], selected: new Set(), query: "" };
       root.innerHTML = \`<div class="multi-control"><button class="multi-button" type="button"><span class="multi-label">\${esc(placeholder)}</span></button><button class="multi-clear" type="button" aria-label="پاک کردن فیلتر" title="پاک کردن فیلتر">×</button></div><div class="multi-panel"></div>\`;
       const button = root.querySelector(".multi-button");
       const clearButton = root.querySelector(".multi-clear");
       const label = root.querySelector(".multi-label");
       const panel = root.querySelector(".multi-panel");
+      const optionMatches = (value) => String(value || "").toLowerCase().includes(state.query.trim().toLowerCase());
       function syncLabel() {
         const values = [...state.selected];
         label.textContent = values.length === 0 ? placeholder : (values.length === 1 ? values[0] : values.length + " انتخاب");
         root.classList.toggle("has-value", values.length > 0);
       }
       function render() {
-        if (!state.options.length) {
-          panel.innerHTML = \`<div class="multi-empty">موردی نیست</div>\`;
-          return;
-        }
-        panel.innerHTML = state.options.map((value) => \`<label class="multi-option"><input type="checkbox" value="\${esc(value)}" \${state.selected.has(value) ? "checked" : ""} /><span>\${esc(value)}</span></label>\`).join("");
+        const visibleOptions = state.options.filter(optionMatches);
+        const optionsHtml = visibleOptions.length
+          ? visibleOptions.map((value) => \`<label class="multi-option"><input type="checkbox" value="\${esc(value)}" \${state.selected.has(value) ? "checked" : ""} /><span>\${esc(value)}</span></label>\`).join("")
+          : \`<div class="multi-empty">\${state.options.length ? "نتیجه‌ای پیدا نشد" : "موردی نیست"}</div>\`;
+        panel.innerHTML = \`<input class="multi-search" type="search" value="\${esc(state.query)}" placeholder="جستجو..." autocomplete="off" /><div class="multi-options">\${optionsHtml}</div>\`;
       }
       button.addEventListener("click", () => openFilterPanel(root, panel, button));
       clearButton.addEventListener("click", () => {
@@ -1452,6 +1466,15 @@ const HTML = `<!doctype html>
         render();
         syncLabel();
         onChange?.();
+      });
+      panel.addEventListener("input", (event) => {
+        const search = event.target.closest(".multi-search");
+        if (!search) return;
+        state.query = search.value;
+        render();
+        const nextSearch = panel.querySelector(".multi-search");
+        nextSearch?.focus();
+        nextSearch?.setSelectionRange(nextSearch.value.length, nextSearch.value.length);
       });
       panel.addEventListener("change", (event) => {
         const checkbox = event.target.closest("input[type='checkbox']");
@@ -1482,12 +1505,14 @@ const HTML = `<!doctype html>
           syncLabel();
         },
         close() {
+          state.query = "";
           root.classList.remove("open");
+          render();
         },
       };
     }
     function createSingleFilter(root, placeholder, onChange) {
-      const state = { options: [], selected: "" };
+      const state = { options: [], selected: "", query: "" };
       root.innerHTML = \`<div class="multi-control"><button class="multi-button" type="button"><span class="multi-label">\${esc(placeholder)}</span></button><button class="multi-clear" type="button" aria-label="پاک کردن فیلتر" title="پاک کردن فیلتر">×</button></div><div class="multi-panel"></div>\`;
       const button = root.querySelector(".multi-button");
       const clearButton = root.querySelector(".multi-clear");
@@ -1505,11 +1530,12 @@ const HTML = `<!doctype html>
         root.classList.toggle("has-value", Boolean(state.selected));
       }
       function render() {
-        if (!state.options.length) {
-          panel.innerHTML = \`<div class="multi-empty">موردی نیست</div>\`;
-          return;
-        }
-        panel.innerHTML = state.options.map((option) => \`<button class="single-option \${state.selected === option.value ? "selected" : ""}" type="button" data-value="\${esc(option.value)}">\${esc(option.label)}</button>\`).join("");
+        const query = state.query.trim().toLowerCase();
+        const visibleOptions = query ? state.options.filter((option) => option.label.toLowerCase().includes(query) || option.value.toLowerCase().includes(query)) : state.options;
+        const optionsHtml = visibleOptions.length
+          ? visibleOptions.map((option) => \`<button class="single-option \${state.selected === option.value ? "selected" : ""}" type="button" data-value="\${esc(option.value)}">\${esc(option.label)}</button>\`).join("")
+          : \`<div class="multi-empty">\${state.options.length ? "نتیجه‌ای پیدا نشد" : "موردی نیست"}</div>\`;
+        panel.innerHTML = \`<input class="multi-search" type="search" value="\${esc(state.query)}" placeholder="جستجو..." autocomplete="off" /><div class="multi-options">\${optionsHtml}</div>\`;
       }
       button.addEventListener("click", () => openFilterPanel(root, panel, button));
       clearButton.addEventListener("click", () => {
@@ -1519,10 +1545,20 @@ const HTML = `<!doctype html>
         syncLabel();
         onChange?.();
       });
+      panel.addEventListener("input", (event) => {
+        const search = event.target.closest(".multi-search");
+        if (!search) return;
+        state.query = search.value;
+        render();
+        const nextSearch = panel.querySelector(".multi-search");
+        nextSearch?.focus();
+        nextSearch?.setSelectionRange(nextSearch.value.length, nextSearch.value.length);
+      });
       panel.addEventListener("click", (event) => {
         const option = event.target.closest("[data-value]");
         if (!option) return;
         state.selected = option.dataset.value;
+        state.query = "";
         root.classList.remove("open");
         render();
         syncLabel();
@@ -1550,7 +1586,9 @@ const HTML = `<!doctype html>
           syncLabel();
         },
         close() {
+          state.query = "";
           root.classList.remove("open");
+          render();
         },
       };
     }
@@ -3265,8 +3303,8 @@ const HTML = `<!doctype html>
         document.querySelectorAll(".multi-filter.open").forEach((filter) => filter.classList.remove("open"));
       }
     });
-    window.addEventListener("resize", () => document.querySelectorAll(".multi-filter.open").forEach((filter) => filter.classList.remove("open")));
-    window.addEventListener("scroll", () => document.querySelectorAll(".multi-filter.open").forEach((filter) => filter.classList.remove("open")), true);
+    window.addEventListener("resize", positionOpenFilterPanels);
+    window.addEventListener("scroll", positionOpenFilterPanels, true);
     syncProfileUi();
     setupAccessShell();
     setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "analytics" && canOpen("analytics")) loadAnalytics(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "senders" && canOpen("senders")) loadSenders(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
