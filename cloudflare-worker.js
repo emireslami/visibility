@@ -165,13 +165,14 @@ const HTML = `<!doctype html>
     .analytics-panel { display:grid; gap:18px; }
     .analytics-summary { display:grid; grid-template-columns:repeat(4, minmax(120px, 1fr)); gap:10px; }
     .analytics-card { padding:14px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; }
-    .analytics-card strong { display:block; margin-top:8px; font-size:22px; color:var(--ink); direction:ltr; text-align:right; }
+    .analytics-card strong { display:block; margin-top:8px; font-size:22px; color:var(--ink); direction:rtl; text-align:right; }
     .analytics-card span { color:var(--muted); font-size:12px; }
     .analytics-section-title { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-top:4px; }
     .analytics-section-title h3 { margin:0; font-size:15px; }
     .analytics-section-title p { margin:4px 0 0; color:var(--muted); font-size:12px; }
     .analytics-table th, .analytics-table td { text-align:right; direction:rtl; }
-    .analytics-table .metric-number { direction:ltr; text-align:right; white-space:nowrap; }
+    .analytics-table .metric-number { direction:rtl; text-align:right; white-space:nowrap; }
+    .analytics-table .metric-count { direction:ltr; }
     .access-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
     .access-panel h2 { margin:0 0 6px; font-size:18px; }
     .bots-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1180px; margin:0 auto; }
@@ -2158,7 +2159,7 @@ const HTML = `<!doctype html>
       return seconds + " ثانیه";
     }
     function analyticsMetricCells(row) {
-      return '<td class="metric-number" data-label="تعداد پاسخ">' + numberFmt.format(row.count || 0) + '</td>'
+      return '<td class="metric-number metric-count" data-label="تعداد پاسخ">' + numberFmt.format(row.count || 0) + '</td>'
         + '<td class="metric-number" data-label="میانگین">' + esc(formatDuration(row.avg_ms)) + '</td>'
         + '<td class="metric-number" data-label="میانه">' + esc(formatDuration(row.median_ms)) + '</td>'
         + '<td class="metric-number" data-label="کمترین">' + esc(formatDuration(row.min_ms)) + '</td>'
