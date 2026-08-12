@@ -145,8 +145,13 @@ const HTML = `<!doctype html>
     .bar-segment { width:100%; min-height:2px; cursor:help; }
     .bar-segment:hover { filter:brightness(.92); }
     .bar-label { min-height:34px; color:var(--muted); font-size:11px; text-align:center; line-height:1.35; direction:ltr; }
-    .chart-legend { display:flex; flex-wrap:wrap; gap:8px 12px; margin-top:16px; direction:rtl; }
-    .legend-item { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; }
+    .chart-legend { display:grid; gap:10px; margin-top:16px; direction:rtl; }
+    .chart-filter-head { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--muted); font-size:12px; }
+    .chart-filter-head button { height:28px; padding:0 10px; }
+    .legend-grid { display:grid; grid-template-columns:repeat(3, minmax(180px, 1fr)); gap:8px; }
+    .legend-item { min-height:32px; display:flex; align-items:center; justify-content:flex-start; gap:6px; padding:5px 8px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; color:var(--muted); font-size:12px; cursor:pointer; direction:rtl; text-align:right; }
+    .legend-item.active { border-color:var(--accent); background:#eefbfc; color:var(--ink); font-weight:700; }
+    .legend-item.dimmed { opacity:.58; }
     .legend-swatch { width:10px; height:10px; border-radius:2px; flex:0 0 auto; }
     .empty-chart { min-height:240px; display:grid; place-items:center; color:var(--muted); border:1px dashed var(--line); border-radius:8px; }
     .access-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
@@ -361,6 +366,7 @@ const HTML = `<!doctype html>
       .access-log-table th, .access-log-table td { direction:rtl; text-align:right; }
       .chart-panel, .access-panel, .profile-panel, .bots-panel { padding:14px; }
       .chart-head { align-items:flex-start; flex-direction:column; }
+      .legend-grid { grid-template-columns:1fr; }
       .bot-form { grid-template-columns:1fr; }
       .access-form, .access-main { grid-template-columns:1fr; }
       .access-row { direction:rtl; }
@@ -746,6 +752,9 @@ const HTML = `<!doctype html>
     ];
     const fullTextByKey = new Map();
     const detailByKey = new Map();
+    let dashboardChartData = { days: [], groups: [], userDays: [], users: [] };
+    const selectedGroupChartItems = new Set();
+    const selectedUserChartItems = new Set();
     let accessGroupOptions = [];
     let accessUserOptions = [];
     const chartColors = ["#087f8c", "#f25f5c", "#3b82f6", "#f59e0b", "#7c3aed", "#10b981", "#ef476f", "#6b7280", "#06b6d4", "#84cc16"];
@@ -1600,19 +1609,33 @@ const HTML = `<!doctype html>
       syncProfileUi();
       setStatus(++loadingToken, "پروفایل");
     }
-    function renderStackedDailyChart(chartEl, legendEl, days, series, valueKey) {
-      if (!Array.isArray(days) || !days.length) {
+    function filteredChartDays(days, series, valueKey, selectedSet) {
+      const activeSeries = selectedSet.size ? series.filter((item) => selectedSet.has(item)) : series;
+      return {
+        activeSeries,
+        days: days.map((day) => {
+          const values = day[valueKey] || {};
+          const total = activeSeries.reduce((sum, item) => sum + Number(values[item] || 0), 0);
+          return { ...day, total };
+        }),
+      };
+    }
+    function renderStackedDailyChart(chartEl, legendEl, days, series, valueKey, kind, selectedSet) {
+      if (!Array.isArray(days) || !days.length || !Array.isArray(series) || !series.length) {
         chartEl.innerHTML = '<div class="empty-chart">شما به هیچ چیز دسترسی ندارید.</div>';
         legendEl.innerHTML = "";
         return;
       }
+      const filtered = filteredChartDays(days, series, valueKey, selectedSet);
+      const activeSeries = filtered.activeSeries;
+      const displayDays = filtered.days;
       const colorByGroup = new Map(series.map((item, index) => [item, chartColors[index % chartColors.length]]));
-      const maxTotal = Math.max(...days.map((day) => Number(day.total || 0)), 1);
-      chartEl.innerHTML = \`<div class="stacked-chart">\${days.map((day) => {
+      const maxTotal = Math.max(...displayDays.map((day) => Number(day.total || 0)), 1);
+      chartEl.innerHTML = \`<div class="stacked-chart">\${displayDays.map((day) => {
         const total = Number(day.total || 0);
         const height = Math.max(2, Math.round((total / maxTotal) * 275));
         const values = day[valueKey] || {};
-        const segments = series.map((item) => {
+        const segments = activeSeries.map((item) => {
           const count = Number(values[item] || 0);
           if (!count) return "";
           const segmentHeight = Math.max(2, (count / total) * height);
@@ -1624,13 +1647,39 @@ const HTML = `<!doctype html>
           <div class="bar-label">\${esc(day.jalali_date || day.date)}<br />\${esc(day.date)}</div>
         </div>\`;
       }).join("")}</div>\`;
-      legendEl.innerHTML = series.map((item) => \`<span class="legend-item"><span class="legend-swatch" style="background:\${colorByGroup.get(item)}"></span>\${esc(item)}</span>\`).join("");
+      legendEl.innerHTML = \`
+        <div class="chart-filter-head">
+          <span>\${selectedSet.size ? selectedSet.size + " مورد انتخاب شده" : "همه موارد"}</span>
+          <button class="secondary-button" type="button" data-chart-reset="\${kind}" \${selectedSet.size ? "" : "hidden"}>ریست فیلتر</button>
+        </div>
+        <div class="legend-grid">
+          \${series.map((item) => {
+            const active = selectedSet.has(item);
+            const dimmed = selectedSet.size && !active;
+            return \`<button class="legend-item \${active ? "active" : ""} \${dimmed ? "dimmed" : ""}" type="button" data-chart-kind="\${kind}" data-chart-item="\${esc(item)}"><span class="legend-swatch" style="background:\${colorByGroup.get(item)}"></span><span>\${esc(item)}</span></button>\`;
+          }).join("")}
+        </div>\`;
     }
     function renderDailyChart(days, groups) {
-      renderStackedDailyChart(dailyChartEl, chartLegendEl, days, groups, "groups");
+      renderStackedDailyChart(dailyChartEl, chartLegendEl, days, groups, "groups", "groups", selectedGroupChartItems);
     }
     function renderUserDailyChart(days, users) {
-      renderStackedDailyChart(userDailyChartEl, userChartLegendEl, days, users, "users");
+      renderStackedDailyChart(userDailyChartEl, userChartLegendEl, days, users, "users", "users", selectedUserChartItems);
+    }
+    function renderDashboardCharts() {
+      renderDailyChart(dashboardChartData.days || [], dashboardChartData.groups || []);
+      renderUserDailyChart(dashboardChartData.userDays || [], dashboardChartData.users || []);
+    }
+    function toggleChartItem(kind, item) {
+      const selectedSet = kind === "users" ? selectedUserChartItems : selectedGroupChartItems;
+      if (selectedSet.has(item)) selectedSet.delete(item);
+      else selectedSet.add(item);
+      renderDashboardCharts();
+    }
+    function resetChartFilter(kind) {
+      if (kind === "users") selectedUserChartItems.clear();
+      else selectedGroupChartItems.clear();
+      renderDashboardCharts();
     }
     async function loadDashboard() {
       const token = showLoading("در حال دریافت نمودار...");
@@ -1642,11 +1691,19 @@ const HTML = `<!doctype html>
           chartLegendEl.innerHTML = "";
           userDailyChartEl.innerHTML = "";
           userChartLegendEl.innerHTML = "";
+          dashboardChartData = { days: [], groups: [], userDays: [], users: [] };
           setStatus(token, data.detail || data.error || "خطا در دریافت نمودار");
           return;
         }
-        renderDailyChart(data.days, data.groups || []);
-        renderUserDailyChart(data.user_days || [], data.users || []);
+        dashboardChartData = {
+          days: data.days || [],
+          groups: data.groups || [],
+          userDays: data.user_days || [],
+          users: data.users || [],
+        };
+        selectedGroupChartItems.forEach((item) => { if (!dashboardChartData.groups.includes(item)) selectedGroupChartItems.delete(item); });
+        selectedUserChartItems.forEach((item) => { if (!dashboardChartData.users.includes(item)) selectedUserChartItems.delete(item); });
+        renderDashboardCharts();
         setStatus(token, data.total_messages + " پیام در " + data.days.length + " روز");
       } catch (error) {
         setStatus(token, "خطا در دریافت نمودار");
@@ -2038,6 +2095,18 @@ const HTML = `<!doctype html>
     accessLogRowsEl.addEventListener("click", event => {
       const detailsButton = event.target.closest("[data-detail-key]");
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "");
+    });
+    [chartLegendEl, userChartLegendEl].forEach((legendEl) => {
+      legendEl.addEventListener("click", (event) => {
+        const resetButton = event.target.closest("[data-chart-reset]");
+        if (resetButton) {
+          resetChartFilter(resetButton.dataset.chartReset);
+          return;
+        }
+        const itemButton = event.target.closest("[data-chart-kind][data-chart-item]");
+        if (!itemButton) return;
+        toggleChartItem(itemButton.dataset.chartKind, itemButton.dataset.chartItem);
+      });
     });
     modalCloseEl.addEventListener("click", () => closeModal());
     modalBackdropEl.addEventListener("click", event => { if (event.target === modalBackdropEl) closeModal(); });
