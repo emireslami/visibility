@@ -181,6 +181,7 @@ const HTML = `<!doctype html>
     .group-access-grid { display:grid; grid-template-columns:repeat(3, minmax(150px, 1fr)); gap:8px; }
     .group-access-grid.groups { max-height:150px; overflow:auto; padding-inline-end:4px; }
     .group-access-option { min-height:30px; display:flex; align-items:center; justify-content:flex-start; gap:6px; padding:5px 8px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; font-size:12px; color:var(--ink); direction:rtl; }
+    .group-access-option .group-label-chip { margin-inline-start:auto; padding:2px 6px; border:1px solid var(--line); border-radius:999px; background:#eef4f8; color:var(--muted); font-size:10px; font-weight:700; white-space:nowrap; }
     .group-access-option input { width:14px; height:14px; flex:0 0 auto; }
     .group-access-option:has(input:disabled) { opacity:.68; background:#f7f8fa; }
     .revoke-button { height:30px; padding:0 10px; background:#fff; color:#b42318; border-color:#f0b8b2; }
@@ -761,6 +762,14 @@ const HTML = `<!doctype html>
     function groupLabelText(value) {
       return groupLabelOptions.find(([key]) => key === String(value || ""))?.[1] || "بدون لیبل";
     }
+    function groupLabelShort(value) {
+      const labels = {
+        internal_team: "داخلی",
+        customer: "مشتری",
+        provider: "پروایدر",
+      };
+      return labels[String(value || "")] || "";
+    }
     function groupAccessHtml(user) {
       const access = user.group_access || { labels: [], groups: [] };
       const labelSet = new Set(access.labels || []);
@@ -771,7 +780,7 @@ const HTML = `<!doctype html>
         .map(([value, label]) => \`<label class="group-access-option"><input type="checkbox" data-group-label="\${esc(value)}" \${labelSet.has(value) ? "checked" : ""} \${disabled} /><span>\${esc(label)}</span></label>\`)
         .join("");
       const groupOptions = accessGroupOptions
-        .map((group) => \`<label class="group-access-option"><input type="checkbox" data-group-key="\${esc(group.key)}" data-group-label-value="\${esc(group.group_label || "")}" \${groupSet.has(group.key) || labelSet.has(group.group_label || "") ? "checked" : ""} \${disabled} /><span>\${esc(group.title)}</span><span class="thread-muted">\${esc(platformText(group.platform))}</span></label>\`)
+        .map((group) => \`<label class="group-access-option"><input type="checkbox" data-group-key="\${esc(group.key)}" data-group-label-value="\${esc(group.group_label || "")}" \${groupSet.has(group.key) || labelSet.has(group.group_label || "") ? "checked" : ""} \${disabled} /><span>\${esc(group.title)}</span>\${groupLabelShort(group.group_label) ? \`<span class="group-label-chip">\${esc(groupLabelShort(group.group_label))}</span>\` : ""}<span class="thread-muted">\${esc(platformText(group.platform))}</span></label>\`)
         .join("");
       const mode = labelSet.size || groupSet.size ? "محدود" : "همه گروه‌ها";
       return \`<div class="group-access-box" data-group-access-email="\${esc(user.email)}" data-owner="\${user.is_owner ? "true" : "false"}">
