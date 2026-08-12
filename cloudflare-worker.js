@@ -545,10 +545,10 @@ const HTML = `<!doctype html>
           </div>
         </div>
         <div class="analytics-summary">
-          <div class="analytics-card" data-analytics-detail="avg"><span>میانگین کل</span><strong id="analyticsAvg">-</strong></div>
-          <div class="analytics-card" data-analytics-detail="count"><span>تعداد پاسخ‌های محاسبه‌شده</span><strong id="analyticsCount">۰</strong></div>
-          <div class="analytics-card" data-analytics-detail="min"><span>کمترین زمان پاسخ</span><strong id="analyticsMin">-</strong></div>
-          <div class="analytics-card" data-analytics-detail="max"><span>بیشترین زمان پاسخ</span><strong id="analyticsMax">-</strong></div>
+          <div class="analytics-card" data-analytics-scope="groups" data-analytics-detail="avg"><span>میانگین کل</span><strong id="analyticsAvg">-</strong></div>
+          <div class="analytics-card" data-analytics-scope="groups" data-analytics-detail="count"><span>تعداد پاسخ‌های محاسبه‌شده</span><strong id="analyticsCount">۰</strong></div>
+          <div class="analytics-card" data-analytics-scope="groups" data-analytics-detail="min"><span>کمترین زمان پاسخ</span><strong id="analyticsMin">-</strong></div>
+          <div class="analytics-card" data-analytics-scope="groups" data-analytics-detail="max"><span>بیشترین زمان پاسخ</span><strong id="analyticsMax">-</strong></div>
         </div>
         <div class="analytics-section-title">
           <div>
@@ -560,11 +560,11 @@ const HTML = `<!doctype html>
           <thead>
             <tr>
               <th>لیبل</th>
-              <th data-analytics-detail="count">تعداد پاسخ</th>
-              <th data-analytics-detail="avg">میانگین</th>
-              <th data-analytics-detail="median">میانه</th>
-              <th data-analytics-detail="min">کمترین</th>
-              <th data-analytics-detail="max">بیشترین</th>
+              <th data-analytics-scope="labels" data-analytics-detail="count">تعداد پاسخ</th>
+              <th data-analytics-scope="labels" data-analytics-detail="avg">میانگین</th>
+              <th data-analytics-scope="labels" data-analytics-detail="median">میانه</th>
+              <th data-analytics-scope="labels" data-analytics-detail="min">کمترین</th>
+              <th data-analytics-scope="labels" data-analytics-detail="max">بیشترین</th>
             </tr>
           </thead>
           <tbody id="analyticsLabelRows"></tbody>
@@ -579,11 +579,11 @@ const HTML = `<!doctype html>
           <thead>
             <tr>
               <th>لیبل فرد</th>
-              <th data-analytics-detail="count">تعداد پاسخ</th>
-              <th data-analytics-detail="avg">میانگین</th>
-              <th data-analytics-detail="median">میانه</th>
-              <th data-analytics-detail="min">کمترین</th>
-              <th data-analytics-detail="max">بیشترین</th>
+              <th data-analytics-scope="sender_labels" data-analytics-detail="count">تعداد پاسخ</th>
+              <th data-analytics-scope="sender_labels" data-analytics-detail="avg">میانگین</th>
+              <th data-analytics-scope="sender_labels" data-analytics-detail="median">میانه</th>
+              <th data-analytics-scope="sender_labels" data-analytics-detail="min">کمترین</th>
+              <th data-analytics-scope="sender_labels" data-analytics-detail="max">بیشترین</th>
             </tr>
           </thead>
           <tbody id="analyticsSenderLabelRows"></tbody>
@@ -600,11 +600,11 @@ const HTML = `<!doctype html>
               <th>گروه</th>
               <th>پلتفرم</th>
               <th>لیبل</th>
-              <th data-analytics-detail="count">تعداد پاسخ</th>
-              <th data-analytics-detail="avg">میانگین</th>
-              <th data-analytics-detail="median">میانه</th>
-              <th data-analytics-detail="min">کمترین</th>
-              <th data-analytics-detail="max">بیشترین</th>
+              <th data-analytics-scope="groups" data-analytics-detail="count">تعداد پاسخ</th>
+              <th data-analytics-scope="groups" data-analytics-detail="avg">میانگین</th>
+              <th data-analytics-scope="groups" data-analytics-detail="median">میانه</th>
+              <th data-analytics-scope="groups" data-analytics-detail="min">کمترین</th>
+              <th data-analytics-scope="groups" data-analytics-detail="max">بیشترین</th>
             </tr>
           </thead>
           <tbody id="analyticsGroupRows"></tbody>
@@ -2353,38 +2353,70 @@ const HTML = `<!doctype html>
       const [datePart, timePart] = text.split(/\\s+/, 2);
       return esc(datePart || text) + (timePart ? '<br><span class="thread-muted">' + esc(timePart) + '</span>' : "");
     }
-    function analyticsMetricCells(row) {
-      return '<td class="metric-number metric-count" data-label="تعداد پاسخ" data-analytics-detail="count">' + numberFmt.format(row.count || 0) + '</td>'
-        + '<td class="metric-number" data-label="میانگین" data-analytics-detail="avg">' + esc(formatDuration(row.avg_ms)) + '</td>'
-        + '<td class="metric-number" data-label="میانه" data-analytics-detail="median">' + esc(formatDuration(row.median_ms)) + '</td>'
-        + '<td class="metric-number" data-label="کمترین" data-analytics-detail="min">' + esc(formatDuration(row.min_ms)) + '</td>'
-        + '<td class="metric-number" data-label="بیشترین" data-analytics-detail="max">' + esc(formatDuration(row.max_ms)) + '</td>';
+    function analyticsMetricCells(row, scope) {
+      return '<td class="metric-number metric-count" data-label="تعداد پاسخ" data-analytics-scope="' + esc(scope) + '" data-analytics-detail="count">' + numberFmt.format(row.count || 0) + '</td>'
+        + '<td class="metric-number" data-label="میانگین" data-analytics-scope="' + esc(scope) + '" data-analytics-detail="avg">' + esc(formatDuration(row.avg_ms)) + '</td>'
+        + '<td class="metric-number" data-label="میانه" data-analytics-scope="' + esc(scope) + '" data-analytics-detail="median">' + esc(formatDuration(row.median_ms)) + '</td>'
+        + '<td class="metric-number" data-label="کمترین" data-analytics-scope="' + esc(scope) + '" data-analytics-detail="min">' + esc(formatDuration(row.min_ms)) + '</td>'
+        + '<td class="metric-number" data-label="بیشترین" data-analytics-scope="' + esc(scope) + '" data-analytics-detail="max">' + esc(formatDuration(row.max_ms)) + '</td>';
     }
-    function analyticsDetailRows(kind) {
-      const groups = [...(analyticsData.groups || [])].filter((row) => row.count);
-      if (kind === "min") return groups.filter((row) => row.min_ms > 0).sort((a, b) => a.min_ms - b.min_ms).slice(0, 12);
-      if (kind === "max") return groups.sort((a, b) => b.max_ms - a.max_ms).slice(0, 12);
-      if (kind === "median") return groups.sort((a, b) => b.median_ms - a.median_ms || b.count - a.count).slice(0, 12);
-      if (kind === "count") return groups.sort((a, b) => b.count - a.count || b.total_ms - a.total_ms).slice(0, 12);
-      return groups.sort((a, b) => b.total_ms - a.total_ms || b.avg_ms - a.avg_ms).slice(0, 12);
+    function analyticsRowsForScope(scope) {
+      const key = scope === "labels" ? "labels" : (scope === "sender_labels" ? "sender_labels" : "groups");
+      return [...(analyticsData[key] || [])].filter((row) => row.count);
     }
-    function openAnalyticsDetail(kind) {
-      const labels = {
-        avg: ["اثرگذارترین گروه‌ها روی میانگین کل", "مرتب‌سازی بر اساس سهم هر گروه از کل زمان پاسخ‌گویی انجام شده است."],
-        count: ["بیشترین تعداد پاسخ‌های محاسبه‌شده", "گروه‌هایی که بیشترین تعداد reply قابل محاسبه را داشته‌اند."],
-        median: ["بیشترین میانه زمان پاسخ مربوط به کدام گروه‌هاست", "گروه‌ها بر اساس میانه زمان پاسخ‌گویی مرتب شده‌اند."],
-        min: ["کمترین زمان پاسخ مربوط به کدام گروه‌هاست", "گروه‌ها بر اساس سریع‌ترین پاسخ ثبت‌شده مرتب شده‌اند."],
-        max: ["بیشترین زمان پاسخ مربوط به کدام گروه‌هاست", "گروه‌ها بر اساس کندترین پاسخ ثبت‌شده مرتب شده‌اند."],
-      };
-      const [title, note] = labels[kind] || labels.avg;
-      const rows = analyticsDetailRows(kind);
+    function analyticsDetailRows(scope, kind) {
+      const rows = analyticsRowsForScope(scope);
+      if (kind === "min") return rows.filter((row) => row.min_ms > 0).sort((a, b) => a.min_ms - b.min_ms || b.count - a.count).slice(0, 12);
+      if (kind === "max") return rows.sort((a, b) => b.max_ms - a.max_ms || b.count - a.count).slice(0, 12);
+      if (kind === "median") return rows.sort((a, b) => b.median_ms - a.median_ms || b.count - a.count).slice(0, 12);
+      if (kind === "count") return rows.sort((a, b) => b.count - a.count || b.total_ms - a.total_ms).slice(0, 12);
+      return rows.sort((a, b) => b.avg_ms - a.avg_ms || b.count - a.count).slice(0, 12);
+    }
+    function analyticsScopeLabel(scope) {
+      if (scope === "labels") return "لیبل‌ها";
+      if (scope === "sender_labels") return "لیبل افراد";
+      return "گروه‌ها";
+    }
+    function analyticsKindLabel(kind) {
+      return {
+        avg: "میانگین زمان پاسخ",
+        count: "تعداد پاسخ",
+        median: "میانه زمان پاسخ",
+        min: "کمترین زمان پاسخ",
+        max: "بیشترین زمان پاسخ",
+      }[kind] || "میانگین زمان پاسخ";
+    }
+    function analyticsKindNote(kind) {
+      return {
+        avg: "مرتب‌سازی بر اساس بیشترین میانگین زمان پاسخ‌گویی انجام شده است.",
+        count: "مرتب‌سازی بر اساس بیشترین تعداد پاسخ‌های قابل محاسبه انجام شده است.",
+        median: "مرتب‌سازی بر اساس بیشترین میانه زمان پاسخ‌گویی انجام شده است.",
+        min: "مرتب‌سازی بر اساس کمترین زمان پاسخ ثبت‌شده انجام شده است.",
+        max: "مرتب‌سازی بر اساس بیشترین زمان پاسخ ثبت‌شده انجام شده است.",
+      }[kind] || "مرتب‌سازی بر اساس همان ستون انتخاب‌شده انجام شده است.";
+    }
+    function analyticsPrimaryCells(row, scope) {
+      if (scope === "labels") return '<td data-label="لیبل">' + esc(row.label_text || "بدون لیبل") + '</td>';
+      if (scope === "sender_labels") return '<td data-label="لیبل فرد">' + esc(row.label_text || "بدون لیبل") + '</td>';
+      return '<td data-label="گروه">' + esc(row.chat_title || "بدون نام") + '<br><span class="thread-muted">' + esc(row.chat_id || "") + '</span></td>'
+        + '<td data-label="پلتفرم">' + esc(platformText(row.platform)) + '</td>'
+        + '<td data-label="لیبل">' + esc(groupLabelText(row.group_label)) + '</td>';
+    }
+    function analyticsHeaderCells(scope) {
+      if (scope === "labels") return '<th>لیبل</th>';
+      if (scope === "sender_labels") return '<th>لیبل فرد</th>';
+      return '<th>گروه</th><th>پلتفرم</th><th>لیبل</th>';
+    }
+    function openAnalyticsDetail(kind, scope = "groups") {
+      const title = analyticsScopeLabel(scope) + " بر اساس " + analyticsKindLabel(kind);
+      const note = analyticsKindNote(kind);
+      const rows = analyticsDetailRows(scope, kind);
       const overallTotal = Number(analyticsData.overall?.total_ms || 0);
+      const emptyColspan = scope === "groups" ? 9 : 7;
       const tableRows = rows.length ? rows.map((row) => {
         const share = overallTotal ? Math.round((Number(row.total_ms || 0) / overallTotal) * 1000) / 10 : 0;
         return '<tr>'
-          + '<td data-label="گروه">' + esc(row.chat_title || "بدون نام") + '<br><span class="thread-muted">' + esc(row.chat_id || "") + '</span></td>'
-          + '<td data-label="پلتفرم">' + esc(platformText(row.platform)) + '</td>'
-          + '<td data-label="لیبل">' + esc(groupLabelText(row.group_label)) + '</td>'
+          + analyticsPrimaryCells(row, scope)
           + '<td class="metric-number metric-count" data-label="تعداد">' + numberFmt.format(row.count || 0) + '</td>'
           + '<td class="metric-number" data-label="میانگین">' + esc(formatDuration(row.avg_ms)) + '</td>'
           + '<td class="metric-number" data-label="میانه">' + esc(formatDuration(row.median_ms)) + '</td>'
@@ -2392,11 +2424,11 @@ const HTML = `<!doctype html>
           + '<td class="metric-number" data-label="بیشترین">' + esc(formatDuration(row.max_ms)) + '</td>'
           + '<td class="metric-number" data-label="سهم از کل">' + (overallTotal ? numberFmt.format(share) + "٪" : "-") + '</td>'
         + '</tr>';
-      }).join("") : '<tr><td colspan="9">داده‌ای برای نمایش وجود ندارد.</td></tr>';
+      }).join("") : '<tr><td colspan="' + emptyColspan + '">داده‌ای برای نمایش وجود ندارد.</td></tr>';
       openDetails(
         '<p class="analytics-detail-note">' + esc(note) + '</p>'
         + '<div class="modal-table-wrap"><table class="modal-table"><thead><tr>'
-          + '<th>گروه</th><th>پلتفرم</th><th>لیبل</th><th>تعداد</th><th>میانگین</th><th>میانه</th><th>کمترین</th><th>بیشترین</th><th>سهم از کل</th>'
+          + analyticsHeaderCells(scope) + '<th>تعداد</th><th>میانگین</th><th>میانه</th><th>کمترین</th><th>بیشترین</th><th>سهم از کل</th>'
         + '</tr></thead><tbody>' + tableRows + '</tbody></table></div>',
         title
       );
@@ -2422,13 +2454,13 @@ const HTML = `<!doctype html>
         analyticsLabelRowsEl.innerHTML = (data.labels || []).length
           ? data.labels.map((row) => '<tr>'
               + '<td data-label="لیبل">' + esc(row.label_text || "بدون لیبل") + '</td>'
-              + analyticsMetricCells(row)
+              + analyticsMetricCells(row, "labels")
             + '</tr>').join("")
           : '<tr><td colspan="6">پاسخ قابل محاسبه‌ای برای لیبل‌ها وجود ندارد.</td></tr>';
         analyticsSenderLabelRowsEl.innerHTML = (data.sender_labels || []).length
           ? data.sender_labels.map((row) => '<tr>'
               + '<td data-label="لیبل فرد">' + esc(row.label_text || "بدون لیبل") + '</td>'
-              + analyticsMetricCells(row)
+              + analyticsMetricCells(row, "sender_labels")
             + '</tr>').join("")
           : '<tr><td colspan="6">پاسخ قابل محاسبه‌ای برای لیبل افراد وجود ندارد.</td></tr>';
         analyticsGroupRowsEl.innerHTML = (data.groups || []).length
@@ -2436,7 +2468,7 @@ const HTML = `<!doctype html>
               + '<td data-label="گروه">' + esc(row.chat_title || "بدون نام") + '</td>'
               + '<td data-label="پلتفرم">' + esc(platformText(row.platform)) + '</td>'
               + '<td data-label="لیبل">' + esc(groupLabelText(row.group_label)) + '</td>'
-              + analyticsMetricCells(row)
+              + analyticsMetricCells(row, "groups")
             + '</tr>').join("")
           : '<tr><td colspan="8">پاسخ قابل محاسبه‌ای برای گروه‌ها وجود ندارد.</td></tr>';
         setStatus(token, numberFmt.format(overall.count || 0) + " پاسخ محاسبه‌شده");
@@ -3117,7 +3149,7 @@ const HTML = `<!doctype html>
     analyticsPageEl.addEventListener("click", (event) => {
       const card = event.target.closest("[data-analytics-detail]");
       if (!card) return;
-      openAnalyticsDetail(card.dataset.analyticsDetail || "avg");
+      openAnalyticsDetail(card.dataset.analyticsDetail || "avg", card.dataset.analyticsScope || "groups");
     });
     accessUserRowsEl.addEventListener("click", (event) => {
       const row = event.target.closest("[data-access-jump-email]");
