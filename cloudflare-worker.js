@@ -195,6 +195,12 @@ const HTML = `<!doctype html>
     .access-section[hidden] { display:none; }
     .access-form { display:grid; grid-template-columns:minmax(220px, 1fr) 120px; gap:10px; margin:14px 0; }
     .access-message { min-height:24px; color:var(--muted); font-size:12px; }
+    .access-users-table { margin-top:12px; }
+    .access-users-table th, .access-users-table td { text-align:right; direction:rtl; }
+    .access-users-table .avatar-cell { text-align:center; }
+    .access-table-avatar { width:32px; height:32px; border-radius:50%; border:1px solid var(--line); background:#e8f1ff; color:#0f62fe; display:inline-grid; place-items:center; font-weight:800; font-size:13px; direction:ltr; object-fit:cover; }
+    .access-permission-summary { display:flex; flex-wrap:wrap; gap:4px; justify-content:flex-end; }
+    .access-permission-chip { display:inline-flex; align-items:center; min-height:22px; padding:0 7px; border:1px solid var(--line); border-radius:999px; background:#f7f8fa; color:var(--muted); font-size:11px; font-weight:700; }
     .access-list { display:grid; gap:10px; margin-top:12px; }
     .access-row { display:grid; gap:10px; padding:12px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; direction:ltr; }
     .access-main { display:grid; grid-template-columns:minmax(220px, 1fr) minmax(180px, auto) auto; align-items:center; gap:12px; }
@@ -343,11 +349,11 @@ const HTML = `<!doctype html>
       .thread-filters { grid-template-columns:1fr 1fr; }
       .thread-filters button { grid-column:1 / -1; }
       .multi-panel { width:min(var(--dropdown-w, 100%), calc(100vw - 28px)); max-height:45vh; z-index:1200; }
-      .messages-table, .groups-table, .bots-table, .access-log-table, .broadcast-log-table { display:block; border:0; background:transparent; box-shadow:none; }
-      .messages-table colgroup, .groups-table colgroup, .bots-table colgroup, .access-log-table colgroup, .broadcast-log-table colgroup,
-      .messages-table thead, .groups-table thead, .bots-table thead, .access-log-table thead, .broadcast-log-table thead { display:none; }
-      .messages-table tbody, .groups-table tbody, .bots-table tbody, .access-log-table tbody, .broadcast-log-table tbody { display:grid; gap:10px; }
-      .messages-table tr, .groups-table tr, .bots-table tr, .access-log-table tr, .broadcast-log-table tr {
+      .messages-table, .groups-table, .bots-table, .access-log-table, .broadcast-log-table, .access-users-table { display:block; border:0; background:transparent; box-shadow:none; }
+      .messages-table colgroup, .groups-table colgroup, .bots-table colgroup, .access-log-table colgroup, .broadcast-log-table colgroup, .access-users-table colgroup,
+      .messages-table thead, .groups-table thead, .bots-table thead, .access-log-table thead, .broadcast-log-table thead, .access-users-table thead { display:none; }
+      .messages-table tbody, .groups-table tbody, .bots-table tbody, .access-log-table tbody, .broadcast-log-table tbody, .access-users-table tbody { display:grid; gap:10px; }
+      .messages-table tr, .groups-table tr, .bots-table tr, .access-log-table tr, .broadcast-log-table tr, .access-users-table tr {
         display:grid;
         gap:8px;
         padding:12px;
@@ -355,7 +361,7 @@ const HTML = `<!doctype html>
         background:#fff;
         box-shadow:0 1px 2px rgba(9,30,66,.08);
       }
-      .messages-table td, .groups-table td, .bots-table td, .access-log-table td, .broadcast-log-table td {
+      .messages-table td, .groups-table td, .bots-table td, .access-log-table td, .broadcast-log-table td, .access-users-table td {
         min-height:0;
         height:auto;
         display:grid;
@@ -372,7 +378,7 @@ const HTML = `<!doctype html>
         font-size:12px;
         text-align:right;
       }
-      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before {
+      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before, .access-users-table td::before {
         content:attr(data-label);
         color:#525252;
         font-weight:800;
@@ -426,8 +432,8 @@ const HTML = `<!doctype html>
       nav { grid-template-columns:repeat(2, minmax(0, 1fr)); }
       .thread-filters { grid-template-columns:1fr; }
       .signals { grid-template-columns:1fr; }
-      .messages-table td, .groups-table td, .bots-table td, .access-log-table td, .broadcast-log-table td { grid-template-columns:1fr; gap:4px; }
-      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before { font-size:10px; }
+      .messages-table td, .groups-table td, .bots-table td, .access-log-table td, .broadcast-log-table td, .access-users-table td { grid-template-columns:1fr; gap:4px; }
+      .messages-table td::before, .groups-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before, .access-users-table td::before { font-size:10px; }
     }
   </style>
 </head>
@@ -676,6 +682,27 @@ const HTML = `<!doctype html>
             <div class="permission-grid" id="accessNewPermissions"></div>
           </form>
           <div class="access-message" id="accessMessage"></div>
+          <table class="access-users-table">
+            <colgroup>
+              <col style="width:8%" />
+              <col style="width:25%" />
+              <col style="width:18%" />
+              <col style="width:17%" />
+              <col style="width:16%" />
+              <col style="width:16%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>آواتار</th>
+                <th>ایمیل</th>
+                <th>یوزرنیم تلگرام</th>
+                <th>وضعیت</th>
+                <th>آخرین ورود</th>
+                <th>دسترسی‌ها</th>
+              </tr>
+            </thead>
+            <tbody id="accessUserRows"></tbody>
+          </table>
           <div class="access-list" id="accessRows"></div>
         </section>
         <section class="access-section" id="accessGroupsSection" hidden>
@@ -806,6 +833,7 @@ const HTML = `<!doctype html>
     const accessEmailEl = document.getElementById("accessEmail");
     const accessNewPermissionsEl = document.getElementById("accessNewPermissions");
     const accessMessageEl = document.getElementById("accessMessage");
+    const accessUserRowsEl = document.getElementById("accessUserRows");
     const accessRowsEl = document.getElementById("accessRows");
     const accessGroupSelectEl = document.getElementById("accessGroupSelect");
     const accessGroupRefreshEl = document.getElementById("accessGroupRefresh");
@@ -1081,6 +1109,13 @@ const HTML = `<!doctype html>
           <input type="checkbox" data-permission="\${esc(option.key)}" \${selectedSet.has(option.key) ? "checked" : ""} \${disabled ? "disabled" : ""} />
           <span>\${esc(option.label)}</span>
         </label>\`).join("");
+    }
+    function permissionSummaryHtml(permissions) {
+      const selectedSet = new Set(Array.isArray(permissions) ? permissions : []);
+      return permissionOptions
+        .filter((option) => selectedSet.has(option.key))
+        .map((option) => \`<span class="access-permission-chip">\${esc(option.label)}</span>\`)
+        .join("") || '<span class="thread-muted">بدون دسترسی</span>';
     }
     function accessLogDetailsHtml(log) {
       return \`<div class="details-grid">
@@ -2099,10 +2134,20 @@ const HTML = `<!doctype html>
         const res = await fetch("/api/access-users");
         const data = await res.json();
         if (!res.ok || !Array.isArray(data.users)) {
+          accessUserRowsEl.innerHTML = "";
           accessRowsEl.innerHTML = "";
           setStatus(token, data.detail || data.error || "خطا در دریافت کاربران");
           return;
         }
+        accessUserRowsEl.innerHTML = data.users.map((user) => \`
+          <tr>
+            <td class="avatar-cell" data-label="آواتار">\${avatarMarkup(user.telegram_avatar_url, "access-table-avatar", "accessAvatar-" + String(user.email).replace(/[^a-zA-Z0-9_-]/g, "-"), user.email)}</td>
+            <td class="full-cell" data-label="ایمیل">\${esc(user.email)}</td>
+            <td class="full-cell" data-label="یوزرنیم تلگرام">\${esc(user.telegram_username || "-")}</td>
+            <td data-label="وضعیت">\${esc(!user.is_active ? "لغوشده" : (user.must_change_password ? "نیازمند تغییر پسورد" : "فعال"))}</td>
+            <td data-label="آخرین ورود">\${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</td>
+            <td data-label="دسترسی‌ها"><div class="access-permission-summary">\${permissionSummaryHtml(user.permissions)}</div></td>
+          </tr>\`).join("") || '<tr><td colspan="6" class="empty">کاربری ثبت نشده است</td></tr>';
         accessRowsEl.innerHTML = data.users.map((user) => \`
           <div class="access-row">
             <div class="access-main">
@@ -3934,9 +3979,12 @@ async function updateCurrentUserProfile(request, env, authUser) {
 
 async function fetchAccessUsers(env) {
   const users = await listAccessUsers(env);
+  const profiles = await Promise.all(users.map((user) => publicUserProfile(env, user)));
+  const profileByEmail = new Map(profiles.map((profile) => [normalizeEmail(profile.email), profile]));
   return json({
     users: users.map((user) => ({
       ...user,
+      telegram_avatar_url: profileByEmail.get(normalizeEmail(user.email))?.telegram_avatar_url || "",
       is_owner: isAccessOwnerEmail(user.email),
       is_active: isAccessOwnerEmail(user.email) ? true : user.is_active,
       permissions: accessPermissionsForUser(user),
