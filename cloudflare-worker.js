@@ -3384,6 +3384,9 @@ async function loginHtml(env, error = "", email = "", message = "", authUser = n
     .signal { min-height:94px; border:1px solid var(--line); background:#fff; border-radius:8px; padding:14px; }
     .signal strong { display:block; margin-bottom:8px; font-size:15px; }
     .signal span { color:var(--muted); font-size:12px; line-height:1.8; }
+    .capabilities { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px 14px; max-width:720px; margin:0; padding:0; list-style:none; color:var(--muted); font-size:13px; line-height:1.9; }
+    .capabilities li { position:relative; padding-inline-start:16px; }
+    .capabilities li::before { content:""; position:absolute; inset-inline-start:0; top:.85em; width:6px; height:6px; border-radius:50%; background:var(--accent); }
     .product-frame { border:1px solid var(--line); background:#fff; border-radius:8px; overflow:hidden; max-width:680px; box-shadow:0 18px 44px rgba(23,32,38,.08); }
     .frame-bar { height:42px; display:flex; align-items:center; gap:8px; padding:0 14px; border-bottom:1px solid var(--line); background:#f4f6f8; }
     .dot { width:9px; height:9px; border-radius:50%; background:#8d99a6; }
@@ -3393,6 +3396,11 @@ async function loginHtml(env, error = "", email = "", message = "", authUser = n
     .chip { display:inline-flex; align-items:center; justify-content:center; min-height:28px; border:1px solid #c6d8ff; border-radius:999px; background:var(--soft); color:#284b7a; font-size:12px; font-weight:800; }
     .line { height:10px; border-radius:999px; background:#dfe5eb; }
     .line.short { width:62%; }
+    .frame-metrics { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0; border-top:1px solid var(--line); background:#fbfcfd; }
+    .frame-metric { padding:12px; border-inline-start:1px solid var(--line); }
+    .frame-metric:first-child { border-inline-start:0; }
+    .frame-metric span { display:block; color:var(--muted); font-size:11px; margin-bottom:6px; }
+    .frame-metric strong { font-size:16px; }
     .auth-card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:24px; box-shadow:0 18px 44px rgba(23,32,38,.08); }
     form { width:100%; }
     .auth-card h2 { margin:0 0 8px; font-size:22px; }
@@ -3423,8 +3431,12 @@ async function loginHtml(env, error = "", email = "", message = "", authUser = n
       .landing-header { height:auto; min-height:64px; padding:14px 20px; align-items:flex-start; gap:8px; flex-direction:column; }
       .landing-main { grid-template-columns:1fr; gap:28px; padding:28px 0; }
       .signals { grid-template-columns:1fr; }
+      .capabilities { grid-template-columns:1fr; }
       .product-row { grid-template-columns:74px 1fr; }
       .product-row .chip:last-child { grid-column:1 / -1; justify-content:flex-start; padding:0 10px; }
+      .frame-metrics { grid-template-columns:1fr; }
+      .frame-metric { border-inline-start:0; border-top:1px solid var(--line); }
+      .frame-metric:first-child { border-top:0; }
     }
   </style>
 </head>
@@ -3436,18 +3448,29 @@ async function loginHtml(env, error = "", email = "", message = "", authUser = n
     </header>
     <main class="landing-main">
       <section class="intro">
-        <h1>یک نمای روشن از پیام‌های عملیاتی تیم‌ها</h1>
-        <p class="lead">دیدپذیری پیام‌های تلگرام و بله را از گروه‌های کاری جمع‌آوری می‌کند و با ساختار قابل جستجو، ترد، گروه، بات و دسترسی نمایش می‌دهد.</p>
+        <h1>دید کامل روی گفتگوهای عملیاتی</h1>
+        <p class="lead">دیدپذیری پیام‌های تلگرام و بله را از گروه‌های کاری، بات‌ها و تردها جمع‌آوری می‌کند تا تیم‌ها بتوانند پیام، فایل، پاسخ، اطلاع‌رسانی و زمان پاسخ‌گویی را در یک پنل واحد دنبال کنند.</p>
         <div class="signals">
-          <div class="signal"><strong>پیام‌ها و فایل‌ها</strong><span>متن، عکس، فایل، ریپلای، ویرایش و زمان ثبت پیام در یک ساختار قابل پیگیری.</span></div>
-          <div class="signal"><strong>ترد و گروه</strong><span>نمایش مکالمه‌ها مثل ترد و مدیریت گروه‌ها با لیبل و پلتفرم.</span></div>
-          <div class="signal"><strong>دسترسی کنترل‌شده</strong><span>ورود سازمانی، سطح دسترسی صفحه‌ها و لاگ تغییرات اکسس.</span></div>
+          <div class="signal"><strong>مانیتورینگ چندپلتفرمی</strong><span>تلگرام و بله در کنار هم، با تفکیک پلتفرم، بات، گروه، تاپیک و ارسال‌کننده.</span></div>
+          <div class="signal"><strong>مکالمه قابل پیگیری</strong><span>تردها، ریپلای‌ها، عکس‌ها، فایل‌ها، ری‌اکشن‌ها و پیام‌های ویرایش‌شده در یک نمای منظم.</span></div>
+          <div class="signal"><strong>کنترل و پاسخ امن</strong><span>دسترسی صفحه‌ای و گروهی، پاسخ با بات، اطلاع‌رسانی گروهی و لاگ کامل عملیات.</span></div>
         </div>
+        <ul class="capabilities">
+          <li>تحلیل زمان پاسخ‌گویی به تفکیک گروه، لیبل و افراد</li>
+          <li>مدیریت بات‌ها و credentialها از داخل پنل</li>
+          <li>لیبل‌گذاری گروه‌ها و ارسال‌کننده‌ها: داخلی، مشتری، پروایدر</li>
+          <li>جستجو و فیلتر پیشرفته با لیست‌های قابل سرچ</li>
+        </ul>
         <div class="product-frame" aria-hidden="true">
           <div class="frame-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-          <div class="product-row"><span class="chip">تلگرام</span><span class="line"></span><span class="chip">۱۲۸ پیام</span></div>
-          <div class="product-row"><span class="chip">بله</span><span class="line short"></span><span class="chip">۴ گروه</span></div>
-          <div class="product-row"><span class="chip">تردها</span><span class="line"></span><span class="chip">زنده</span></div>
+          <div class="product-row"><span class="chip">پیام‌ها</span><span class="line"></span><span class="chip">زنده</span></div>
+          <div class="product-row"><span class="chip">تردها</span><span class="line short"></span><span class="chip">قابل پاسخ</span></div>
+          <div class="product-row"><span class="chip">اطلاع‌رسانی</span><span class="line"></span><span class="chip">با تایید نهایی</span></div>
+          <div class="frame-metrics">
+            <div class="frame-metric"><span>پلتفرم‌ها</span><strong>تلگرام و بله</strong></div>
+            <div class="frame-metric"><span>تحلیل</span><strong>زمان پاسخ‌گویی</strong></div>
+            <div class="frame-metric"><span>دسترسی</span><strong>صفحه، لیبل، گروه</strong></div>
+          </div>
         </div>
       </section>
       <section class="auth-card">
