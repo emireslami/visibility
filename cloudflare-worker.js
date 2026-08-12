@@ -2470,6 +2470,7 @@ const HTML = `<!doctype html>
         ["لیبل", senderLabelText(row.sender_label)],
         ["تعداد پیام‌ها", row.message_count],
         ["آخرین گروه", [row.last_chat_title, row.last_chat_id].filter(Boolean).join(" | ")],
+        ["اولین مشاهده", row.first_seen_tehran],
         ["آخرین پیام", row.last_message_tehran],
       ];
       return \`<div class="details-grid">\${details.map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
@@ -6297,6 +6298,8 @@ async function fetchSenders(request, env, authUser) {
         message_count: 1,
         last_chat_id: row.chat_id === null || row.chat_id === undefined ? "" : String(row.chat_id),
         last_chat_title: row.chat_title || "",
+        first_seen_at_utc: sentAt,
+        first_seen_tehran: sentAt ? tehranDateTimeDisplay(new Date(sentAt)) : "",
         last_message_at_utc: sentAt,
         last_message_tehran: sentAt ? tehranDateTimeDisplay(new Date(sentAt)) : "",
         display_timezone: "Asia/Tehran",
@@ -6309,9 +6312,13 @@ async function fetchSenders(request, env, authUser) {
     if (!existing.sender_last_name && row.sender_last_name) existing.sender_last_name = row.sender_last_name;
     if (!existing.sender_photo_file_id && row.sender_photo_file_id) existing.sender_photo_file_id = row.sender_photo_file_id;
     if (!existing.sender_photo_file_unique_id && row.sender_photo_file_unique_id) existing.sender_photo_file_unique_id = row.sender_photo_file_unique_id;
+    if (sentAt && (!existing.first_seen_at_utc || Date.parse(sentAt) < Date.parse(existing.first_seen_at_utc))) {
+      existing.first_seen_at_utc = sentAt;
+      existing.first_seen_tehran = tehranDateTimeDisplay(new Date(sentAt));
+    }
   }
   const senders = [...sendersByKey.values()].sort((a, b) => {
-    const byDate = Date.parse(b.last_message_at_utc || 0) - Date.parse(a.last_message_at_utc || 0);
+    const byDate = Date.parse(b.first_seen_at_utc || 0) - Date.parse(a.first_seen_at_utc || 0);
     if (byDate) return byDate;
     return String(a.sender_first_name || a.sender_username || a.sender_id).localeCompare(String(b.sender_first_name || b.sender_username || b.sender_id));
   });
