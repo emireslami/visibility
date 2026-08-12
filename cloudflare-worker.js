@@ -5315,7 +5315,10 @@ async function fetchDashboard(request, env, authUser) {
     const tehranDate = tehranIsoDateFast(sentDate);
     const group = `${platformLabel(row.platform)} / ${row.chat_title || "بدون نام"}`;
     const senderName = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ").trim();
-    const user = senderName || (row.sender_username ? `@${row.sender_username}` : (row.sender_id ? `کاربر ${row.sender_id}` : "کاربر ناشناس"));
+    const senderUsername = row.sender_username ? `@${row.sender_username}` : "";
+    const user = senderName
+      ? (senderUsername ? `${senderName} (${senderUsername})` : senderName)
+      : (senderUsername || (row.sender_id ? `کاربر ${row.sender_id}` : "کاربر ناشناس"));
     const day = byDate.get(tehranDate) || { date: tehranDate, jalali_date: null, total: 0, groups: {} };
     if (!day.jalali_date) day.jalali_date = jalaliDateFast(sentDate);
     day.total += 1;
