@@ -1707,9 +1707,31 @@ const HTML = `<!doctype html>
           }
         }
       }
+      function looksLikeDashboardReply(row) {
+        const payload = row.raw_payload_json || {};
+        return payload.dashboard_outgoing === true
+          && payload.dashboard_broadcast !== true
+          && Boolean(row.sender_is_bot)
+          && /^[^@\s]+@toman\.ir\s*:/i.test(messageContent(row));
+      }
+      function inferredDashboardReplyParentId(row) {
+        if (row.reply_to_message_id || !looksLikeDashboardReply(row)) return null;
+        const messageId = Number(row.message_id);
+        if (!Number.isFinite(messageId) || messageId <= 1) return null;
+        const previous = latestByMessage.get(rowMessageKey(row, messageId - 1));
+        if (!previous || previous.sender_is_bot) return null;
+        const sentAt = Date.parse(row.sent_at_utc || 0);
+        const previousSentAt = Date.parse(previous.sent_at_utc || 0);
+        if (!sentAt || !previousSentAt) return null;
+        const diffMs = sentAt - previousSentAt;
+        if (diffMs < 0 || diffMs > 5 * 60 * 1000) return null;
+        return previous.message_id;
+      }
       function parentKeyFor(row) {
-        if (!row.reply_to_message_id || !row.chat_id || isTopicRootReply(row)) return null;
-        return rowMessageKey(row, row.reply_to_message_id);
+        const replyToMessageId = row.reply_to_message_id || inferredDashboardReplyParentId(row);
+        if (!replyToMessageId || !row.chat_id || isTopicRootReply({ ...row, reply_to_message_id: replyToMessageId })) return null;
+        if (!row.reply_to_message_id) row.reply_to_message_id = replyToMessageId;
+        return rowMessageKey(row, replyToMessageId);
       }
       function rootKeyFor(row) {
         let current = row;
@@ -4885,7 +4907,7 @@ function syntheticUpdateId() {
   return -Number(`${Date.now()}${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`);
 }
 
-function outgoingBotMessageRow(apiMessage, sourceRow, runtimeConfig, textValue, replyToMessageId) {
+function outgoingBotMessageRow(apiMessage, sourceRow, runtimeConfig, textValue, replyToMessageId, metadata = {}) {
   if (!apiMessage?.message_id) return null;
   const platform = normalizePlatform(runtimeConfig?.platform || sourceRow?.platform);
   const bot = botIdentity({ ...runtimeConfig, platform });
@@ -4936,6 +4958,7 @@ function outgoingBotMessageRow(apiMessage, sourceRow, runtimeConfig, textValue, 
     media_group_id: apiMessage.media_group_id ?? null,
     raw_payload_json: {
       dashboard_outgoing: true,
+      ...metadata,
       reply_target_message_id: fallbackReplyToMessageId,
       reply_target_key: fallbackReplyToMessageId ? messageKey(sourceRow, fallbackReplyToMessageId) : null,
       message: apiMessage,
@@ -4944,8 +4967,8 @@ function outgoingBotMessageRow(apiMessage, sourceRow, runtimeConfig, textValue, 
   };
 }
 
-async function persistOutgoingBotMessage(env, apiMessage, sourceRow, runtimeConfig, textValue, replyToMessageId) {
-  const row = outgoingBotMessageRow(apiMessage, sourceRow, runtimeConfig, textValue, replyToMessageId);
+async function persistOutgoingBotMessage(env, apiMessage, sourceRow, runtimeConfig, textValue, replyToMessageId, metadata = {}) {
+  const row = outgoingBotMessageRow(apiMessage, sourceRow, runtimeConfig, textValue, replyToMessageId, metadata);
   if (!row) return null;
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?on_conflict=platform,update_id,message_id`, {
     method: "POST",
@@ -5670,7 +5693,7 @@ async function sendGroupBroadcast(request, env, authUser) {
           results.push({ key, chat_title: group.chat_title, ok: false, error: sent.body?.description || sent.body?.error || "ارسال توسط بات انجام نشد" });
           continue;
         }
-        await persistOutgoingBotMessage(env, sent.result, group, runtimeConfig, outgoingText, null);
+        await persistOutgoingBotMessage(env, sent.result, group, runtimeConfig, outgoingText, null, { dashboard_broadcast: true });
         results.push({ key, chat_title: group.chat_title, ok: true, message_id: sent.result?.message_id || null });
       } catch (error) {
         results.push({ key, chat_title: group?.chat_title || key, ok: false, error: error.message || String(error) });
@@ -5736,7 +5759,7 @@ async function sendThreadReply(request, env, authUser) {
     const outgoingText = `${normalizeEmail(authUser.email)} :\n${replyBody}`;
     const sent = await sendBotMessage(env, platform, chatId, outgoingText, runtimeConfig, { replyToMessageId: messageId });
     if (!sent.ok) return json({ error: "ارسال پاسخ توسط بات انجام نشد", detail: sent.body || null }, 502);
-    await persistOutgoingBotMessage(env, sent.result, row, runtimeConfig, outgoingText, messageId);
+    await persistOutgoingBotMessage(env, sent.result, row, runtimeConfig, outgoingText, messageId, { dashboard_thread_reply: true });
     try {
       await insertAccessAuditLog(env, {
         actorEmail: authUser.email,
