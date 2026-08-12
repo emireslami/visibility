@@ -146,6 +146,10 @@ const HTML = `<!doctype html>
     .empty-chart { min-height:240px; display:grid; place-items:center; color:var(--muted); border:1px dashed var(--line); border-radius:8px; }
     .access-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
     .access-panel h2 { margin:0 0 6px; font-size:18px; }
+    .bots-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1180px; margin:0 auto; }
+    .bots-panel h2 { margin:0 0 6px; font-size:18px; }
+    .bots-panel p { margin:0 0 16px; }
+    .bots-table td:last-child, .bots-table th:last-child { padding-left:12px; }
     .access-tabs { display:flex; justify-content:flex-start; gap:8px; margin:14px 0; direction:ltr; }
     .access-tab { height:32px; padding:0 12px; background:#fff; color:var(--ink); border-color:var(--line); }
     .access-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
@@ -401,14 +405,14 @@ const HTML = `<!doctype html>
         <p class="thread-muted">بات‌های هر پلتفرم و تعداد گروه‌ها و پیام‌هایی که با هر بات ثبت شده است.</p>
         <table class="bots-table">
           <colgroup>
-            <col style="width:14%" />
-            <col style="width:18%" />
-            <col style="width:18%" />
-            <col style="width:14%" />
-            <col style="width:10%" />
-            <col style="width:10%" />
             <col style="width:12%" />
-            <col style="width:4%" />
+            <col style="width:17%" />
+            <col style="width:17%" />
+            <col style="width:14%" />
+            <col style="width:8%" />
+            <col style="width:8%" />
+            <col style="width:16%" />
+            <col style="width:8%" />
           </colgroup>
           <thead>
             <tr>
