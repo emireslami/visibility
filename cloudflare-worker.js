@@ -46,12 +46,14 @@ const HTML = `<!doctype html>
     th { background: #eef3f4; color: #24343b; position: sticky; top: var(--header-h); z-index:30; }
     .messages-table th { top: calc(var(--header-h) + var(--filters-h)); }
     .groups-table col.group-id { width:17%; }
-    .groups-table col.group-name { width:34%; }
-    .groups-table col.group-username { width:18%; }
+    .groups-table col.group-name { width:32%; }
+    .groups-table col.group-label { width:18%; }
+    .groups-table col.group-username { width:14%; }
     .groups-table col.group-type { width:12%; }
-    .groups-table col.group-messages { width:9%; }
+    .groups-table col.group-messages { width:7%; }
     .groups-table col.group-details { width:10%; }
     .groups-table .group-name-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.5; }
+    .group-label-select { width:100%; min-width:0; height:32px; padding:0 8px; font-size:12px; }
     td.body { direction:rtl; text-align:right; }
     .full-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.45; }
     .message-cell { min-width:0; }
@@ -349,6 +351,7 @@ const HTML = `<!doctype html>
         <colgroup>
           <col class="group-id" />
           <col class="group-name" />
+          <col class="group-label" />
           <col class="group-username" />
           <col class="group-type" />
           <col class="group-messages" />
@@ -358,6 +361,7 @@ const HTML = `<!doctype html>
           <tr>
             <th>Group ID</th>
             <th>Group Name</th>
+            <th>Label</th>
             <th>Group Username</th>
             <th>Group Type</th>
             <th>Messages</th>
@@ -550,6 +554,19 @@ const HTML = `<!doctype html>
     function avatarMarkup(value, className, id, email = currentUser.email) {
       if (value) return \`<img class="\${className}" id="\${id}" src="\${value}" alt="" />\`;
       return \`<span class="\${className}" id="\${id}">\${esc(initialsFromEmail(email))}</span>\`;
+    }
+    const groupLabelOptions = [
+      ["", "بدون لیبل"],
+      ["internal_team", "گروه‌های داخلی شرکت"],
+      ["customer", "گروه‌های مشتریان"],
+      ["provider", "گروه‌های پروایدرهای ما"],
+    ];
+    function groupLabelText(value) {
+      return groupLabelOptions.find(([key]) => key === String(value || ""))?.[1] || "بدون لیبل";
+    }
+    function groupLabelSelect(row) {
+      const current = String(row.group_label || "");
+      return \`<select class="group-label-select" data-chat-id="\${esc(row.chat_id)}" data-previous="\${esc(current)}" aria-label="لیبل گروه">\${groupLabelOptions.map(([value, label]) => \`<option value="\${esc(value)}" \${current === value ? "selected" : ""}>\${esc(label)}</option>\`).join("")}</select>\`;
     }
     function syncProfileUi() {
       headerEmailEl.textContent = currentUser.email;
@@ -936,6 +953,7 @@ const HTML = `<!doctype html>
         ["Message ID", row.message_id],
         ["Group ID", row.chat_id],
         ["Group Name", row.chat_title],
+        ["Label", groupLabelText(row.group_label)],
         ["Group Username", row.chat_username],
         ["Group Type", row.chat_type],
         ["Topic Name", row.topic_name],
@@ -1323,6 +1341,7 @@ const HTML = `<!doctype html>
           <tr>
             <td>\${esc(row.chat_id)}</td>
             <td class="group-name-cell">\${esc(row.chat_title)}</td>
+            <td>\${groupLabelSelect(row)}</td>
             <td>\${esc(row.chat_username)}</td>
             <td>\${esc(row.chat_type)}</td>
             <td>\${esc(row.message_count)}</td>
@@ -1479,6 +1498,28 @@ const HTML = `<!doctype html>
     groupRowsEl.addEventListener("click", event => {
       const detailsButton = event.target.closest("[data-detail-key]");
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات گروه");
+    });
+    groupRowsEl.addEventListener("change", async event => {
+      const select = event.target.closest(".group-label-select");
+      if (!select) return;
+      const previous = select.dataset.previous ?? "";
+      select.disabled = true;
+      try {
+        const res = await fetch("/api/groups/label", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ chat_id: select.dataset.chatId, group_label: select.value }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "ذخیره لیبل انجام نشد");
+        select.dataset.previous = data.group_label || "";
+        setStatus(loadingToken, "لیبل گروه ذخیره شد");
+      } catch (error) {
+        select.value = previous;
+        setStatus(loadingToken, error.message || "ذخیره لیبل انجام نشد");
+      } finally {
+        select.disabled = false;
+      }
     });
     accessLogRowsEl.addEventListener("click", event => {
       const detailsButton = event.target.closest("[data-detail-key]");
@@ -1981,9 +2022,15 @@ function validTelegramUsername(value) {
   return /^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(local);
 }
 
+function normalizeGroupLabel(value) {
+  const label = String(value || "").trim();
+  return GROUP_LABELS.includes(label) ? label : null;
+}
+
 const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboard"];
 const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS];
 const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
+const GROUP_LABELS = ["internal_team", "customer", "provider"];
 const API_CACHE_TTL_MS = 60 * 1000;
 let dashboardApiCache = null;
 let threadFilterOptionsApiCache = null;
@@ -3541,7 +3588,7 @@ async function fetchMessages(request, env) {
 
 async function fetchGroups(request, env) {
   const params = new URLSearchParams();
-  params.set("select", "chat_id,chat_title,chat_username,chat_type,joined_at_utc,first_seen_at_utc,last_seen_at_utc,message_count,last_message_at_utc");
+  params.set("select", "chat_id,chat_title,chat_username,chat_type,group_label,joined_at_utc,first_seen_at_utc,last_seen_at_utc,message_count,last_message_at_utc");
   params.set("order", "message_count.desc,last_seen_at_utc.desc");
   params.set("limit", "1000");
 
@@ -3584,6 +3631,34 @@ async function fetchGroups(request, env) {
     };
   });
   return json({ groups });
+}
+
+async function updateGroupLabel(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const chatId = String(body.chat_id || "").trim();
+  if (!/^-?\d+$/.test(chatId)) return json({ error: "شناسه گروه نامعتبر است" }, 400);
+  const groupLabel = normalizeGroupLabel(body.group_label);
+  if (body.group_label && !groupLabel) {
+    return json({ error: "لیبل گروه نامعتبر است" }, 400);
+  }
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_chats?chat_id=eq.${encodeURIComponent(chatId)}`, {
+    method: "PATCH",
+    headers: supabaseHeaders(env, "return=representation"),
+    body: JSON.stringify({
+      group_label: groupLabel,
+      updated_at_utc: new Date().toISOString(),
+    }),
+  });
+  if (!response.ok) {
+    return json({ error: "ذخیره لیبل گروه انجام نشد", detail: await response.text() }, 500);
+  }
+  const rows = await response.json();
+  return json({ group_label: rows?.[0]?.group_label || "" });
 }
 
 async function fetchDashboard(request, env) {
@@ -3744,6 +3819,10 @@ export default {
     if (url.pathname === "/api/groups") {
       if (!hasAccessPermission(authUser, "groups")) return forbiddenAccess();
       return fetchGroups(request, env);
+    }
+    if (url.pathname === "/api/groups/label" && request.method === "POST") {
+      if (!hasAccessPermission(authUser, "groups")) return forbiddenAccess();
+      return updateGroupLabel(request, env);
     }
     if (url.pathname === "/api/dashboard") {
       if (!hasAccessPermission(authUser, "dashboard")) return forbiddenAccess();
