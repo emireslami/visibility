@@ -45,13 +45,14 @@ const HTML = `<!doctype html>
     th, td { padding: 6px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: middle; font-size: 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     th { background: #eef3f4; color: #24343b; position: sticky; top: var(--header-h); z-index:30; }
     .messages-table th { top: calc(var(--header-h) + var(--filters-h)); }
-    .groups-table col.group-id { width:17%; }
-    .groups-table col.group-name { width:32%; }
-    .groups-table col.group-label { width:18%; }
-    .groups-table col.group-username { width:14%; }
-    .groups-table col.group-type { width:12%; }
-    .groups-table col.group-messages { width:7%; }
-    .groups-table col.group-details { width:10%; }
+    .groups-table col.group-id { width:14%; }
+    .groups-table col.group-name { width:29%; }
+    .groups-table col.group-platform { width:8%; }
+    .groups-table col.group-label { width:16%; }
+    .groups-table col.group-username { width:12%; }
+    .groups-table col.group-type { width:9%; }
+    .groups-table col.group-messages { width:5%; }
+    .groups-table col.group-details { width:7%; }
     .groups-table .group-name-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.5; }
     .group-label-select { width:100%; min-width:0; height:32px; padding:0 8px; font-size:12px; }
     td.body { direction:rtl; text-align:right; }
@@ -320,18 +321,20 @@ const HTML = `<!doctype html>
       </section>
       <table class="messages-table">
         <colgroup>
-          <col style="width:10%" />
           <col style="width:7%" />
-          <col style="width:7%" />
-          <col style="width:7%" />
-          <col style="width:7%" />
-          <col style="width:32%" />
           <col style="width:11%" />
-          <col style="width:10%" />
           <col style="width:7%" />
+          <col style="width:7%" />
+          <col style="width:7%" />
+          <col style="width:7%" />
+          <col style="width:29%" />
+          <col style="width:11%" />
+          <col style="width:9%" />
+          <col style="width:5%" />
         </colgroup>
         <thead>
           <tr>
+            <th>Platform</th>
             <th>Group Name</th>
             <th>Topic</th>
             <th>Sender First Name</th>
@@ -351,6 +354,7 @@ const HTML = `<!doctype html>
         <colgroup>
           <col class="group-id" />
           <col class="group-name" />
+          <col class="group-platform" />
           <col class="group-label" />
           <col class="group-username" />
           <col class="group-type" />
@@ -361,6 +365,7 @@ const HTML = `<!doctype html>
           <tr>
             <th>Group ID</th>
             <th>Group Name</th>
+            <th>Platform</th>
             <th>Label</th>
             <th>Group Username</th>
             <th>Group Type</th>
@@ -1119,6 +1124,7 @@ const HTML = `<!doctype html>
           <div class="thread-content">
             <div class="thread-head">
               <span class="thread-author">\${esc(author)}</span>
+              <span class="thread-pill">\${esc(platformText(row.platform))}</span>
               <span class="thread-muted">\${esc(row.sender_username ? "@" + row.sender_username : "")}</span>
               <span class="thread-muted">\${esc(row.chat_title)}</span>
               \${topicLabel(row) ? \`<span class="thread-pill">Topic: \${esc(topicLabel(row))}</span>\` : ""}
@@ -1325,6 +1331,7 @@ const HTML = `<!doctype html>
         detailByKey.clear();
         rowsEl.innerHTML = data.messages.map((row, index) => \`
           <tr>
+            <td class="full-cell">\${esc(platformText(row.platform))}</td>
             <td class="full-cell">\${esc(row.chat_title)}</td>
             <td class="full-cell">\${esc(topicLabel(row))}</td>
             <td class="full-cell">\${esc(row.sender_first_name)}</td>
@@ -1356,13 +1363,14 @@ const HTML = `<!doctype html>
           <tr>
             <td>\${esc(row.chat_id)}</td>
             <td class="group-name-cell">\${esc(row.chat_title)}</td>
+            <td>\${esc(platformText(row.platform))}</td>
             <td>\${groupLabelSelect(row)}</td>
             <td>\${esc(row.chat_username)}</td>
             <td>\${esc(row.chat_type)}</td>
             <td>\${esc(row.message_count)}</td>
-            <td><button class="details-button" type="button" data-detail-key="group-\${esc(row.chat_id)}">Details</button></td>
+            <td><button class="details-button" type="button" data-detail-key="group-\${esc(row.platform || "telegram")}:\${esc(row.chat_id)}">Details</button></td>
           </tr>\`).join("");
-        data.groups.forEach(row => detailByKey.set("group-" + row.chat_id, groupDetailHtml(row)));
+        data.groups.forEach(row => detailByKey.set("group-" + (row.platform || "telegram") + ":" + row.chat_id, groupDetailHtml(row)));
         setStatus(token, data.groups.length + " گروه");
       } catch (error) {
         setStatus(token, "خطا در دریافت گروه‌ها");
@@ -3538,10 +3546,8 @@ async function handleTelegramWebhook(request, env) {
 
 async function fetchMessages(request, env) {
   const url = new URL(request.url);
-  const platform = normalizePlatform(url.searchParams.get("platform"));
   const params = new URLSearchParams();
   params.set("select", TELEGRAM_MESSAGE_SELECT);
-  params.set("platform", platformQuery(platform));
   params.set("order", "sent_at_utc.desc.nullslast,id.desc");
   params.set("limit", "500");
 
@@ -3569,7 +3575,7 @@ async function fetchMessages(request, env) {
     return json({ error: "Supabase request failed", detail: await response.text() }, 500);
   }
 
-  const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?select=platform,chat_id,message_thread_id,topic_name&platform=${platformQuery(platform)}&limit=10000`, {
+  const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?select=platform,chat_id,message_thread_id,topic_name&limit=10000`, {
     headers,
   });
   if (!topicsResponse.ok) {
@@ -3666,11 +3672,8 @@ async function fetchMessages(request, env) {
 }
 
 async function fetchGroups(request, env) {
-  const url = new URL(request.url);
-  const platform = normalizePlatform(url.searchParams.get("platform"));
   const params = new URLSearchParams();
   params.set("select", "platform,chat_id,chat_title,chat_username,chat_type,group_label,joined_at_utc,first_seen_at_utc,last_seen_at_utc,message_count,last_message_at_utc");
-  params.set("platform", platformQuery(platform));
   params.set("order", "first_seen_at_utc.desc.nullslast,joined_at_utc.desc.nullslast,last_seen_at_utc.desc.nullslast");
   params.set("limit", "1000");
 
@@ -3682,7 +3685,6 @@ async function fetchGroups(request, env) {
 
   const topicParams = new URLSearchParams();
   topicParams.set("select", "platform,chat_id,topic_name,message_thread_id");
-  topicParams.set("platform", platformQuery(platform));
   topicParams.set("limit", "10000");
   const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?${topicParams}`, { headers });
   if (!topicsResponse.ok) {
@@ -3753,8 +3755,7 @@ async function fetchDashboard(request, env) {
     return json(dashboardApiCache.data);
   }
   const params = new URLSearchParams();
-  params.set("select", "sent_at_utc,chat_title");
-  params.set("platform", platformQuery(DEFAULT_PLATFORM));
+  params.set("select", "platform,sent_at_utc,chat_title");
   params.set("sent_at_utc", "not.is.null");
   params.set("order", "sent_at_utc.asc");
   params.set("limit", "10000");
@@ -3771,7 +3772,7 @@ async function fetchDashboard(request, env) {
     if (!row.sent_at_utc) continue;
     const sentDate = new Date(row.sent_at_utc);
     const tehranDate = tehranIsoDateFast(sentDate);
-    const group = row.chat_title || "بدون نام";
+    const group = `${platformLabel(row.platform)} / ${row.chat_title || "بدون نام"}`;
     const day = byDate.get(tehranDate) || { date: tehranDate, jalali_date: null, total: 0, groups: {} };
     if (!day.jalali_date) day.jalali_date = jalaliDateFast(sentDate);
     day.total += 1;
@@ -3794,7 +3795,6 @@ async function fetchThreadFilterOptions(request, env) {
   const headers = supabaseHeaders(env);
   const groupParams = new URLSearchParams();
   groupParams.set("select", "platform,chat_id,chat_title,message_count,last_seen_at_utc");
-  groupParams.set("platform", platformQuery(DEFAULT_PLATFORM));
   groupParams.set("order", "message_count.desc,last_seen_at_utc.desc");
   groupParams.set("limit", "1000");
   const groupsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${groupParams}`, { headers });
@@ -3804,7 +3804,6 @@ async function fetchThreadFilterOptions(request, env) {
 
   const dateParams = new URLSearchParams();
   dateParams.set("select", "sent_at_utc");
-  dateParams.set("platform", platformQuery(DEFAULT_PLATFORM));
   dateParams.set("sent_at_utc", "not.is.null");
   dateParams.set("order", "sent_at_utc.desc");
   dateParams.set("limit", "10000");
@@ -3815,7 +3814,6 @@ async function fetchThreadFilterOptions(request, env) {
 
   const topicsParams = new URLSearchParams();
   topicsParams.set("select", "platform,chat_id,topic_name,message_thread_id");
-  topicsParams.set("platform", platformQuery(DEFAULT_PLATFORM));
   topicsParams.set("limit", "10000");
   const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?${topicsParams}`, { headers });
   if (!topicsResponse.ok) {
