@@ -886,9 +886,9 @@ const HTML = `<!doctype html>
     }
     function fileUrl(row, download = false) {
       if (!row.media_file_id) return "";
-      const params = new URLSearchParams({ file_id: row.media_file_id });
+      const params = new URLSearchParams({ platform: row.platform || "telegram", file_id: row.media_file_id });
       if (download) params.set("download", "1");
-      return "/api/telegram-file?" + params.toString();
+      return "/api/file?" + params.toString();
     }
     function mediaItems(row) {
       const items = Array.isArray(row.media_items) ? row.media_items : [];
@@ -3122,8 +3122,8 @@ function customEmojiId(reaction) {
   return reaction?.type === "custom_emoji" ? reaction.custom_emoji_id ?? null : null;
 }
 
-async function deletePreviousReactions(env, reactionUpdate) {
-  const platform = DEFAULT_PLATFORM;
+async function deletePreviousReactions(env, reactionUpdate, platform = DEFAULT_PLATFORM) {
+  const normalizedPlatform = normalizePlatform(platform);
   const chatId = reactionUpdate.chat?.id;
   const messageId = reactionUpdate.message_id;
   const userId = reactionUpdate.user?.id;
@@ -3131,7 +3131,7 @@ async function deletePreviousReactions(env, reactionUpdate) {
   if (!chatId || !messageId || (!userId && !actorChatId)) return;
 
   const params = new URLSearchParams();
-  params.set("platform", platformQuery(platform));
+  params.set("platform", platformQuery(normalizedPlatform));
   params.set("chat_id", `eq.${chatId}`);
   params.set("message_id", `eq.${messageId}`);
   if (userId) params.set("user_id", `eq.${userId}`);
@@ -3143,23 +3143,24 @@ async function deletePreviousReactions(env, reactionUpdate) {
   if (!response.ok) throw new Error(await response.text());
 }
 
-async function handleMessageReaction(env, update) {
+async function handleMessageReaction(env, update, platform = DEFAULT_PLATFORM) {
+  const normalizedPlatform = normalizePlatform(platform);
   const reactionUpdate = update.message_reaction;
   if (!reactionUpdate?.chat?.id || !reactionUpdate.message_id) {
     return json({ ok: true, ignored: "message_reaction" });
   }
 
-  await deletePreviousReactions(env, reactionUpdate);
+  await deletePreviousReactions(env, reactionUpdate, normalizedPlatform);
   const newReactions = Array.isArray(reactionUpdate.new_reaction) ? reactionUpdate.new_reaction : [];
   if (!newReactions.length) return json({ ok: true, reaction: "removed" });
 
   const user = reactionUpdate.user ?? {};
   const actorChat = reactionUpdate.actor_chat ?? {};
-  const userPhoto = user.id ? await fetchSenderProfilePhoto(env, user.id) : {};
+  const userPhoto = user.id ? await fetchSenderProfilePhoto(env, normalizedPlatform, user.id) : {};
   const reactedAt = isoFromUnix(reactionUpdate.date);
   const rows = newReactions.map((reaction) => ({
     update_id: update.update_id,
-    platform: DEFAULT_PLATFORM,
+    platform: normalizedPlatform,
     chat_id: reactionUpdate.chat.id,
     message_id: reactionUpdate.message_id,
     user_id: user.id ?? null,
@@ -3197,9 +3198,32 @@ function isBotCommand(message) {
   return entities.some((entity) => entity.type === "bot_command" && entity.offset === 0) || text.trim().startsWith("/");
 }
 
-async function sendTelegramMessage(env, chatId, textValue) {
-  if (!env.TELEGRAM_BOT_TOKEN || !chatId) return false;
-  const response = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+function botPlatformConfig(env, platform = DEFAULT_PLATFORM) {
+  const normalizedPlatform = normalizePlatform(platform);
+  if (normalizedPlatform === "bale") {
+    return {
+      platform: "bale",
+      token: env.BALE_BOT_TOKEN,
+      apiBase: "https://tapi.bale.ai",
+      fileBase: "https://tapi.bale.ai/file",
+      webhookPath: "/bale-webhook",
+      secret: env.BALE_WEBHOOK_SECRET,
+    };
+  }
+  return {
+    platform: "telegram",
+    token: env.TELEGRAM_BOT_TOKEN,
+    apiBase: "https://api.telegram.org",
+    fileBase: "https://api.telegram.org/file",
+    webhookPath: "/telegram-webhook",
+    secret: env.TELEGRAM_WEBHOOK_SECRET,
+  };
+}
+
+async function sendBotMessage(env, platform, chatId, textValue) {
+  const config = botPlatformConfig(env, platform);
+  if (!config.token || !chatId) return false;
+  const response = await fetch(`${config.apiBase}/bot${config.token}/sendMessage`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -3211,10 +3235,11 @@ async function sendTelegramMessage(env, chatId, textValue) {
   return response.ok;
 }
 
-async function fetchSenderProfilePhoto(env, senderId) {
-  if (!env.TELEGRAM_BOT_TOKEN || !senderId) return {};
+async function fetchSenderProfilePhoto(env, platform, senderId) {
+  const config = botPlatformConfig(env, platform);
+  if (config.platform !== "telegram" || !config.token || !senderId) return {};
   try {
-    const url = new URL(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getUserProfilePhotos`);
+    const url = new URL(`${config.apiBase}/bot${config.token}/getUserProfilePhotos`);
     url.searchParams.set("user_id", senderId);
     url.searchParams.set("limit", "1");
     const response = await fetch(url, { signal: AbortSignal.timeout(2500) });
@@ -3265,19 +3290,21 @@ function contentTypeFromPath(filePath, fallback = "application/octet-stream") {
   return fallback;
 }
 
-async function fetchTelegramFile(request, env) {
-  if (!env.TELEGRAM_BOT_TOKEN) return text("Telegram token is not configured", 503);
+async function fetchBotFile(request, env) {
   const url = new URL(request.url);
+  const platform = normalizePlatform(url.searchParams.get("platform"));
+  const config = botPlatformConfig(env, platform);
+  if (!config.token) return text(`${platformLabel(platform)} token is not configured`, 503);
   const fileId = url.searchParams.get("file_id");
   if (!fileId) return text("Missing file_id", 400);
 
-  const fileResponse = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${encodeURIComponent(fileId)}`);
+  const fileResponse = await fetch(`${config.apiBase}/bot${config.token}/getFile?file_id=${encodeURIComponent(fileId)}`);
   if (!fileResponse.ok) return text("File lookup failed", 502);
   const fileData = await fileResponse.json();
   const filePath = fileData?.result?.file_path;
   if (!filePath) return text("File not found", 404);
 
-  const fileDownloadResponse = await fetch(`https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${filePath}`);
+  const fileDownloadResponse = await fetch(`${config.fileBase}/bot${config.token}/${filePath}`);
   if (!fileDownloadResponse.ok || !fileDownloadResponse.body) return text("File fetch failed", 502);
   const telegramType = fileDownloadResponse.headers.get("content-type") || "";
   const headers = new Headers({
@@ -3291,9 +3318,9 @@ async function fetchTelegramFile(request, env) {
   return new Response(fileDownloadResponse.body, { status: 200, headers });
 }
 
-async function rejectPrivateUser(env, message) {
+async function rejectPrivateUser(env, platform, message) {
   try {
-    await sendTelegramMessage(env, message.chat?.id, "مجاز به ادامه عملیات نیستید.");
+    await sendBotMessage(env, platform, message.chat?.id, "مجاز به ادامه عملیات نیستید.");
   } catch {
     return false;
   }
@@ -3329,13 +3356,14 @@ async function patchChat(env, chatId, row) {
   if (!response.ok) throw new Error(await response.text());
 }
 
-async function upsertChatFromMessage(env, message, update) {
+async function upsertChatFromMessage(env, platform, message, update) {
+  const normalizedPlatform = normalizePlatform(platform);
   const chat = message.chat ?? {};
   if (!chat.id) return;
   const now = new Date().toISOString();
   const seenAt = isoFromUnix(message.date) || now;
   await insertChat(env, {
-    platform: DEFAULT_PLATFORM,
+    platform: normalizedPlatform,
     chat_id: chat.id,
     chat_title: chat.title ?? null,
     chat_username: chat.username ?? null,
@@ -3347,7 +3375,7 @@ async function upsertChatFromMessage(env, message, update) {
     updated_at_utc: now,
   });
   await patchChat(env, chat.id, {
-    platform: DEFAULT_PLATFORM,
+    platform: normalizedPlatform,
     chat_title: chat.title ?? null,
     chat_username: chat.username ?? null,
     chat_type: chat.type ?? null,
@@ -3357,7 +3385,8 @@ async function upsertChatFromMessage(env, message, update) {
   });
 }
 
-async function upsertChatFromMembership(env, update) {
+async function upsertChatFromMembership(env, platform, update) {
+  const normalizedPlatform = normalizePlatform(platform);
   const membership = update.my_chat_member;
   if (!membership?.chat?.id) return false;
 
@@ -3369,7 +3398,7 @@ async function upsertChatFromMembership(env, update) {
   const now = new Date().toISOString();
 
   await insertChat(env, {
-    platform: DEFAULT_PLATFORM,
+    platform: normalizedPlatform,
     chat_id: chat.id,
     chat_title: chat.title ?? null,
     chat_username: chat.username ?? null,
@@ -3382,7 +3411,7 @@ async function upsertChatFromMembership(env, update) {
   });
 
   const patch = {
-    platform: DEFAULT_PLATFORM,
+    platform: normalizedPlatform,
     chat_title: chat.title ?? null,
     chat_username: chat.username ?? null,
     chat_type: chat.type ?? null,
@@ -3395,7 +3424,8 @@ async function upsertChatFromMembership(env, update) {
   return true;
 }
 
-async function upsertTopic(env, message, update) {
+async function upsertTopic(env, platform, message, update) {
+  const normalizedPlatform = normalizePlatform(platform);
   const chat = message.chat ?? {};
   const topic = topicData(message);
   if (!chat.id || !topic.messageThreadId || !topic.topicName) return;
@@ -3404,7 +3434,7 @@ async function upsertTopic(env, message, update) {
     method: "POST",
     headers: supabaseHeaders(env, "resolution=merge-duplicates,return=minimal"),
     body: JSON.stringify({
-      platform: DEFAULT_PLATFORM,
+      platform: normalizedPlatform,
       chat_id: chat.id,
       message_thread_id: topic.messageThreadId,
       topic_name: topic.topicName,
@@ -3419,27 +3449,37 @@ async function upsertTopic(env, message, update) {
 
 const TELEGRAM_ALLOWED_UPDATES = ["message", "edited_message", "channel_post", "edited_channel_post", "message_reaction", "message_reaction_count", "my_chat_member"];
 
-async function telegramApi(env, method, payload = null) {
-  if (!env.TELEGRAM_BOT_TOKEN) throw new Error("Telegram token is not configured");
+async function botApi(env, platform, method, payload = null) {
+  const config = botPlatformConfig(env, platform);
+  if (!config.token) throw new Error(`${platformLabel(config.platform)} token is not configured`);
   const init = payload ? {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
   } : {};
-  const response = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`, init);
+  const response = await fetch(`${config.apiBase}/bot${config.token}/${method}`, init);
   const body = await readSupabaseJson(response);
   if (!response.ok || body?.ok === false) {
-    throw new Error(body?.description || body?.message || `Telegram ${method} failed`);
+    throw new Error(body?.description || body?.message || `${platformLabel(config.platform)} ${method} failed`);
   }
   return body;
 }
 
 async function fetchTelegramWebhookInfo(env) {
   try {
-    const body = await telegramApi(env, "getWebhookInfo");
+    const body = await botApi(env, "telegram", "getWebhookInfo");
     return json({ webhook: body.result || body });
   } catch (error) {
     return json({ error: error.message || "دریافت وضعیت webhook انجام نشد" }, 500);
+  }
+}
+
+async function fetchBaleWebhookInfo(env) {
+  try {
+    const body = await botApi(env, "bale", "getWebhookInfo");
+    return json({ webhook: body.result || body });
+  } catch (error) {
+    return json({ error: error.message || "دریافت وضعیت webhook بله انجام نشد" }, 500);
   }
 }
 
@@ -3452,25 +3492,44 @@ async function resetTelegramWebhook(request, env) {
       drop_pending_updates: false,
     };
     if (env.TELEGRAM_WEBHOOK_SECRET) payload.secret_token = env.TELEGRAM_WEBHOOK_SECRET;
-    const body = await telegramApi(env, "setWebhook", payload);
-    const info = await telegramApi(env, "getWebhookInfo");
+    const body = await botApi(env, "telegram", "setWebhook", payload);
+    const info = await botApi(env, "telegram", "getWebhookInfo");
     return json({ ok: true, result: body.result, webhook: info.result || info });
   } catch (error) {
     return json({ error: error.message || "Reset webhook انجام نشد" }, 500);
   }
 }
 
-async function handleTelegramWebhook(request, env) {
+async function resetBaleWebhook(request, env) {
+  try {
+    const origin = new URL(request.url).origin;
+    const webhookUrl = new URL(`${origin}/bale-webhook`);
+    if (env.BALE_WEBHOOK_SECRET) webhookUrl.searchParams.set("secret", env.BALE_WEBHOOK_SECRET);
+    const body = await botApi(env, "bale", "setWebhook", { url: webhookUrl.toString() });
+    const info = await botApi(env, "bale", "getWebhookInfo");
+    return json({ ok: true, result: body.result, webhook: info.result || info });
+  } catch (error) {
+    return json({ error: error.message || "Reset webhook بله انجام نشد" }, 500);
+  }
+}
+
+async function handleBotWebhook(request, env, platform = DEFAULT_PLATFORM) {
+  const normalizedPlatform = normalizePlatform(platform);
+  const config = botPlatformConfig(env, normalizedPlatform);
   if (request.method !== "POST") return text("ok");
-  if (env.TELEGRAM_WEBHOOK_SECRET && request.headers.get("x-telegram-bot-api-secret-token") !== env.TELEGRAM_WEBHOOK_SECRET) {
+  const url = new URL(request.url);
+  if (normalizedPlatform === "telegram" && config.secret && request.headers.get("x-telegram-bot-api-secret-token") !== config.secret) {
+    return text("unauthorized", 401);
+  }
+  if (normalizedPlatform === "bale" && config.secret && url.searchParams.get("secret") !== config.secret) {
     return text("unauthorized", 401);
   }
 
   const update = await request.json();
-  if (update.message_reaction) return handleMessageReaction(env, update);
+  if (update.message_reaction) return handleMessageReaction(env, update, normalizedPlatform);
   if (update.message_reaction_count) return json({ ok: true, ignored: "message_reaction_count" });
 
-  if (update.my_chat_member && await upsertChatFromMembership(env, update)) {
+  if (update.my_chat_member && await upsertChatFromMembership(env, normalizedPlatform, update)) {
     return json({ ok: true, membership: true });
   }
 
@@ -3478,15 +3537,15 @@ async function handleTelegramWebhook(request, env) {
   if (!message) return json({ ok: true, ignored: true });
 
   if (isPrivateChat(message)) {
-    await rejectPrivateUser(env, message);
+    await rejectPrivateUser(env, normalizedPlatform, message);
     return json({ ok: true, rejected: "private_chat" });
   }
   if (isBotCommand(message)) {
     return json({ ok: true, ignored: "bot_command" });
   }
 
-  await upsertChatFromMessage(env, message, update);
-  await upsertTopic(env, message, update);
+  await upsertChatFromMessage(env, normalizedPlatform, message, update);
+  await upsertTopic(env, normalizedPlatform, message, update);
 
   const chat = message.chat ?? {};
   const sender = message.from ?? {};
@@ -3494,10 +3553,10 @@ async function handleTelegramWebhook(request, env) {
   const sentAt = isoFromUnix(message.date);
   const editedAt = isoFromUnix(message.edit_date);
   const topic = topicData(message);
-  const senderPhoto = await fetchSenderProfilePhoto(env, sender.id);
+  const senderPhoto = await fetchSenderProfilePhoto(env, normalizedPlatform, sender.id);
 
   const row = {
-    platform: DEFAULT_PLATFORM,
+    platform: normalizedPlatform,
     update_id: update.update_id,
     message_id: message.message_id ?? null,
     chat_id: chat.id ?? null,
@@ -3542,6 +3601,14 @@ async function handleTelegramWebhook(request, env) {
     return json({ ok: false, error: await response.text() }, 500);
   }
   return json({ ok: true });
+}
+
+async function handleTelegramWebhook(request, env) {
+  return handleBotWebhook(request, env, "telegram");
+}
+
+async function handleBaleWebhook(request, env) {
+  return handleBotWebhook(request, env, "bale");
 }
 
 async function fetchMessages(request, env) {
@@ -3856,6 +3923,7 @@ export default {
       return env.ASSETS.fetch(request);
     }
     if (url.pathname === "/telegram-webhook") return handleTelegramWebhook(request, env);
+    if (url.pathname === "/bale-webhook") return handleBaleWebhook(request, env);
     if (url.pathname === "/login") return handleLogin(request, env);
     if (url.pathname === "/forgot-password") return handleForgotPassword(request, env);
     if (url.pathname === "/recovery") return handleRecoveryPassword(request, env);
@@ -3890,8 +3958,12 @@ export default {
     if (url.pathname === "/api/me" && request.method === "PATCH") return updateCurrentUserProfile(request, env, authUser);
     if (url.pathname === "/api/telegram-webhook-info" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname === "/api/telegram-webhook-reset" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
+    if (url.pathname === "/api/bale-webhook-info" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
+    if (url.pathname === "/api/bale-webhook-reset" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname === "/api/telegram-webhook-info" && request.method === "GET") return fetchTelegramWebhookInfo(env);
     if (url.pathname === "/api/telegram-webhook-reset" && request.method === "POST") return resetTelegramWebhook(request, env);
+    if (url.pathname === "/api/bale-webhook-info" && request.method === "GET") return fetchBaleWebhookInfo(env);
+    if (url.pathname === "/api/bale-webhook-reset" && request.method === "POST") return resetBaleWebhook(request, env);
     if (url.pathname === "/api/access-users" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname.startsWith("/api/access-users/") && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
     if (url.pathname === "/api/access-logs" && !hasAccessPermission(authUser, "access")) return forbiddenAccess();
@@ -3926,9 +3998,13 @@ export default {
       if (!hasAnyAccessPermission(authUser, ["messages", "threads"])) return forbiddenAccess();
       return fetchTelegramProfilePhoto(request, env);
     }
+    if (url.pathname === "/api/file") {
+      if (!hasAnyAccessPermission(authUser, ["messages", "threads"])) return forbiddenAccess();
+      return fetchBotFile(request, env);
+    }
     if (url.pathname === "/api/telegram-file") {
       if (!hasAnyAccessPermission(authUser, ["messages", "threads"])) return forbiddenAccess();
-      return fetchTelegramFile(request, env);
+      return fetchBotFile(request, env);
     }
     return text("Not found", 404);
   },
