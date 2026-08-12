@@ -45,14 +45,15 @@ const HTML = `<!doctype html>
     th, td { padding: 6px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: middle; font-size: 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     th { background: #eef3f4; color: #24343b; position: sticky; top: var(--header-h); z-index:30; }
     .messages-table th { top: calc(var(--header-h) + var(--filters-h)); }
-    .groups-table col.group-id { width:14%; }
-    .groups-table col.group-name { width:29%; }
-    .groups-table col.group-platform { width:8%; }
-    .groups-table col.group-label { width:16%; }
-    .groups-table col.group-username { width:12%; }
-    .groups-table col.group-type { width:9%; }
-    .groups-table col.group-messages { width:5%; }
-    .groups-table col.group-details { width:7%; }
+    .groups-table col.group-id { width:10%; }
+    .groups-table col.group-name { width:32%; }
+    .groups-table col.group-platform { width:7%; }
+    .groups-table col.group-bot { width:9%; }
+    .groups-table col.group-label { width:14%; }
+    .groups-table col.group-username { width:10%; }
+    .groups-table col.group-type { width:8%; }
+    .groups-table col.group-messages { width:4%; }
+    .groups-table col.group-details { width:6%; }
     .groups-table .group-name-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.5; }
     .group-label-select { width:100%; min-width:0; height:32px; padding:0 8px; font-size:12px; }
     td.body { direction:rtl; text-align:right; }
@@ -251,8 +252,8 @@ const HTML = `<!doctype html>
     .modal-close { border-radius:0; }
     .detail-row { border-radius:0; border-color:var(--line); background:#fff; }
     .detail-label { color:#525252; }
-    .chart-panel, .access-panel, .profile-panel { border-radius:0; border-color:var(--line); box-shadow:0 1px 0 rgba(22,22,22,.04); }
-    .chart-head h2, .access-panel h2, .profile-panel h2 { font-size:20px; font-weight:800; }
+    .chart-panel, .access-panel, .profile-panel, .bots-panel { border-radius:0; border-color:var(--line); box-shadow:0 1px 0 rgba(22,22,22,.04); }
+    .chart-head h2, .access-panel h2, .profile-panel h2, .bots-panel h2 { font-size:20px; font-weight:800; }
     .bar-stack { border-radius:0; border-color:#c6c6c6; }
     .bar-segment { transition:filter .12s ease; }
     .access-tabs { direction:ltr; }
@@ -282,6 +283,7 @@ const HTML = `<!doctype html>
         <button class="nav-button active" id="messagesNav" type="button">پیام‌ها</button>
         <button class="nav-button" id="groupsNav" type="button">گروه‌ها</button>
         <button class="nav-button" id="threadsNav" type="button">تردها</button>
+        <button class="nav-button" id="botsNav" type="button">بات‌ها</button>
         <button class="nav-button" id="accessNav" type="button">دسترسی</button>
       </nav>
     </div>
@@ -322,20 +324,22 @@ const HTML = `<!doctype html>
       </section>
       <table class="messages-table">
         <colgroup>
+          <col style="width:6%" />
+          <col style="width:8%" />
+          <col style="width:12%" />
           <col style="width:7%" />
-          <col style="width:11%" />
+          <col style="width:6%" />
+          <col style="width:6%" />
           <col style="width:7%" />
-          <col style="width:7%" />
-          <col style="width:7%" />
-          <col style="width:7%" />
-          <col style="width:29%" />
-          <col style="width:11%" />
-          <col style="width:9%" />
+          <col style="width:25%" />
+          <col style="width:10%" />
+          <col style="width:8%" />
           <col style="width:5%" />
         </colgroup>
         <thead>
           <tr>
             <th>پلتفرم</th>
+            <th>بات</th>
             <th>نام گروه</th>
             <th>تاپیک</th>
             <th>نام فرستنده</th>
@@ -356,6 +360,7 @@ const HTML = `<!doctype html>
           <col class="group-id" />
           <col class="group-name" />
           <col class="group-platform" />
+          <col class="group-bot" />
           <col class="group-label" />
           <col class="group-username" />
           <col class="group-type" />
@@ -367,6 +372,7 @@ const HTML = `<!doctype html>
             <th>شناسه گروه</th>
             <th>نام گروه</th>
             <th>پلتفرم</th>
+            <th>بات</th>
             <th>لیبل</th>
             <th>یوزرنیم گروه</th>
             <th>نوع گروه</th>
@@ -388,6 +394,37 @@ const HTML = `<!doctype html>
         <button id="threadRefresh" type="button">به‌روزرسانی</button>
       </section>
       <div class="thread-list" id="threadRows"></div>
+    </section>
+    <section class="page" id="botsPage" hidden>
+      <section class="bots-panel">
+        <h2>مدیریت بات‌ها</h2>
+        <p class="thread-muted">بات‌های هر پلتفرم و تعداد گروه‌ها و پیام‌هایی که با هر بات ثبت شده است.</p>
+        <table class="bots-table">
+          <colgroup>
+            <col style="width:14%" />
+            <col style="width:18%" />
+            <col style="width:18%" />
+            <col style="width:14%" />
+            <col style="width:10%" />
+            <col style="width:10%" />
+            <col style="width:12%" />
+            <col style="width:4%" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>پلتفرم</th>
+              <th>نام بات</th>
+              <th>یوزرنیم بات</th>
+              <th>شناسه بات</th>
+              <th>گروه‌ها</th>
+              <th>پیام‌ها</th>
+              <th>آخرین دریافت</th>
+              <th>جزئیات</th>
+            </tr>
+          </thead>
+          <tbody id="botRows"></tbody>
+        </table>
+      </section>
     </section>
     <section class="page" id="accessPage" hidden>
       <section class="access-panel">
@@ -478,11 +515,13 @@ const HTML = `<!doctype html>
     const messagesNavEl = document.getElementById("messagesNav");
     const groupsNavEl = document.getElementById("groupsNav");
     const threadsNavEl = document.getElementById("threadsNav");
+    const botsNavEl = document.getElementById("botsNav");
     const accessNavEl = document.getElementById("accessNav");
     const dashboardPageEl = document.getElementById("dashboardPage");
     const messagesPageEl = document.getElementById("messagesPage");
     const groupsPageEl = document.getElementById("groupsPage");
     const threadsPageEl = document.getElementById("threadsPage");
+    const botsPageEl = document.getElementById("botsPage");
     const accessPageEl = document.getElementById("accessPage");
     const searchEl = document.getElementById("search");
     const platformEl = document.getElementById("platform");
@@ -524,6 +563,7 @@ const HTML = `<!doctype html>
     const accessRowsEl = document.getElementById("accessRows");
     const accessLogMessageEl = document.getElementById("accessLogMessage");
     const accessLogRowsEl = document.getElementById("accessLogRows");
+    const botRowsEl = document.getElementById("botRows");
     const currentUserPermissions = new Set(__CURRENT_USER_PERMISSIONS__);
     const currentUser = __CURRENT_USER__;
     const permissionOptions = [
@@ -532,6 +572,7 @@ const HTML = `<!doctype html>
       { key:"groups", label:"گروه‌ها" },
       { key:"messages", label:"پیام‌ها" },
       { key:"dashboard", label:"داشبورد" },
+      { key:"bots", label:"بات‌ها" },
     ];
     const fullTextByKey = new Map();
     const detailByKey = new Map();
@@ -630,9 +671,9 @@ const HTML = `<!doctype html>
     }
     function setupAccessShell() {
       accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
-      const navByPage = { dashboard:dashboardNavEl, messages:messagesNavEl, groups:groupsNavEl, threads:threadsNavEl, access:accessNavEl };
+      const navByPage = { dashboard:dashboardNavEl, messages:messagesNavEl, groups:groupsNavEl, threads:threadsNavEl, bots:botsNavEl, access:accessNavEl };
       Object.entries(navByPage).forEach(([page, element]) => { element.hidden = !canOpen(page); });
-      const firstPage = ["messages", "threads", "groups", "dashboard", "access"].find(canOpen);
+      const firstPage = ["messages", "threads", "groups", "dashboard", "bots", "access"].find(canOpen);
       if (!firstPage) {
         document.querySelector("main").innerHTML = '<section class="empty">برای این حساب هنوز دسترسی به بخشی تعریف نشده است.</section>';
         setStatus(++loadingToken, "بدون دسترسی");
@@ -1007,6 +1048,10 @@ const HTML = `<!doctype html>
     function detailHtml(row) {
       const details = [
         ["پلتفرم", platformText(row.platform)],
+        ["بات", botText(row)],
+        ["شناسه بات", row.bot_id],
+        ["یوزرنیم بات", row.bot_username],
+        ["نام بات", row.bot_name],
         ["شناسه آپدیت", row.update_id],
         ["شناسه پیام", row.message_id],
         ["شناسه گروه", row.chat_id],
@@ -1054,6 +1099,10 @@ const HTML = `<!doctype html>
     function groupDetailHtml(row) {
       const details = [
         ["پلتفرم", platformText(row.platform)],
+        ["بات", botText(row)],
+        ["شناسه بات", row.bot_id],
+        ["یوزرنیم بات", row.bot_username],
+        ["نام بات", row.bot_name],
         ["شناسه گروه", row.chat_id],
         ["نام گروه", row.chat_title],
         ["یوزرنیم گروه", row.chat_username],
@@ -1069,6 +1118,22 @@ const HTML = `<!doctype html>
       ];
       return \`<div class="details-grid">\${details.map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
     }
+    function botDetailHtml(row) {
+      const details = [
+        ["پلتفرم", platformText(row.platform)],
+        ["نام بات", row.bot_name],
+        ["یوزرنیم بات", row.bot_username],
+        ["شناسه بات", row.bot_id],
+        ["مسیر وبهوک", row.webhook_path],
+        ["وضعیت", row.is_active ? "فعال" : "غیرفعال"],
+        ["گروه‌ها", row.group_count],
+        ["پیام‌ها", row.message_count],
+        ["اولین مشاهده", row.first_seen_tehran],
+        ["آخرین مشاهده", row.last_seen_tehran],
+        ["آخرین پیام", row.last_message_tehran],
+      ];
+      return \`<div class="details-grid">\${details.map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
+    }
     function messageContent(row) {
       return row.body || row.caption || (row.message_type ? "[" + row.message_type + "]" : "");
     }
@@ -1076,6 +1141,9 @@ const HTML = `<!doctype html>
       const labels = { telegram: "تلگرام", bale: "بله", whatsapp: "واتساپ" };
       const key = String(value || "telegram").toLowerCase();
       return labels[key] || key;
+    }
+    function botText(row) {
+      return row.bot_username || row.bot_name || row.bot_id || "";
     }
     function rowPlatform(row) {
       return String(row?.platform || "telegram").toLowerCase();
@@ -1177,6 +1245,7 @@ const HTML = `<!doctype html>
             <div class="thread-head">
               <span class="thread-author">\${esc(author)}</span>
               <span class="thread-pill">\${esc(platformText(row.platform))}</span>
+              \${botText(row) ? \`<span class="thread-pill">بات: \${esc(botText(row))}</span>\` : ""}
               <span class="thread-muted">\${esc(row.sender_username ? "@" + row.sender_username : "")}</span>
               <span class="thread-muted">\${esc(row.chat_title)}</span>
               \${topicLabel(row) ? \`<span class="thread-pill">تاپیک: \${esc(topicLabel(row))}</span>\` : ""}
@@ -1385,6 +1454,7 @@ const HTML = `<!doctype html>
         rowsEl.innerHTML = data.messages.map((row, index) => \`
           <tr>
             <td class="full-cell">\${esc(platformText(row.platform))}</td>
+            <td class="full-cell">\${esc(botText(row))}</td>
             <td class="full-cell">\${esc(row.chat_title)}</td>
             <td class="full-cell">\${esc(topicLabel(row))}</td>
             <td class="full-cell">\${esc(row.sender_first_name)}</td>
@@ -1417,6 +1487,7 @@ const HTML = `<!doctype html>
             <td>\${esc(row.chat_id)}</td>
             <td class="group-name-cell">\${esc(row.chat_title)}</td>
             <td>\${esc(platformText(row.platform))}</td>
+            <td class="full-cell">\${esc(botText(row))}</td>
             <td>\${groupLabelSelect(row)}</td>
             <td>\${esc(row.chat_username)}</td>
             <td>\${esc(row.chat_type)}</td>
@@ -1491,6 +1562,37 @@ const HTML = `<!doctype html>
         setStatus(token, "خطا در دریافت لاگ‌ها");
       }
     }
+    async function loadBots() {
+      const token = showLoading("در حال دریافت بات‌ها...");
+      try {
+        const res = await fetch("/api/bots");
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.bots)) {
+          botRowsEl.innerHTML = "";
+          setStatus(token, data.detail || data.error || "خطا در دریافت بات‌ها");
+          return;
+        }
+        detailByKey.clear();
+        botRowsEl.innerHTML = data.bots.map((row, index) => {
+          const key = "bot-" + index;
+          detailByKey.set(key, botDetailHtml(row));
+          return \`<tr>
+            <td>\${esc(platformText(row.platform))}</td>
+            <td class="full-cell">\${esc(row.bot_name || "-")}</td>
+            <td class="full-cell">\${esc(row.bot_username || "-")}</td>
+            <td>\${esc(row.bot_id || "-")}</td>
+            <td>\${esc(row.group_count || 0)}</td>
+            <td>\${esc(row.message_count || 0)}</td>
+            <td class="full-cell">\${esc(row.last_seen_tehran || "-")}</td>
+            <td><button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button></td>
+          </tr>\`;
+        }).join("") || '<tr><td colspan="8" class="empty">باتی ثبت نشده است</td></tr>';
+        setStatus(token, data.bots.length + " بات");
+      } catch (error) {
+        botRowsEl.innerHTML = "";
+        setStatus(token, "خطا در دریافت بات‌ها");
+      }
+    }
     async function loadThreads() {
       updateFilterButtons();
       const token = showLoading("در حال دریافت تردها...");
@@ -1535,22 +1637,26 @@ const HTML = `<!doctype html>
       const isDashboard = page === "dashboard";
       const isGroups = page === "groups";
       const isThreads = page === "threads";
+      const isBots = page === "bots";
       const isAccess = page === "access";
       const isProfile = page === "profile";
       dashboardPageEl.hidden = !isDashboard;
-      messagesPageEl.hidden = isDashboard || isGroups || isThreads || isAccess || isProfile;
+      messagesPageEl.hidden = isDashboard || isGroups || isThreads || isBots || isAccess || isProfile;
       groupsPageEl.hidden = !isGroups;
       threadsPageEl.hidden = !isThreads;
+      botsPageEl.hidden = !isBots;
       accessPageEl.hidden = !isAccess;
       profilePageEl.hidden = !isProfile;
       dashboardNavEl.classList.toggle("active", isDashboard);
-      messagesNavEl.classList.toggle("active", !isDashboard && !isGroups && !isThreads && !isAccess && !isProfile);
+      messagesNavEl.classList.toggle("active", !isDashboard && !isGroups && !isThreads && !isBots && !isAccess && !isProfile);
       groupsNavEl.classList.toggle("active", isGroups);
       threadsNavEl.classList.toggle("active", isThreads);
+      botsNavEl.classList.toggle("active", isBots);
       accessNavEl.classList.toggle("active", isAccess);
       if (isDashboard) loadDashboard();
       else if (isGroups) loadGroups();
       else if (isThreads) loadThreadFilterOptions().then(loadThreads);
+      else if (isBots) loadBots();
       else if (isAccess) showAccessSection(accessLogsSectionEl.hidden ? "users" : "logs");
       else if (isProfile) loadProfile();
       else loadThreadFilterOptions().then(load);
@@ -1576,6 +1682,10 @@ const HTML = `<!doctype html>
     groupRowsEl.addEventListener("click", event => {
       const detailsButton = event.target.closest("[data-detail-key]");
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات گروه");
+    });
+    botRowsEl.addEventListener("click", event => {
+      const detailsButton = event.target.closest("[data-detail-key]");
+      if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات بات");
     });
     groupRowsEl.addEventListener("change", async event => {
       const select = event.target.closest(".group-label-select");
@@ -1623,6 +1733,7 @@ const HTML = `<!doctype html>
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
+    botsNavEl.addEventListener("click", () => showPage("bots"));
     accessNavEl.addEventListener("click", () => showPage("access"));
     userMenuButtonEl.addEventListener("click", () => userMenuEl.classList.toggle("open"));
     profileButtonEl.addEventListener("click", () => {
@@ -1824,7 +1935,7 @@ const HTML = `<!doctype html>
     });
     syncProfileUi();
     setupAccessShell();
-    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? loadAccessUsers() : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
+    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? loadAccessUsers() : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
   </script>
 </body>
 </html>`;
@@ -2161,7 +2272,7 @@ function normalizeGroupLabel(value) {
   return GROUP_LABELS.includes(label) ? label : null;
 }
 
-const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboard"];
+const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboard", "bots"];
 const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS];
 const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
 const GROUP_LABELS = ["internal_team", "customer", "provider"];
@@ -2176,6 +2287,9 @@ let dashboardApiCache = null;
 let threadFilterOptionsApiCache = null;
 const TELEGRAM_MESSAGE_SELECT = [
   "platform",
+  "bot_id",
+  "bot_username",
+  "bot_name",
   "update_id",
   "message_id",
   "chat_id",
@@ -3398,6 +3512,9 @@ function botPlatformConfig(env, platform = DEFAULT_PLATFORM) {
   if (normalizedPlatform === "bale") {
     return {
       platform: "bale",
+      botId: env.BALE_BOT_ID || env.BALE_BOT_USERNAME || "bale_default",
+      botUsername: env.BALE_BOT_USERNAME || "toman_accountmanagement_bot",
+      botName: env.BALE_BOT_NAME || "بات بله",
       token: env.BALE_BOT_TOKEN,
       apiBase: "https://tapi.bale.ai",
       fileBase: "https://tapi.bale.ai/file",
@@ -3407,12 +3524,50 @@ function botPlatformConfig(env, platform = DEFAULT_PLATFORM) {
   }
   return {
     platform: "telegram",
+    botId: env.TELEGRAM_BOT_ID || env.TELEGRAM_BOT_USERNAME || "telegram_default",
+    botUsername: env.TELEGRAM_BOT_USERNAME || null,
+    botName: env.TELEGRAM_BOT_NAME || "بات تلگرام",
     token: env.TELEGRAM_BOT_TOKEN,
     apiBase: "https://api.telegram.org",
     fileBase: "https://api.telegram.org/file",
     webhookPath: "/telegram-webhook",
     secret: env.TELEGRAM_WEBHOOK_SECRET,
   };
+}
+
+function normalizeBotUsername(value) {
+  const username = String(value || "").trim().replace(/^@+/, "");
+  return username ? `@${username}` : null;
+}
+
+function botIdentity(config) {
+  const username = normalizeBotUsername(config.botUsername);
+  return {
+    platform: normalizePlatform(config.platform),
+    bot_id: String(config.botId || config.botUsername || `${config.platform}_default`).trim(),
+    bot_username: username,
+    bot_name: config.botName || username || platformLabel(config.platform),
+  };
+}
+
+async function upsertBot(env, config, update = null) {
+  const bot = botIdentity(config);
+  const now = new Date().toISOString();
+  const updateDate = isoFromUnix(update?.message?.date || update?.edited_message?.date || update?.my_chat_member?.date) || now;
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_bots?on_conflict=platform,bot_id`, {
+    method: "POST",
+    headers: supabaseHeaders(env, "resolution=merge-duplicates,return=minimal"),
+    body: JSON.stringify({
+      ...bot,
+      webhook_path: config.webhookPath,
+      is_active: true,
+      last_seen_at_utc: updateDate,
+      last_update_at_utc: updateDate,
+      updated_at_utc: now,
+    }),
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return bot;
 }
 
 async function sendBotMessage(env, platform, chatId, textValue) {
@@ -3551,7 +3706,7 @@ async function patchChat(env, chatId, row) {
   if (!response.ok) throw new Error(await response.text());
 }
 
-async function upsertChatFromMessage(env, platform, message, update) {
+async function upsertChatFromMessage(env, platform, message, update, bot = {}) {
   const normalizedPlatform = normalizePlatform(platform);
   const chat = message.chat ?? {};
   if (!chat.id) return;
@@ -3559,6 +3714,9 @@ async function upsertChatFromMessage(env, platform, message, update) {
   const seenAt = isoFromUnix(message.date) || now;
   await insertChat(env, {
     platform: normalizedPlatform,
+    bot_id: bot.bot_id ?? null,
+    bot_username: bot.bot_username ?? null,
+    bot_name: bot.bot_name ?? null,
     chat_id: chat.id,
     chat_title: chat.title ?? null,
     chat_username: chat.username ?? null,
@@ -3571,6 +3729,9 @@ async function upsertChatFromMessage(env, platform, message, update) {
   });
   await patchChat(env, chat.id, {
     platform: normalizedPlatform,
+    bot_id: bot.bot_id ?? null,
+    bot_username: bot.bot_username ?? null,
+    bot_name: bot.bot_name ?? null,
     chat_title: chat.title ?? null,
     chat_username: chat.username ?? null,
     chat_type: chat.type ?? null,
@@ -3580,7 +3741,7 @@ async function upsertChatFromMessage(env, platform, message, update) {
   });
 }
 
-async function upsertChatFromMembership(env, platform, update) {
+async function upsertChatFromMembership(env, platform, update, bot = {}) {
   const normalizedPlatform = normalizePlatform(platform);
   const membership = update.my_chat_member;
   if (!membership?.chat?.id) return false;
@@ -3594,6 +3755,9 @@ async function upsertChatFromMembership(env, platform, update) {
 
   await insertChat(env, {
     platform: normalizedPlatform,
+    bot_id: bot.bot_id ?? null,
+    bot_username: bot.bot_username ?? null,
+    bot_name: bot.bot_name ?? null,
     chat_id: chat.id,
     chat_title: chat.title ?? null,
     chat_username: chat.username ?? null,
@@ -3607,6 +3771,9 @@ async function upsertChatFromMembership(env, platform, update) {
 
   const patch = {
     platform: normalizedPlatform,
+    bot_id: bot.bot_id ?? null,
+    bot_username: bot.bot_username ?? null,
+    bot_name: bot.bot_name ?? null,
     chat_title: chat.title ?? null,
     chat_username: chat.username ?? null,
     chat_type: chat.type ?? null,
@@ -3619,7 +3786,7 @@ async function upsertChatFromMembership(env, platform, update) {
   return true;
 }
 
-async function upsertTopic(env, platform, message, update) {
+async function upsertTopic(env, platform, message, update, bot = {}) {
   const normalizedPlatform = normalizePlatform(platform);
   const chat = message.chat ?? {};
   const topic = topicData(message);
@@ -3630,6 +3797,9 @@ async function upsertTopic(env, platform, message, update) {
     headers: supabaseHeaders(env, "resolution=merge-duplicates,return=minimal"),
     body: JSON.stringify({
       platform: normalizedPlatform,
+      bot_id: bot.bot_id ?? null,
+      bot_username: bot.bot_username ?? null,
+      bot_name: bot.bot_name ?? null,
       chat_id: chat.id,
       message_thread_id: topic.messageThreadId,
       topic_name: topic.topicName,
@@ -3721,10 +3891,11 @@ async function handleBotWebhook(request, env, platform = DEFAULT_PLATFORM) {
   }
 
   const update = await request.json();
+  const bot = await upsertBot(env, config, update);
   if (update.message_reaction) return handleMessageReaction(env, update, normalizedPlatform);
   if (update.message_reaction_count) return json({ ok: true, ignored: "message_reaction_count" });
 
-  if (update.my_chat_member && await upsertChatFromMembership(env, normalizedPlatform, update)) {
+  if (update.my_chat_member && await upsertChatFromMembership(env, normalizedPlatform, update, bot)) {
     return json({ ok: true, membership: true });
   }
 
@@ -3739,8 +3910,8 @@ async function handleBotWebhook(request, env, platform = DEFAULT_PLATFORM) {
     return json({ ok: true, ignored: "bot_command" });
   }
 
-  await upsertChatFromMessage(env, normalizedPlatform, message, update);
-  await upsertTopic(env, normalizedPlatform, message, update);
+  await upsertChatFromMessage(env, normalizedPlatform, message, update, bot);
+  await upsertTopic(env, normalizedPlatform, message, update, bot);
 
   const chat = message.chat ?? {};
   const sender = message.from ?? {};
@@ -3752,6 +3923,9 @@ async function handleBotWebhook(request, env, platform = DEFAULT_PLATFORM) {
 
   const row = {
     platform: normalizedPlatform,
+    bot_id: bot.bot_id,
+    bot_username: bot.bot_username,
+    bot_name: bot.bot_name,
     update_id: update.update_id,
     message_id: message.message_id ?? null,
     chat_id: chat.id ?? null,
@@ -3938,7 +4112,7 @@ async function fetchMessages(request, env) {
 
 async function fetchGroups(request, env) {
   const params = new URLSearchParams();
-  params.set("select", "platform,chat_id,chat_title,chat_username,chat_type,group_label,joined_at_utc,first_seen_at_utc,last_seen_at_utc,message_count,last_message_at_utc");
+  params.set("select", "platform,bot_id,bot_username,bot_name,chat_id,chat_title,chat_username,chat_type,group_label,joined_at_utc,first_seen_at_utc,last_seen_at_utc,message_count,last_message_at_utc");
   params.set("order", "first_seen_at_utc.desc.nullslast,joined_at_utc.desc.nullslast,last_seen_at_utc.desc.nullslast");
   params.set("limit", "1000");
 
@@ -4013,6 +4187,29 @@ async function updateGroupLabel(request, env) {
   }
   const rows = await response.json();
   return json({ group_label: rows?.[0]?.group_label || "" });
+}
+
+async function fetchBots(env) {
+  const params = new URLSearchParams();
+  params.set("select", "platform,bot_id,bot_username,bot_name,webhook_path,is_active,first_seen_at_utc,last_seen_at_utc,last_update_at_utc,message_count,group_count,last_message_at_utc");
+  params.set("order", "last_seen_at_utc.desc.nullslast,platform.asc");
+  params.set("limit", "1000");
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_bot_stats?${params}`, {
+    headers: supabaseHeaders(env),
+  });
+  if (!response.ok) {
+    return json({ error: "درخواست بات‌ها از دیتابیس انجام نشد", detail: await response.text() }, 500);
+  }
+  const bots = (await response.json()).map((row) => ({
+    ...row,
+    message_count: Number(row.message_count || 0),
+    group_count: Number(row.group_count || 0),
+    first_seen_tehran: row.first_seen_at_utc ? tehranDateTimeDisplay(new Date(row.first_seen_at_utc)) : null,
+    last_seen_tehran: row.last_seen_at_utc ? tehranDateTimeDisplay(new Date(row.last_seen_at_utc)) : null,
+    last_message_tehran: row.last_message_at_utc ? tehranDateTimeDisplay(new Date(row.last_message_at_utc)) : null,
+    display_timezone: "Asia/Tehran",
+  }));
+  return json({ bots });
 }
 
 async function fetchDashboard(request, env) {
@@ -4185,6 +4382,10 @@ export default {
     if (url.pathname === "/api/groups/label" && request.method === "POST") {
       if (!hasAccessPermission(authUser, "groups")) return forbiddenAccess();
       return updateGroupLabel(request, env);
+    }
+    if (url.pathname === "/api/bots") {
+      if (!hasAccessPermission(authUser, "bots")) return forbiddenAccess();
+      return fetchBots(env);
     }
     if (url.pathname === "/api/dashboard") {
       if (!hasAccessPermission(authUser, "dashboard")) return forbiddenAccess();
