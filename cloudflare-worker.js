@@ -4062,6 +4062,82 @@ function enrichMessageRows(rows, topicByThread) {
   });
 }
 
+function embeddedReplyMessage(row) {
+  const payload = row?.raw_payload_json || {};
+  return payload.message?.reply_to_message
+    || payload.edited_message?.reply_to_message
+    || null;
+}
+
+function rowFromEmbeddedReplyMessage(parentMessage, childRow) {
+  if (!parentMessage?.message_id || !childRow?.chat_id) return null;
+  const chat = parentMessage.chat || {};
+  const sender = parentMessage.from || {};
+  const senderChat = parentMessage.sender_chat || {};
+  const sentAt = isoFromUnix(parentMessage.date) || childRow.sent_at_utc || new Date().toISOString();
+  const editedAt = isoFromUnix(parentMessage.edit_date);
+  const topic = topicData(parentMessage);
+  return {
+    platform: normalizePlatform(childRow.platform),
+    bot_id: childRow.bot_id ?? null,
+    bot_username: childRow.bot_username ?? null,
+    bot_name: childRow.bot_name ?? null,
+    update_id: childRow.update_id ? -Math.abs(Number(childRow.update_id)) : syntheticUpdateId(),
+    message_id: parentMessage.message_id,
+    chat_id: chat.id ?? childRow.chat_id ?? null,
+    chat_title: chat.title ?? childRow.chat_title ?? null,
+    chat_username: chat.username ?? childRow.chat_username ?? null,
+    chat_type: chat.type ?? childRow.chat_type ?? null,
+    message_thread_id: topic.messageThreadId ?? childRow.message_thread_id ?? null,
+    is_topic_message: topic.isTopicMessage ?? childRow.is_topic_message ?? null,
+    topic_name: topic.topicName ?? childRow.topic_name ?? null,
+    topic_icon_color: topic.topicIconColor ?? childRow.topic_icon_color ?? null,
+    topic_icon_custom_emoji_id: topic.topicIconCustomEmojiId ?? childRow.topic_icon_custom_emoji_id ?? null,
+    sender_id: sender.id ?? null,
+    sender_username: sender.username ?? null,
+    sender_first_name: sender.first_name ?? null,
+    sender_last_name: sender.last_name ?? null,
+    sender_is_bot: sender.is_bot ?? null,
+    sender_photo_file_id: null,
+    sender_photo_file_unique_id: null,
+    sender_chat_id: senderChat.id ?? null,
+    sender_chat_title: senderChat.title ?? null,
+    body: parentMessage.text ?? null,
+    caption: parentMessage.caption ?? null,
+    message_type: messageType(parentMessage),
+    sent_at_utc: sentAt,
+    sent_date: sentAt.slice(0, 10),
+    sent_time: sentAt.slice(11, 19),
+    edited_at_utc: editedAt,
+    reply_to_message_id: parentMessage.reply_to_message?.message_id ?? null,
+    forward_origin_json: parentMessage.forward_origin ?? null,
+    entities_json: parentMessage.entities ?? parentMessage.caption_entities ?? null,
+    media_file_id: mediaFileId(parentMessage),
+    media_group_id: parentMessage.media_group_id ?? null,
+    raw_payload_json: { embedded_reply_parent: true, message: parentMessage },
+    received_at_utc: childRow.received_at_utc ?? new Date().toISOString(),
+  };
+}
+
+function embeddedReplyAncestorRows(messages, topicByThread) {
+  const knownKeys = new Set(messages.filter((row) => row.chat_id && row.message_id).map((row) => messageKey(row)));
+  const extras = [];
+  const queue = [...messages];
+  while (queue.length) {
+    const childRow = queue.shift();
+    const parentMessage = embeddedReplyMessage(childRow);
+    const parentRow = rowFromEmbeddedReplyMessage(parentMessage, childRow);
+    if (!parentRow) continue;
+    const key = messageKey(parentRow);
+    if (!key || knownKeys.has(key)) continue;
+    knownKeys.add(key);
+    const enrichedParent = enrichMessageRows([parentRow], topicByThread)[0];
+    extras.push(enrichedParent);
+    queue.push(enrichedParent);
+  }
+  return extras;
+}
+
 async function fetchMessageRowsByKeys(env, headers, keys) {
   const rows = [];
   const chunks = [];
@@ -4085,6 +4161,13 @@ async function fetchMessageRowsByKeys(env, headers, keys) {
 async function withThreadAncestors(env, headers, messages, topicByThread) {
   const allRows = [...messages];
   const baseKeys = new Set(messages.filter((row) => row.chat_id && row.message_id).map((row) => messageKey(row)));
+  for (const row of embeddedReplyAncestorRows(messages, topicByThread)) {
+    const key = messageKey(row);
+    if (key && !baseKeys.has(key)) {
+      baseKeys.add(key);
+      allRows.push(row);
+    }
+  }
   for (let depth = 0; depth < 12; depth += 1) {
     const latest = latestMessageMap(allRows);
     const missingParentKeys = [...new Set([...latest.values()]
@@ -4098,8 +4181,14 @@ async function withThreadAncestors(env, headers, messages, topicByThread) {
       baseKeys.add(key);
       return true;
     });
-    if (!newRows.length) break;
-    allRows.push(...newRows);
+    const embeddedRows = embeddedReplyAncestorRows(newRows, topicByThread).filter((row) => {
+      const key = messageKey(row);
+      if (!key || baseKeys.has(key)) return false;
+      baseKeys.add(key);
+      return true;
+    });
+    if (!newRows.length && !embeddedRows.length) break;
+    allRows.push(...newRows, ...embeddedRows);
   }
   return allRows;
 }
@@ -4513,7 +4602,7 @@ async function handleStoredBotWebhook(request, env) {
 
 async function sendBotMessage(env, platform, chatId, textValue, runtimeConfig = null, options = {}) {
   const config = runtimeConfig || botPlatformConfig(env, platform);
-  if (!config.token || !chatId) return false;
+  if (!config.token || !chatId) return { ok: false, body: null, result: null, config };
   const payload = {
     chat_id: chatId,
     text: textValue,
@@ -4528,7 +4617,80 @@ async function sendBotMessage(env, platform, chatId, textValue, runtimeConfig = 
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
   });
-  return response.ok;
+  const body = await readSupabaseJson(response);
+  return {
+    ok: response.ok && body?.ok !== false,
+    body,
+    result: body?.result || null,
+    config,
+  };
+}
+
+function syntheticUpdateId() {
+  return -Number(`${Date.now()}${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`);
+}
+
+function outgoingBotMessageRow(apiMessage, sourceRow, runtimeConfig, textValue, replyToMessageId) {
+  if (!apiMessage?.message_id) return null;
+  const platform = normalizePlatform(runtimeConfig?.platform || sourceRow?.platform);
+  const bot = botIdentity({ ...runtimeConfig, platform });
+  const chat = apiMessage.chat || {};
+  const sender = apiMessage.from || {};
+  const sentAt = isoFromUnix(apiMessage.date) || new Date().toISOString();
+  const topic = topicData(apiMessage);
+  return {
+    platform,
+    bot_id: bot.bot_id,
+    bot_username: bot.bot_username,
+    bot_name: bot.bot_name,
+    update_id: syntheticUpdateId(),
+    message_id: apiMessage.message_id,
+    chat_id: chat.id ?? sourceRow?.chat_id ?? null,
+    chat_title: chat.title ?? sourceRow?.chat_title ?? null,
+    chat_username: chat.username ?? sourceRow?.chat_username ?? null,
+    chat_type: chat.type ?? sourceRow?.chat_type ?? null,
+    message_thread_id: topic.messageThreadId ?? sourceRow?.message_thread_id ?? null,
+    is_topic_message: topic.isTopicMessage ?? sourceRow?.is_topic_message ?? null,
+    topic_name: topic.topicName ?? sourceRow?.topic_name ?? null,
+    topic_icon_color: topic.topicIconColor ?? sourceRow?.topic_icon_color ?? null,
+    topic_icon_custom_emoji_id: topic.topicIconCustomEmojiId ?? sourceRow?.topic_icon_custom_emoji_id ?? null,
+    sender_id: sender.id ?? (Number.isFinite(Number(bot.bot_id)) ? Number(bot.bot_id) : null),
+    sender_username: sender.username ?? (bot.bot_username ? bot.bot_username.replace(/^@/, "") : null),
+    sender_first_name: sender.first_name ?? bot.bot_name ?? null,
+    sender_last_name: sender.last_name ?? null,
+    sender_is_bot: true,
+    sender_photo_file_id: null,
+    sender_photo_file_unique_id: null,
+    sender_chat_id: null,
+    sender_chat_title: null,
+    body: apiMessage.text ?? textValue,
+    caption: apiMessage.caption ?? null,
+    message_type: messageType(apiMessage),
+    sent_at_utc: sentAt,
+    sent_date: sentAt.slice(0, 10),
+    sent_time: sentAt.slice(11, 19),
+    edited_at_utc: isoFromUnix(apiMessage.edit_date),
+    reply_to_message_id: apiMessage.reply_to_message?.message_id ?? Number(replyToMessageId) ?? null,
+    forward_origin_json: apiMessage.forward_origin ?? null,
+    entities_json: apiMessage.entities ?? apiMessage.caption_entities ?? null,
+    media_file_id: mediaFileId(apiMessage),
+    media_group_id: apiMessage.media_group_id ?? null,
+    raw_payload_json: { dashboard_outgoing: true, message: apiMessage },
+    received_at_utc: new Date().toISOString(),
+  };
+}
+
+async function persistOutgoingBotMessage(env, apiMessage, sourceRow, runtimeConfig, textValue, replyToMessageId) {
+  const row = outgoingBotMessageRow(apiMessage, sourceRow, runtimeConfig, textValue, replyToMessageId);
+  if (!row) return null;
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?on_conflict=platform,update_id,message_id`, {
+    method: "POST",
+    headers: supabaseHeaders(env, "resolution=ignore-duplicates,return=representation"),
+    body: JSON.stringify(row),
+  });
+  if (!response.ok) throw new Error(await response.text());
+  const saved = await response.json();
+  return Array.isArray(saved) ? saved[0] : saved;
 }
 
 async function runtimeConfigForMessageBot(env, row) {
@@ -5216,7 +5378,8 @@ async function sendThreadReply(request, env, authUser) {
     const runtimeConfig = await runtimeConfigForMessageBot(env, row);
     const outgoingText = `${normalizeEmail(authUser.email)} :\n${replyBody}`;
     const sent = await sendBotMessage(env, platform, chatId, outgoingText, runtimeConfig, { replyToMessageId: messageId });
-    if (!sent) return json({ error: "ارسال پاسخ توسط بات انجام نشد" }, 502);
+    if (!sent.ok) return json({ error: "ارسال پاسخ توسط بات انجام نشد", detail: sent.body || null }, 502);
+    await persistOutgoingBotMessage(env, sent.result, row, runtimeConfig, outgoingText, messageId);
     try {
       await insertAccessAuditLog(env, {
         actorEmail: authUser.email,
