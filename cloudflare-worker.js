@@ -960,6 +960,7 @@ const HTML = `<!doctype html>
     let currentPage = "messages";
     let loadingToken = 0;
     let pendingConfirm = null;
+    const numberFmt = new Intl.NumberFormat("fa-IR");
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
     }
