@@ -1008,6 +1008,7 @@ const HTML = `<!doctype html>
     let currentPage = "messages";
     let loadingToken = 0;
     let pendingConfirm = null;
+    let pendingBroadcastConfirm = null;
     const numberFmt = new Intl.NumberFormat("fa-IR");
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
@@ -2118,6 +2119,7 @@ const HTML = `<!doctype html>
       });
     }
     function openBroadcastConfirmModal({ body, groups }) {
+      pendingBroadcastConfirm = { body, groups };
       const groupByKey = new Map(broadcastGroupOptions.map((group) => [group.key, group]));
       const targetHtml = groups.map((key) => {
         const group = groupByKey.get(key) || { title: key, platform: "" };
@@ -2151,6 +2153,7 @@ const HTML = `<!doctype html>
     function closeModal(confirmResult = false) {
       const confirmResolver = pendingConfirm;
       pendingConfirm = null;
+      pendingBroadcastConfirm = null;
       modalBackdropEl.classList.remove("open");
       modalBodyEl.textContent = "";
       modalBodyEl.innerHTML = "";
@@ -2756,33 +2759,13 @@ const HTML = `<!doctype html>
       }
       const confirmed = await openBroadcastConfirmModal({ body, groups });
       if (!confirmed?.ok) return;
-      const password = confirmed.password;
-      const submitButton = broadcastFormEl.querySelector("button[type='submit']");
-      submitButton.disabled = true;
-      broadcastResultEl.textContent = "در حال ارسال اطلاع‌رسانی...";
-      try {
-        const res = await fetch("/api/group-broadcast", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ groups, body, password }),
-        });
-        const data = await res.json();
-        if (!res.ok && res.status !== 207) {
-          broadcastResultEl.textContent = data.error || "ارسال گروهی انجام نشد";
-          submitButton.disabled = false;
-          return;
-        }
-        broadcastResultEl.textContent = broadcastResultText(data);
-        if (!data.failed) {
-          broadcastBodyEl.value = "";
-        }
-        loadBroadcastLogs(false);
-        setTimeout(() => loadBroadcast(), 800);
-      } catch (error) {
-        broadcastResultEl.textContent = "ارسال گروهی انجام نشد";
-      } finally {
-        submitButton.disabled = false;
+      const data = confirmed.data || {};
+      broadcastResultEl.textContent = broadcastResultText(data);
+      if (!data.failed) {
+        broadcastBodyEl.value = "";
       }
+      loadBroadcastLogs(false);
+      setTimeout(() => loadBroadcast(), 800);
     });
     botFormEl.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -2832,7 +2815,7 @@ const HTML = `<!doctype html>
     modalCloseEl.addEventListener("click", () => closeModal());
     modalBackdropEl.addEventListener("click", event => { if (event.target === modalBackdropEl) closeModal(); });
     document.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
-    modalBodyEl.addEventListener("click", event => {
+    modalBodyEl.addEventListener("click", async event => {
       const passwordToggle = event.target.closest("[data-confirm-password-toggle]");
       if (passwordToggle) {
         const input = modalBodyEl.querySelector("[data-confirm-password]");
@@ -2848,10 +2831,37 @@ const HTML = `<!doctype html>
       const passwordInput = modalBodyEl.querySelector("[data-confirm-password]");
       if (passwordInput) {
         const password = passwordInput.value;
+        const errorEl = modalBodyEl.querySelector("[data-confirm-error]");
         if (!password) {
-          const errorEl = modalBodyEl.querySelector("[data-confirm-error]");
           if (errorEl) errorEl.textContent = "برای تایید نهایی پسورد خود را وارد کنید.";
           passwordInput.focus();
+          return;
+        }
+        if (pendingBroadcastConfirm) {
+          confirmButton.disabled = true;
+          if (errorEl) errorEl.textContent = "در حال ارسال...";
+          try {
+            const res = await fetch("/api/group-broadcast", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                groups: pendingBroadcastConfirm.groups,
+                body: pendingBroadcastConfirm.body,
+                password,
+              }),
+            });
+            const data = await res.json();
+            if (!res.ok && res.status !== 207) {
+              if (errorEl) errorEl.textContent = data.error || "ارسال گروهی انجام نشد";
+              confirmButton.disabled = false;
+              passwordInput.focus();
+              return;
+            }
+            closeModal({ ok: true, data });
+          } catch (error) {
+            if (errorEl) errorEl.textContent = "ارسال گروهی انجام نشد";
+            confirmButton.disabled = false;
+          }
           return;
         }
         closeModal({ ok: true, password });
