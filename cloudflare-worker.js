@@ -797,17 +797,30 @@ const HTML = `<!doctype html>
       if (isLogs) loadAccessLogs();
       else loadAccessUsers();
     }
+    const routablePages = ["dashboard", "messages", "groups", "threads", "bots", "access", "profile"];
+    function pagePath(page) {
+      return "/main/" + page;
+    }
+    function pageFromPath() {
+      const match = window.location.pathname.match(/^\/main\/([^/]+)\/?$/);
+      const page = match ? match[1] : "messages";
+      return routablePages.includes(page) ? page : "messages";
+    }
+    function firstAccessiblePage() {
+      return ["messages", "threads", "groups", "dashboard", "bots", "access"].find(canOpen);
+    }
     function setupAccessShell() {
       accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
       const navByPage = { dashboard:dashboardNavEl, messages:messagesNavEl, groups:groupsNavEl, threads:threadsNavEl, bots:botsNavEl, access:accessNavEl };
       Object.entries(navByPage).forEach(([page, element]) => { element.hidden = !canOpen(page); });
-      const firstPage = ["messages", "threads", "groups", "dashboard", "bots", "access"].find(canOpen);
+      const firstPage = firstAccessiblePage();
       if (!firstPage) {
         document.querySelector("main").innerHTML = '<section class="empty">برای این حساب هنوز دسترسی به بخشی تعریف نشده است.</section>';
         setStatus(++loadingToken, "بدون دسترسی");
         return;
       }
-      showPage(firstPage);
+      const requestedPage = pageFromPath();
+      showPage(requestedPage === "profile" || canOpen(requestedPage) ? requestedPage : firstPage, { replace: true });
     }
     function tehranDisplay(value) {
       return new Date(value).toLocaleString("fa-IR", { timeZone:"Asia/Tehran", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit" });
@@ -1734,9 +1747,16 @@ const HTML = `<!doctype html>
         setStatus(token, "خطا در دریافت تردها");
       }
     }
-    function showPage(page) {
+    function showPage(page, options = {}) {
       if (page !== "profile" && !canOpen(page)) return;
       currentPage = page;
+      const nextPath = pagePath(page);
+      if (window.location.pathname !== nextPath) {
+        if (options.replace) window.history.replaceState({ page }, "", nextPath);
+        else window.history.pushState({ page }, "", nextPath);
+      } else if (options.replace) {
+        window.history.replaceState({ page }, "", nextPath);
+      }
       const isDashboard = page === "dashboard";
       const isGroups = page === "groups";
       const isThreads = page === "threads";
@@ -1874,6 +1894,11 @@ const HTML = `<!doctype html>
     profileButtonEl.addEventListener("click", () => {
       userMenuEl.classList.remove("open");
       showPage("profile");
+    });
+    window.addEventListener("popstate", () => {
+      const requestedPage = pageFromPath();
+      const fallbackPage = firstAccessiblePage();
+      showPage(requestedPage === "profile" || canOpen(requestedPage) ? requestedPage : fallbackPage, { replace: true });
     });
     logoutButtonEl.addEventListener("click", async () => {
       userMenuEl.classList.remove("open");
@@ -2067,7 +2092,7 @@ async function loginHtml(env, error = "", email = "", message = "", authUser = n
   const profileAvatar = profile?.telegram_avatar_url
     ? `<img class="signed-avatar" src="${htmlEscape(profile.telegram_avatar_url)}" alt="" />`
     : `<span class="signed-avatar">${profileInitial}</span>`;
-  const profileTarget = authUser?.must_change_password ? "/set-password" : "/main";
+  const profileTarget = authUser?.must_change_password ? "/set-password" : defaultMainPathForUser(authUser);
   return `<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
@@ -2596,6 +2621,11 @@ function hasAnyAccessPermission(user, permissions) {
   return permissions.some((permission) => hasAccessPermission(user, permission));
 }
 
+function defaultMainPathForUser(user) {
+  const firstPage = ["messages", "threads", "groups", "dashboard", "bots", "access"].find((permission) => hasAccessPermission(user, permission));
+  return `/main/${firstPage || "messages"}`;
+}
+
 function profilePhotoUrlFromRow(row) {
   if (!row?.sender_photo_file_id) return "";
   const params = new URLSearchParams({
@@ -2787,7 +2817,7 @@ async function handleLogin(request, env) {
   return new Response(null, {
     status: 303,
     headers: {
-      location: user.must_change_password ? "/set-password" : "/main",
+      location: user.must_change_password ? "/set-password" : defaultMainPathForUser(user),
       "set-cookie": `visibility_session=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_SECONDS}`,
     },
   });
@@ -4798,8 +4828,9 @@ export default {
       if (apiPath) return json({ error: "تغییر پسورد الزامی است" }, 403);
       return redirect("/set-password");
     }
-    if (url.pathname === "/") return redirect("/main");
-    if (url.pathname === "/main") {
+    if (url.pathname === "/") return redirect(defaultMainPathForUser(authUser));
+    if (url.pathname === "/main") return redirect(defaultMainPathForUser(authUser));
+    if (url.pathname === "/main" || url.pathname.startsWith("/main/")) {
       const html = HTML
         .replace("__CURRENT_USER_PERMISSIONS__", JSON.stringify(accessPermissionsForUser(authUser)))
         .replace("__CURRENT_USER__", JSON.stringify(await publicUserProfile(env, authUser)));
