@@ -2014,7 +2014,13 @@ const HTML = `<!doctype html>
 
 const AUTH_FONT_FACE = HTML.match(/@font-face\s*\{[^}]+\}/)?.[0] || "";
 
-function loginHtml(error = "", email = "", message = "") {
+function loginHtml(error = "", email = "", message = "", authUser = null) {
+  const profile = authUser ? publicUserProfile(authUser) : null;
+  const profileInitial = htmlEscape((profile?.email || "?").slice(0, 1).toUpperCase());
+  const profileAvatar = profile?.avatar_data_url
+    ? `<img class="signed-avatar" src="${htmlEscape(profile.avatar_data_url)}" alt="" />`
+    : `<span class="signed-avatar">${profileInitial}</span>`;
+  const profileTarget = authUser?.must_change_password ? "/set-password" : "/main";
   return `<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
@@ -2065,6 +2071,13 @@ function loginHtml(error = "", email = "", message = "") {
     .auth-link:hover { text-decoration:underline; }
     .error { min-height:22px; margin-bottom:10px; color:#b42318; font-size:12px; line-height:1.7; }
     .message { min-height:22px; margin-bottom:10px; color:var(--ok); font-size:12px; line-height:1.7; }
+    .signed-profile { display:flex; flex-direction:column; align-items:center; gap:12px; padding-top:8px; }
+    .signed-avatar { width:64px; height:64px; display:grid; place-items:center; border:1px solid #b8d3ff; border-radius:50%; background:var(--soft); color:var(--accent); font-weight:900; object-fit:cover; }
+    .signed-email { direction:ltr; text-align:center; font-weight:900; font-size:16px; overflow-wrap:anywhere; }
+    .signed-meta { color:var(--muted); direction:ltr; text-align:center; font-size:13px; min-height:20px; }
+    .button-link { display:grid; place-items:center; width:100%; height:40px; margin-top:8px; border-radius:6px; background:var(--accent); color:#fff; text-decoration:none; font-weight:900; }
+    .button-link:hover { background:var(--accent-dark); }
+    .switch-note { margin:8px 0 0; color:var(--muted); text-align:center; font-size:12px; line-height:1.8; }
     @media (max-width: 860px) {
       .landing-header { height:auto; min-height:64px; padding:14px 20px; align-items:flex-start; gap:8px; flex-direction:column; }
       .landing-main { grid-template-columns:1fr; gap:28px; padding:28px 0; }
@@ -2097,23 +2110,35 @@ function loginHtml(error = "", email = "", message = "") {
         </div>
       </section>
       <section class="auth-card">
-        <form method="post" action="/">
+        ${profile ? `
           <h2>ورود به داشبورد</h2>
-          <p class="auth-copy">فقط ایمیل‌های مجاز دامنه toman.ir امکان ورود دارند.</p>
-          <div class="error">${htmlEscape(error)}</div>
-          <div class="message">${htmlEscape(message)}</div>
-          <label for="email">ایمیل</label>
-          <input id="email" name="email" type="email" autocomplete="username" placeholder="anything@toman.ir" value="${htmlEscape(email)}" autofocus />
-          <label for="password">پسورد</label>
-          <div class="password-wrap">
-            <input id="password" name="password" type="password" autocomplete="current-password" />
-            <button class="password-toggle" type="button" data-toggle-password="password" aria-label="نمایش پسورد">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
+          <p class="auth-copy">شما با این پروفایل وارد شده‌اید.</p>
+          <div class="signed-profile">
+            ${profileAvatar}
+            <div class="signed-email">${htmlEscape(profile.email)}</div>
+            <div class="signed-meta">${profile.telegram_username ? htmlEscape(profile.telegram_username) : "یوزرنیم تلگرام ثبت نشده"}</div>
+            <a class="button-link" href="${profileTarget}">ورود</a>
+            <p class="switch-note">برای ورود با کاربر دیگر، از داخل داشبورد خارج شوید.</p>
           </div>
-          <button type="submit">ورود</button>
-          <a class="auth-link" href="/forgot-password">فراموشی رمز عبور؟</a>
-        </form>
+        ` : `
+          <form method="post" action="/">
+            <h2>ورود به داشبورد</h2>
+            <p class="auth-copy">فقط ایمیل‌های مجاز دامنه toman.ir امکان ورود دارند.</p>
+            <div class="error">${htmlEscape(error)}</div>
+            <div class="message">${htmlEscape(message)}</div>
+            <label for="email">ایمیل</label>
+            <input id="email" name="email" type="email" autocomplete="username" placeholder="anything@toman.ir" value="${htmlEscape(email)}" autofocus />
+            <label for="password">پسورد</label>
+            <div class="password-wrap">
+              <input id="password" name="password" type="password" autocomplete="current-password" />
+              <button class="password-toggle" type="button" data-toggle-password="password" aria-label="نمایش پسورد">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <button type="submit">ورود</button>
+            <a class="auth-link" href="/forgot-password">فراموشی رمز عبور؟</a>
+          </form>
+        `}
       </section>
     </main>
   </div>
@@ -2663,9 +2688,8 @@ async function dashboardAuthorized(request, env) {
 async function handleLogin(request, env) {
   if (request.method !== "POST") {
     const authUser = await dashboardAuthorized(request, env);
-    if (authUser) return redirect(authUser.must_change_password ? "/set-password" : "/main");
     const recovered = new URL(request.url).searchParams.get("recovered") === "1";
-    return text(loginHtml("", "", recovered ? "پسورد جدید ذخیره شد. حالا وارد شوید." : ""), 200, "text/html; charset=utf-8");
+    return text(loginHtml("", "", recovered ? "پسورد جدید ذخیره شد. حالا وارد شوید." : "", authUser), 200, "text/html; charset=utf-8");
   }
   const form = await request.formData();
   const email = normalizeEmail(form.get("email"));
