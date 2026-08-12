@@ -3,7 +3,7 @@ const HTML = `<!doctype html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Visibility</title>
+  <title>دیدپذیری</title>
   <style>
     @font-face { font-family:"IRANSans"; src:url("/fonts/IRANSansWeb-FaNum.ttf") format("truetype"); font-weight:400; font-style:normal; font-display:swap; }
     @font-face { font-family:"IRANSans"; src:url("/fonts/IRANSansWeb-FaNum-Medium.ttf") format("truetype"); font-weight:600; font-style:normal; font-display:swap; }
@@ -276,13 +276,13 @@ const HTML = `<!doctype html>
 <body>
   <header>
     <div class="brand">
-      <h1>Visibility</h1>
-      <nav aria-label="Dashboard pages">
-        <button class="nav-button" id="dashboardNav" type="button">Dashboard</button>
-        <button class="nav-button active" id="messagesNav" type="button">Messages</button>
-        <button class="nav-button" id="groupsNav" type="button">Groups</button>
-        <button class="nav-button" id="threadsNav" type="button">Threads</button>
-        <button class="nav-button" id="accessNav" type="button">Access</button>
+      <h1>دیدپذیری</h1>
+      <nav aria-label="صفحه‌های داشبورد">
+        <button class="nav-button" id="dashboardNav" type="button">داشبورد</button>
+        <button class="nav-button active" id="messagesNav" type="button">پیام‌ها</button>
+        <button class="nav-button" id="groupsNav" type="button">گروه‌ها</button>
+        <button class="nav-button" id="threadsNav" type="button">تردها</button>
+        <button class="nav-button" id="accessNav" type="button">دسترسی</button>
       </nav>
     </div>
     <div class="header-tools">
@@ -304,7 +304,7 @@ const HTML = `<!doctype html>
       <section class="chart-panel">
         <div class="chart-head">
           <div>
-            <h2>Dashboard</h2>
+            <h2>داشبورد</h2>
             <p>تعداد کل پیام‌ها بر اساس روز، با تفکیک رنگی گروه‌ها</p>
           </div>
         </div>
@@ -334,16 +334,16 @@ const HTML = `<!doctype html>
         </colgroup>
         <thead>
           <tr>
-            <th>Platform</th>
-            <th>Group Name</th>
-            <th>Topic</th>
-            <th>Sender First Name</th>
-            <th>Sender Last Name</th>
-            <th>Username</th>
-            <th>Message</th>
-            <th>Sent At</th>
-            <th>Registered At</th>
-            <th>Details</th>
+            <th>پلتفرم</th>
+            <th>نام گروه</th>
+            <th>تاپیک</th>
+            <th>نام فرستنده</th>
+            <th>نام خانوادگی فرستنده</th>
+            <th>یوزرنیم</th>
+            <th>پیام</th>
+            <th>زمان ارسال</th>
+            <th>زمان ثبت</th>
+            <th>جزئیات</th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -363,14 +363,14 @@ const HTML = `<!doctype html>
         </colgroup>
         <thead>
           <tr>
-            <th>Group ID</th>
-            <th>Group Name</th>
-            <th>Platform</th>
-            <th>Label</th>
-            <th>Group Username</th>
-            <th>Group Type</th>
-            <th>Messages</th>
-            <th>Details</th>
+            <th>شناسه گروه</th>
+            <th>نام گروه</th>
+            <th>پلتفرم</th>
+            <th>لیبل</th>
+            <th>یوزرنیم گروه</th>
+            <th>نوع گروه</th>
+            <th>پیام‌ها</th>
+            <th>جزئیات</th>
           </tr>
         </thead>
         <tbody id="groupRows"></tbody>
@@ -389,11 +389,11 @@ const HTML = `<!doctype html>
     </section>
     <section class="page" id="accessPage" hidden>
       <section class="access-panel">
-        <h2>Access</h2>
-        <p class="thread-muted">فقط ایمیل‌های دامنه toman.ir قابل اضافه شدن هستند. پسورد اولیه هر کاربر changeme است.</p>
+        <h2>دسترسی</h2>
+        <p class="thread-muted">فقط ایمیل‌های دامنه toman.ir قابل اضافه شدن هستند. برای کاربر ایمیل دعوت ارسال می‌شود.</p>
         <div class="access-tabs">
-          <button class="access-tab active" id="accessUsersTab" type="button">Users</button>
-          <button class="access-tab" id="accessLogsTab" type="button">Logs</button>
+          <button class="access-tab active" id="accessUsersTab" type="button">کاربران</button>
+          <button class="access-tab" id="accessLogsTab" type="button">لاگ‌ها</button>
         </div>
         <section class="access-section" id="accessUsersSection">
           <form class="access-form" id="accessForm">
@@ -416,11 +416,11 @@ const HTML = `<!doctype html>
             </colgroup>
             <thead>
               <tr>
-                <th>Action</th>
-                <th>Actor</th>
-                <th>Target</th>
-                <th>Time (Tehran)</th>
-                <th>Details</th>
+                <th>عملیات</th>
+                <th>انجام‌دهنده</th>
+                <th>کاربر هدف</th>
+                <th>زمان (تهران)</th>
+                <th>جزئیات</th>
               </tr>
             </thead>
             <tbody id="accessLogRows"></tbody>
@@ -447,7 +447,7 @@ const HTML = `<!doctype html>
             <span class="thread-muted">یوزرنیم تلگرام</span>
             <span class="telegram-input-wrap">
               <span class="telegram-input-prefix">@</span>
-              <input id="profileTelegramUsername" type="text" inputmode="latin" autocomplete="off" placeholder="username" />
+              <input id="profileTelegramUsername" type="text" inputmode="latin" autocomplete="off" placeholder="نام‌کاربری" />
             </span>
           </label>
           <button type="submit">ذخیره پروفایل</button>
@@ -523,11 +523,11 @@ const HTML = `<!doctype html>
     const currentUserPermissions = new Set(__CURRENT_USER_PERMISSIONS__);
     const currentUser = __CURRENT_USER__;
     const permissionOptions = [
-      { key:"access", label:"Access" },
-      { key:"threads", label:"Threads" },
-      { key:"groups", label:"Groups" },
-      { key:"messages", label:"Messages" },
-      { key:"dashboard", label:"Dashboard" },
+      { key:"access", label:"دسترسی" },
+      { key:"threads", label:"تردها" },
+      { key:"groups", label:"گروه‌ها" },
+      { key:"messages", label:"پیام‌ها" },
+      { key:"dashboard", label:"داشبورد" },
     ];
     const fullTextByKey = new Map();
     const detailByKey = new Map();
@@ -573,6 +573,20 @@ const HTML = `<!doctype html>
       const current = String(row.group_label || "");
       return \`<select class="group-label-select" data-platform="\${esc(row.platform || "telegram")}" data-chat-id="\${esc(row.chat_id)}" data-previous="\${esc(current)}" aria-label="لیبل گروه">\${groupLabelOptions.map(([value, label]) => \`<option value="\${esc(value)}" \${current === value ? "selected" : ""}>\${esc(label)}</option>\`).join("")}</select>\`;
     }
+    function accessActionText(action) {
+      const labels = {
+        invite: "دعوت",
+        invite_email: "ارسال ایمیل دعوت",
+        resend_invite: "ارسال دوباره دعوت",
+        revoke: "لغو دسترسی",
+        reactivate: "فعال‌سازی دوباره",
+        permissions_update: "تغییر دسترسی‌ها",
+        password_change: "تغییر پسورد",
+        password_recovery: "بازیابی پسورد",
+        profile_update: "به‌روزرسانی پروفایل",
+      };
+      return labels[String(action || "")] || String(action || "");
+    }
     function syncProfileUi() {
       headerEmailEl.textContent = currentUser.email;
       profileEmailEl.textContent = currentUser.email;
@@ -592,13 +606,13 @@ const HTML = `<!doctype html>
     }
     function accessLogDetailsHtml(log) {
       return \`<div class="details-grid">
-        <div class="detail-row"><div class="detail-label">Action</div><div class="detail-value">\${esc(log.action)}</div></div>
-        <div class="detail-row"><div class="detail-label">Actor</div><div class="detail-value">\${esc(log.actor_email || "-")}</div></div>
-        <div class="detail-row"><div class="detail-label">Target</div><div class="detail-value">\${esc(log.target_email || "-")}</div></div>
-        <div class="detail-row"><div class="detail-label">Time (Tehran)</div><div class="detail-value">\${esc(log.created_at_utc ? tehranDisplay(log.created_at_utc) : "-")}</div></div>
-        <div class="detail-row"><div class="detail-label">Old Values</div><pre class="detail-value detail-pre">\${esc(JSON.stringify(log.old_values || {}, null, 2))}</pre></div>
-        <div class="detail-row"><div class="detail-label">New Values</div><pre class="detail-value detail-pre">\${esc(JSON.stringify(log.new_values || {}, null, 2))}</pre></div>
-        <div class="detail-row"><div class="detail-label">Metadata</div><pre class="detail-value detail-pre">\${esc(JSON.stringify(log.metadata || {}, null, 2))}</pre></div>
+        <div class="detail-row"><div class="detail-label">عملیات</div><div class="detail-value">\${esc(accessActionText(log.action))}</div></div>
+        <div class="detail-row"><div class="detail-label">انجام‌دهنده</div><div class="detail-value">\${esc(log.actor_email || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">کاربر هدف</div><div class="detail-value">\${esc(log.target_email || "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">زمان (تهران)</div><div class="detail-value">\${esc(log.created_at_utc ? tehranDisplay(log.created_at_utc) : "-")}</div></div>
+        <div class="detail-row"><div class="detail-label">مقدارهای قبلی</div><pre class="detail-value detail-pre">\${esc(JSON.stringify(log.old_values || {}, null, 2))}</pre></div>
+        <div class="detail-row"><div class="detail-label">مقدارهای جدید</div><pre class="detail-value detail-pre">\${esc(JSON.stringify(log.new_values || {}, null, 2))}</pre></div>
+        <div class="detail-row"><div class="detail-label">متادیتا</div><pre class="detail-value detail-pre">\${esc(JSON.stringify(log.metadata || {}, null, 2))}</pre></div>
       </div>\`;
     }
     function showAccessSection(section) {
@@ -916,10 +930,10 @@ const HTML = `<!doctype html>
     }
     function mediaBadge(row) {
       const items = mediaItems(row);
-      if (items.length > 1 && items.every(isPhotoItem)) return \`<span class="badge">Images ×\${items.length}</span>\`;
-      if (items.length > 1) return \`<span class="badge">Media ×\${items.length}</span>\`;
-      if (isPhoto(row)) return '<span class="badge">Image</span>';
-      if (isDownloadableFile(row)) return '<span class="badge">File</span>';
+      if (items.length > 1 && items.every(isPhotoItem)) return \`<span class="badge">تصاویر ×\${items.length}</span>\`;
+      if (items.length > 1) return \`<span class="badge">رسانه ×\${items.length}</span>\`;
+      if (isPhoto(row)) return '<span class="badge">عکس</span>';
+      if (isDownloadableFile(row)) return '<span class="badge">فایل</span>';
       return "";
     }
     function mediaDetailHtml(row) {
@@ -927,21 +941,21 @@ const HTML = `<!doctype html>
       if (items.length > 1) {
         const html = items.map((item, index) => {
           if (isPhotoItem(item)) {
-            return \`<div class="media-detail-item"><img class="media-preview" src="\${fileUrl(item)}" alt="" loading="lazy" /><a class="details-button" href="\${fileUrl(item, true)}" download>Download Image \${index + 1}</a></div>\`;
+            return \`<div class="media-detail-item"><img class="media-preview" src="\${fileUrl(item)}" alt="" loading="lazy" /><a class="details-button" href="\${fileUrl(item, true)}" download>دانلود عکس \${index + 1}</a></div>\`;
           }
           if (isDownloadableFileItem(item)) {
             return \`<div class="media-detail-item"><a class="details-button" href="\${fileUrl(item, true)}" download>\${esc(mediaFileName(item))}</a></div>\`;
           }
           return "";
         }).join("");
-        return \`<div class="detail-row"><div class="detail-label">Media Album</div><div class="detail-value media-actions album">\${html}</div></div>\`;
+        return \`<div class="detail-row"><div class="detail-label">آلبوم رسانه</div><div class="detail-value media-actions album">\${html}</div></div>\`;
       }
       const item = items[0] || row;
       if (isPhotoItem(item)) {
-        return \`<div class="detail-row"><div class="detail-label">Media</div><div class="detail-value media-actions"><img class="media-preview" src="\${fileUrl(item)}" alt="" loading="lazy" /><a class="details-button" href="\${fileUrl(item, true)}" download>Download Image</a></div></div>\`;
+        return \`<div class="detail-row"><div class="detail-label">رسانه</div><div class="detail-value media-actions"><img class="media-preview" src="\${fileUrl(item)}" alt="" loading="lazy" /><a class="details-button" href="\${fileUrl(item, true)}" download>دانلود عکس</a></div></div>\`;
       }
       if (isDownloadableFileItem(item)) {
-        return \`<div class="detail-row"><div class="detail-label">Media</div><div class="detail-value media-actions"><a class="details-button" href="\${fileUrl(item, true)}" download>\${esc(mediaFileName(item))}</a></div></div>\`;
+        return \`<div class="detail-row"><div class="detail-label">رسانه</div><div class="detail-value media-actions"><a class="details-button" href="\${fileUrl(item, true)}" download>\${esc(mediaFileName(item))}</a></div></div>\`;
       }
       return "";
     }
@@ -954,66 +968,66 @@ const HTML = `<!doctype html>
     }
     function detailHtml(row) {
       const details = [
-        ["Platform", platformText(row.platform)],
-        ["Update ID", row.update_id],
-        ["Message ID", row.message_id],
-        ["Group ID", row.chat_id],
-        ["Group Name", row.chat_title],
-        ["Label", groupLabelText(row.group_label)],
-        ["Group Username", row.chat_username],
-        ["Group Type", row.chat_type],
-        ["Topic Name", row.topic_name],
-        ["Topic ID", row.message_thread_id],
-        ["Is Topic", row.is_topic_message],
-        ["Username", row.sender_username],
-        ["Sender ID", row.sender_id],
-        ["Sender First Name", row.sender_first_name],
-        ["Sender Last Name", row.sender_last_name],
-        ["Sender Is Bot", row.sender_is_bot],
-        ["Sender Photo File ID", row.sender_photo_file_id],
-        ["Sender Photo File Unique ID", row.sender_photo_file_unique_id],
-        ["Sender Chat ID", row.sender_chat_id],
-        ["Sender Chat Title", row.sender_chat_title],
-        ["Message", row.body],
-        ["Caption", row.caption],
+        ["پلتفرم", platformText(row.platform)],
+        ["شناسه آپدیت", row.update_id],
+        ["شناسه پیام", row.message_id],
+        ["شناسه گروه", row.chat_id],
+        ["نام گروه", row.chat_title],
+        ["لیبل", groupLabelText(row.group_label)],
+        ["یوزرنیم گروه", row.chat_username],
+        ["نوع گروه", row.chat_type],
+        ["نام تاپیک", row.topic_name],
+        ["شناسه تاپیک", row.message_thread_id],
+        ["پیام تاپیکی", row.is_topic_message],
+        ["یوزرنیم", row.sender_username],
+        ["شناسه فرستنده", row.sender_id],
+        ["نام فرستنده", row.sender_first_name],
+        ["نام خانوادگی فرستنده", row.sender_last_name],
+        ["فرستنده بات است", row.sender_is_bot],
+        ["شناسه فایل عکس فرستنده", row.sender_photo_file_id],
+        ["شناسه یکتای عکس فرستنده", row.sender_photo_file_unique_id],
+        ["شناسه چت فرستنده", row.sender_chat_id],
+        ["عنوان چت فرستنده", row.sender_chat_title],
+        ["پیام", row.body],
+        ["کپشن", row.caption],
         ...(row.edited_at_utc ? [
-          ["Original Message Content", row.original_message_content],
-          ["Latest Edited Message Content", row.latest_edited_message_content],
+          ["متن اولیه پیام", row.original_message_content],
+          ["آخرین متن ویرایش‌شده پیام", row.latest_edited_message_content],
         ] : []),
-        ["Date (Tehran)", row.sent_date],
-        ["Date (Jalali)", row.sent_jalali_date],
-        ["Time (Tehran)", row.sent_time],
-        ["Registered At (Tehran)", row.registered_tehran_datetime],
-        ["Registered At (Jalali)", row.registered_jalali_datetime],
-        ["Registered At UTC", row.received_at_utc],
-        ["Receive Delay Seconds", row.receive_delay_seconds],
-        ["Type", row.message_type],
-        ["Edited At", row.edited_at_utc],
-        ["Reply To Message ID", row.reply_to_message_id],
-        ["Media File ID", row.media_file_id],
-        ["Media Group ID", row.media_group_id],
-        ["Album Message IDs", row.album_message_ids],
-        ["Forward Origin", row.forward_origin_json],
-        ["Entities", row.entities_json],
-        ["Raw Telegram Payload", row.raw_payload_json],
+        ["تاریخ میلادی (تهران)", row.sent_date],
+        ["تاریخ شمسی", row.sent_jalali_date],
+        ["زمان (تهران)", row.sent_time],
+        ["زمان ثبت (تهران)", row.registered_tehran_datetime],
+        ["زمان ثبت (شمسی)", row.registered_jalali_datetime],
+        ["زمان ثبت (UTC)", row.received_at_utc],
+        ["تأخیر دریافت (ثانیه)", row.receive_delay_seconds],
+        ["نوع", row.message_type],
+        ["زمان ویرایش", row.edited_at_utc],
+        ["شناسه پیام ریپلای", row.reply_to_message_id],
+        ["شناسه فایل رسانه", row.media_file_id],
+        ["شناسه گروه رسانه", row.media_group_id],
+        ["شناسه پیام‌های آلبوم", row.album_message_ids],
+        ["مبدأ فوروارد", row.forward_origin_json],
+        ["موجودیت‌ها", row.entities_json],
+        ["داده خام تلگرام", row.raw_payload_json],
       ];
       return \`<div class="details-grid">\${mediaDetailHtml(row)}\${details.map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
     }
     function groupDetailHtml(row) {
       const details = [
-        ["Platform", platformText(row.platform)],
-        ["Group ID", row.chat_id],
-        ["Group Name", row.chat_title],
-        ["Group Username", row.chat_username],
-        ["Group Type", row.chat_type],
-        ["Messages", row.message_count],
-        ["Topics", row.topic_names],
-        ["Joined Date (Tehran)", row.joined_date],
-        ["Joined Time (Tehran)", row.joined_time],
-        ["Last Seen Date (Tehran)", row.last_seen_date],
-        ["Last Seen Time (Tehran)", row.last_seen_time],
-        ["Last Message Date (Tehran)", row.last_message_date],
-        ["Last Message Time (Tehran)", row.last_message_time],
+        ["پلتفرم", platformText(row.platform)],
+        ["شناسه گروه", row.chat_id],
+        ["نام گروه", row.chat_title],
+        ["یوزرنیم گروه", row.chat_username],
+        ["نوع گروه", row.chat_type],
+        ["پیام‌ها", row.message_count],
+        ["تاپیک‌ها", row.topic_names],
+        ["تاریخ عضویت (تهران)", row.joined_date],
+        ["زمان عضویت (تهران)", row.joined_time],
+        ["آخرین تاریخ مشاهده (تهران)", row.last_seen_date],
+        ["آخرین زمان مشاهده (تهران)", row.last_seen_time],
+        ["تاریخ آخرین پیام (تهران)", row.last_message_date],
+        ["زمان آخرین پیام (تهران)", row.last_message_time],
       ];
       return \`<div class="details-grid">\${details.map(([label, value]) => detailRow(label, value)).join("")}</div>\`;
     }
@@ -1021,7 +1035,7 @@ const HTML = `<!doctype html>
       return row.body || row.caption || (row.message_type ? "[" + row.message_type + "]" : "");
     }
     function platformText(value) {
-      const labels = { telegram: "Telegram", bale: "Bale", whatsapp: "WhatsApp" };
+      const labels = { telegram: "تلگرام", bale: "بله", whatsapp: "واتساپ" };
       const key = String(value || "telegram").toLowerCase();
       return labels[key] || key;
     }
@@ -1043,7 +1057,7 @@ const HTML = `<!doctype html>
       return text ? linkify(text) : '<span class="thread-muted">بدون متن</span>';
     }
     function editedBadge(row) {
-      return row.edited_at_utc ? '<span class="badge">Edited</span>' : '';
+      return row.edited_at_utc ? '<span class="badge">ویرایش‌شده</span>' : '';
     }
     function messageWithBadge(row) {
       return \`\${editedBadge(row)}\${mediaBadge(row)}\${compactMessage(row)}\`;
@@ -1112,12 +1126,12 @@ const HTML = `<!doctype html>
       if (row.missing) {
         return \`<article class="thread-missing">
           <div class="thread-head">
-            <span class="thread-pill">Message ID: \${esc(row.message_id)}</span>
+            <span class="thread-pill">شناسه پیام: \${esc(row.message_id)}</span>
             <span class="thread-muted">پیام اصلی در محدوده فعلی داده‌ها نیست</span>
           </div>
         </article>\`;
       }
-      const author = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "Unknown";
+      const author = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "نامشخص";
       return \`<article class="\${kind}">
         <div class="thread-item">
           \${avatar(row)}
@@ -1127,11 +1141,11 @@ const HTML = `<!doctype html>
               <span class="thread-pill">\${esc(platformText(row.platform))}</span>
               <span class="thread-muted">\${esc(row.sender_username ? "@" + row.sender_username : "")}</span>
               <span class="thread-muted">\${esc(row.chat_title)}</span>
-              \${topicLabel(row) ? \`<span class="thread-pill">Topic: \${esc(topicLabel(row))}</span>\` : ""}
-              <span class="thread-pill">Message ID: \${esc(row.message_id)}</span>
-              \${row.reply_to_message_id ? \`<span class="thread-pill">Reply To: \${esc(row.reply_to_message_id)}</span>\` : ""}
+              \${topicLabel(row) ? \`<span class="thread-pill">تاپیک: \${esc(topicLabel(row))}</span>\` : ""}
+              <span class="thread-pill">شناسه پیام: \${esc(row.message_id)}</span>
+              \${row.reply_to_message_id ? \`<span class="thread-pill">ریپلای به: \${esc(row.reply_to_message_id)}</span>\` : ""}
               <span class="thread-muted">\${esc(row.sent_jalali_date || "")} \${esc(row.sent_time || "")}</span>
-              <button class="details-button" type="button" data-detail-key="thread-detail-\${index}">Details</button>
+              <button class="details-button" type="button" data-detail-key="thread-detail-\${index}">جزئیات</button>
             </div>
             <div class="thread-message">\${messageWithBadge(row)}</div>
             \${threadMedia(row)}
@@ -1208,7 +1222,7 @@ const HTML = `<!doctype html>
     }
     function openMediaModal(src, downloadUrl) {
       modalTitleEl.textContent = "تصویر";
-      modalBodyEl.innerHTML = \`<div class="modal-media"><img class="modal-image" src="\${src}" alt="" /><a class="details-button" href="\${downloadUrl || src}" download>Download Image</a></div>\`;
+      modalBodyEl.innerHTML = \`<div class="modal-media"><img class="modal-image" src="\${src}" alt="" /><a class="details-button" href="\${downloadUrl || src}" download>دانلود عکس</a></div>\`;
       modalBackdropEl.classList.add("open");
     }
     function openConfirmModal({ title, message, confirmText = "تایید", cancelText = "انصراف" }) {
@@ -1340,7 +1354,7 @@ const HTML = `<!doctype html>
             <td class="body message-cell"><div class="message-inner">\${editedBadge(row)}\${mediaBadge(row)}\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 115)}</div></td>
             <td class="full-cell">\${esc([row.sent_jalali_date, row.sent_time].filter(Boolean).join(" "))}</td>
             <td class="full-cell">\${esc(row.registered_jalali_datetime)}</td>
-            <td><button class="details-button" type="button" data-detail-key="detail-\${index}">Details</button></td>
+            <td><button class="details-button" type="button" data-detail-key="detail-\${index}">جزئیات</button></td>
           </tr>\`).join("");
         data.messages.forEach((row, index) => detailByKey.set("detail-" + index, detailHtml(row)));
         setStatus(token, data.messages.length + " پیام");
@@ -1368,7 +1382,7 @@ const HTML = `<!doctype html>
             <td>\${esc(row.chat_username)}</td>
             <td>\${esc(row.chat_type)}</td>
             <td>\${esc(row.message_count)}</td>
-            <td><button class="details-button" type="button" data-detail-key="group-\${esc(row.platform || "telegram")}:\${esc(row.chat_id)}">Details</button></td>
+            <td><button class="details-button" type="button" data-detail-key="group-\${esc(row.platform || "telegram")}:\${esc(row.chat_id)}">جزئیات</button></td>
           </tr>\`).join("");
         data.groups.forEach(row => detailByKey.set("group-" + (row.platform || "telegram") + ":" + row.chat_id, groupDetailHtml(row)));
         setStatus(token, data.groups.length + " گروه");
@@ -1390,14 +1404,14 @@ const HTML = `<!doctype html>
           <div class="access-row">
             <div class="access-main">
               <span class="access-email">\${esc(user.email)}</span>
-              <span class="access-state">\${!user.is_active ? "Revoked" : (user.must_change_password ? "نیازمند تغییر پسورد" : "فعال")} · \${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</span>
+              <span class="access-state">\${!user.is_active ? "لغوشده" : (user.must_change_password ? "نیازمند تغییر پسورد" : "فعال")} · \${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</span>
               <span class="access-actions">
-                <button class="secondary-button" type="button" data-resend-email="\${esc(user.email)}">Resend Invite</button>
+                <button class="secondary-button" type="button" data-resend-email="\${esc(user.email)}">ارسال دوباره دعوت</button>
                 \${user.is_owner
-                  ? '<span class="owner-badge">Owner</span>'
+                  ? '<span class="owner-badge">مالک</span>'
                   : user.is_active
-                  ? \`<button class="revoke-button" type="button" data-revoke-email="\${esc(user.email)}">Revoke</button>\`
-                  : \`<button class="reactivate-button" type="button" data-reactivate-email="\${esc(user.email)}">Re-Active</button>\`}
+                  ? \`<button class="revoke-button" type="button" data-revoke-email="\${esc(user.email)}">لغو دسترسی</button>\`
+                  : \`<button class="reactivate-button" type="button" data-reactivate-email="\${esc(user.email)}">فعال‌سازی دوباره</button>\`}
               </span>
             </div>
             <div class="permission-grid" data-permission-email="\${esc(user.email)}" data-owner="\${user.is_owner ? "true" : "false"}">\${permissionGridHtml(user.permissions, "user-" + user.email, user.is_owner)}</div>
@@ -1423,11 +1437,11 @@ const HTML = `<!doctype html>
           const key = "access-log-" + index;
           detailByKey.set(key, accessLogDetailsHtml(log));
           return \`<tr>
-            <td>\${esc(log.action)}</td>
+            <td>\${esc(accessActionText(log.action))}</td>
             <td>\${esc(log.actor_email || "-")}</td>
             <td>\${esc(log.target_email || "-")}</td>
             <td>\${esc(log.created_at_utc ? tehranDisplay(log.created_at_utc) : "-")}</td>
-            <td class="details-cell"><button class="details-button" type="button" data-detail-key="\${esc(key)}">Details</button></td>
+            <td class="details-cell"><button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button></td>
           </tr>\`;
         }).join("") || '<tr><td colspan="5" class="empty">لاگی ثبت نشده است</td></tr>';
         accessLogMessageEl.textContent = "";
@@ -1673,16 +1687,16 @@ const HTML = `<!doctype html>
             accessMessageEl.textContent = data.error || "ارسال دوباره ایمیل انجام نشد";
             if (data.retry_after_seconds) {
               let remaining = Number(data.retry_after_seconds);
-              resendButton.textContent = remaining + "s";
+              resendButton.textContent = remaining + " ثانیه";
               const timer = setInterval(() => {
                 remaining -= 1;
                 if (remaining <= 0) {
                   clearInterval(timer);
-                  resendButton.textContent = "Resend Invite";
+                  resendButton.textContent = "ارسال دوباره دعوت";
                   resendButton.disabled = false;
                   return;
                 }
-                resendButton.textContent = remaining + "s";
+                resendButton.textContent = remaining + " ثانیه";
               }, 1000);
               return;
             }
@@ -1703,14 +1717,14 @@ const HTML = `<!doctype html>
       const isReactivate = Boolean(reactivateButton);
       const email = isReactivate ? button.dataset.reactivateEmail : button.dataset.revokeEmail;
       const confirmed = await openConfirmModal({
-        title: isReactivate ? "تایید Re-Active" : "تایید Revoke",
-        message: \`دسترسی <span class="confirm-target">\${esc(email)}</span> \${isReactivate ? "دوباره فعال" : "revoke"} شود؟\`,
-        confirmText: isReactivate ? "Re-Active" : "Revoke",
+        title: isReactivate ? "تایید فعال‌سازی دوباره" : "تایید لغو دسترسی",
+        message: \`دسترسی <span class="confirm-target">\${esc(email)}</span> \${isReactivate ? "دوباره فعال" : "لغو"} شود؟\`,
+        confirmText: isReactivate ? "فعال‌سازی دوباره" : "لغو دسترسی",
         cancelText: "انصراف",
       });
       if (!confirmed) return;
       button.disabled = true;
-      accessMessageEl.textContent = isReactivate ? "در حال فعال‌سازی..." : "در حال revoke...";
+      accessMessageEl.textContent = isReactivate ? "در حال فعال‌سازی..." : "در حال لغو دسترسی...";
       try {
         const res = await fetch(isReactivate ? "/api/access-users/reactivate" : "/api/access-users/revoke", {
           method: "POST",
@@ -1719,14 +1733,14 @@ const HTML = `<!doctype html>
         });
         const data = await res.json();
         if (!res.ok) {
-          accessMessageEl.textContent = data.error || (isReactivate ? "فعال‌سازی انجام نشد" : "Revoke انجام نشد");
+          accessMessageEl.textContent = data.error || (isReactivate ? "فعال‌سازی انجام نشد" : "لغو دسترسی انجام نشد");
           button.disabled = false;
           return;
         }
-        accessMessageEl.textContent = isReactivate ? "دسترسی دوباره فعال شد." : "دسترسی revoke شد.";
+        accessMessageEl.textContent = isReactivate ? "دسترسی دوباره فعال شد." : "دسترسی لغو شد.";
         loadAccessUsers();
       } catch (error) {
-        accessMessageEl.textContent = isReactivate ? "فعال‌سازی انجام نشد" : "Revoke انجام نشد";
+        accessMessageEl.textContent = isReactivate ? "فعال‌سازی انجام نشد" : "لغو دسترسی انجام نشد";
         button.disabled = false;
       }
     });
@@ -1783,7 +1797,7 @@ function loginHtml(error = "", email = "", message = "") {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Visibility Login</title>
+  <title>ورود دیدپذیری</title>
   <style>
     :root { color-scheme: light; --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; }
     * { box-sizing: border-box; }
@@ -1806,7 +1820,7 @@ function loginHtml(error = "", email = "", message = "") {
 </head>
 <body>
   <form method="post" action="/login">
-    <h1>Visibility</h1>
+    <h1>دیدپذیری</h1>
     <div class="error">${htmlEscape(error)}</div>
     <div class="message">${htmlEscape(message)}</div>
     <label for="email">ایمیل</label>
@@ -1839,7 +1853,7 @@ function passwordPageHtml(error = "", telegramUsername = "") {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Set Password</title>
+  <title>تنظیم پسورد</title>
   <style>
     ${AUTH_FONT_FACE}
     :root { --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; --error:#b42318; }
@@ -1872,7 +1886,7 @@ function passwordPageHtml(error = "", telegramUsername = "") {
     <label for="telegram_username">یوزرنیم تلگرام</label>
     <div class="telegram-input-wrap">
       <span class="telegram-input-prefix">@</span>
-      <input id="telegram_username" name="telegram_username" type="text" inputmode="latin" autocomplete="off" placeholder="username" value="${htmlEscape(telegramUsernameLocal(telegramUsername))}" />
+      <input id="telegram_username" name="telegram_username" type="text" inputmode="latin" autocomplete="off" placeholder="نام‌کاربری" value="${htmlEscape(telegramUsernameLocal(telegramUsername))}" />
     </div>
     <label for="current_password">پسورد فعلی</label>
     <div class="password-wrap">
@@ -1915,7 +1929,7 @@ function forgotPasswordHtml({ error = "", email = "", message = "" } = {}) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Forgot Password</title>
+  <title>فراموشی رمز عبور</title>
   <style>
     ${AUTH_FONT_FACE}
     :root { --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; --error:#b42318; --ok:#087f5b; }
@@ -1936,7 +1950,7 @@ function forgotPasswordHtml({ error = "", email = "", message = "" } = {}) {
 <body>
   <form method="post" action="/forgot-password">
     <h1>فراموشی رمز عبور</h1>
-    <p>ایمیل سازمانی خود را وارد کنید. اگر دسترسی فعال داشته باشید، ایمیل بازیابی Supabase برایتان ارسال می‌شود.</p>
+    <p>ایمیل سازمانی خود را وارد کنید. اگر دسترسی فعال داشته باشید، ایمیل بازیابی برایتان ارسال می‌شود.</p>
     <div class="error">${htmlEscape(error)}</div>
     <div class="message">${htmlEscape(message)}</div>
     <label for="email">ایمیل</label>
@@ -1954,7 +1968,7 @@ function recoveryPasswordHtml(error = "", accessToken = "") {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Reset Password</title>
+  <title>ثبت رمز عبور جدید</title>
   <style>
     ${AUTH_FONT_FACE}
     :root { --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; --error:#b42318; }
@@ -2113,9 +2127,9 @@ const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
 const GROUP_LABELS = ["internal_team", "customer", "provider"];
 const DEFAULT_PLATFORM = "telegram";
 const PLATFORM_LABELS = {
-  telegram: "Telegram",
-  bale: "Bale",
-  whatsapp: "WhatsApp",
+  telegram: "تلگرام",
+  bale: "بله",
+  whatsapp: "واتساپ",
 };
 const API_CACHE_TTL_MS = 60 * 1000;
 let dashboardApiCache = null;
@@ -2237,7 +2251,7 @@ function validAvatarDataUrl(value) {
 }
 
 function forbiddenAccess() {
-  return json({ error: "Access denied" }, 403);
+  return json({ error: "دسترسی مجاز نیست" }, 403);
 }
 
 function strongPassword(password) {
@@ -2332,7 +2346,7 @@ async function handleLogin(request, env) {
     return text(loginHtml("این ایمیل مجوز دسترسی ندارد.", email), 401, "text/html; charset=utf-8");
   }
   if (!user.is_active && !isAccessOwnerEmail(user.email)) {
-    return text(loginHtml("دسترسی این ایمیل revoke شده است.", email), 403, "text/html; charset=utf-8");
+    return text(loginHtml("دسترسی این ایمیل لغو شده است.", email), 403, "text/html; charset=utf-8");
   }
   if (await hashPassword(password, user.password_salt) !== user.password_hash) {
     return text(loginHtml("پسورد وارد شده درست نیست.", email), 401, "text/html; charset=utf-8");
@@ -2770,8 +2784,8 @@ async function revokeAccessUser(request, env, authUser) {
   }
   const email = normalizeEmail(body.email);
   if (!validAccessEmail(email)) return json({ error: "ایمیل نامعتبر است" }, 400);
-  if (isAccessOwnerEmail(email)) return json({ error: "دسترسی owner قابل revoke نیست" }, 400);
-  if (email === normalizeEmail(authUser?.email)) return json({ error: "نمی‌توانید دسترسی اکانت فعلی خودتان را revoke کنید" }, 400);
+  if (isAccessOwnerEmail(email)) return json({ error: "دسترسی مالک قابل لغو نیست" }, 400);
+  if (email === normalizeEmail(authUser?.email)) return json({ error: "نمی‌توانید دسترسی اکانت فعلی خودتان را لغو کنید" }, 400);
   try {
     const existing = await getAccessUserByEmail(env, email);
     if (!existing) return json({ error: "کاربر پیدا نشد" }, 404);
@@ -2788,7 +2802,7 @@ async function revokeAccessUser(request, env, authUser) {
     });
     return json({ user: { email: user.email, is_active: user.is_active } });
   } catch (error) {
-    return json({ error: error.message || "Revoke انجام نشد" }, 500);
+    return json({ error: error.message || "لغو دسترسی انجام نشد" }, 500);
   }
 }
 
@@ -2876,7 +2890,7 @@ async function updateAccessUserPermissions(request, env, authUser) {
   }
   const email = normalizeEmail(body.email);
   if (!validAccessEmail(email)) return json({ error: "ایمیل نامعتبر است" }, 400);
-  if (isAccessOwnerEmail(email)) return json({ error: "دسترسی owner قابل تغییر نیست" }, 400);
+  if (isAccessOwnerEmail(email)) return json({ error: "دسترسی مالک قابل تغییر نیست" }, 400);
   const permissions = normalizeAccessPermissions(body.permissions);
   if (!permissions.length) return json({ error: "حداقل یک دسترسی باید انتخاب شود" }, 400);
   try {
@@ -3399,19 +3413,19 @@ async function fetchSenderProfilePhoto(env, platform, senderId) {
 }
 
 async function fetchTelegramProfilePhoto(request, env) {
-  if (!env.TELEGRAM_BOT_TOKEN) return text("Telegram token is not configured", 503);
+  if (!env.TELEGRAM_BOT_TOKEN) return text("توکن تلگرام تنظیم نشده است", 503);
   const url = new URL(request.url);
   const fileId = url.searchParams.get("file_id");
-  if (!fileId) return text("Missing file_id", 400);
+  if (!fileId) return text("شناسه فایل ارسال نشده است", 400);
 
   const fileResponse = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${encodeURIComponent(fileId)}`);
-  if (!fileResponse.ok) return text("Profile photo lookup failed", 502);
+  if (!fileResponse.ok) return text("دریافت اطلاعات عکس پروفایل انجام نشد", 502);
   const fileData = await fileResponse.json();
   const filePath = fileData?.result?.file_path;
-  if (!filePath) return text("Profile photo not found", 404);
+  if (!filePath) return text("عکس پروفایل پیدا نشد", 404);
 
   const imageResponse = await fetch(`https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${filePath}`);
-  if (!imageResponse.ok || !imageResponse.body) return text("Profile photo fetch failed", 502);
+  if (!imageResponse.ok || !imageResponse.body) return text("دریافت عکس پروفایل انجام نشد", 502);
   return new Response(imageResponse.body, {
     status: 200,
     headers: {
@@ -3435,18 +3449,18 @@ async function fetchBotFile(request, env) {
   const url = new URL(request.url);
   const platform = normalizePlatform(url.searchParams.get("platform"));
   const config = botPlatformConfig(env, platform);
-  if (!config.token) return text(`${platformLabel(platform)} token is not configured`, 503);
+  if (!config.token) return text(`توکن ${platformLabel(platform)} تنظیم نشده است`, 503);
   const fileId = url.searchParams.get("file_id");
-  if (!fileId) return text("Missing file_id", 400);
+  if (!fileId) return text("شناسه فایل ارسال نشده است", 400);
 
   const fileResponse = await fetch(`${config.apiBase}/bot${config.token}/getFile?file_id=${encodeURIComponent(fileId)}`);
-  if (!fileResponse.ok) return text("File lookup failed", 502);
+  if (!fileResponse.ok) return text("دریافت اطلاعات فایل انجام نشد", 502);
   const fileData = await fileResponse.json();
   const filePath = fileData?.result?.file_path;
-  if (!filePath) return text("File not found", 404);
+  if (!filePath) return text("فایل پیدا نشد", 404);
 
   const fileDownloadResponse = await fetch(`${config.fileBase}/bot${config.token}/${filePath}`);
-  if (!fileDownloadResponse.ok || !fileDownloadResponse.body) return text("File fetch failed", 502);
+  if (!fileDownloadResponse.ok || !fileDownloadResponse.body) return text("دریافت فایل انجام نشد", 502);
   const telegramType = fileDownloadResponse.headers.get("content-type") || "";
   const headers = new Headers({
     "content-type": telegramType.startsWith("application/octet-stream") ? contentTypeFromPath(filePath, telegramType) : (telegramType || contentTypeFromPath(filePath)),
@@ -3637,7 +3651,7 @@ async function resetTelegramWebhook(request, env) {
     const info = await botApi(env, "telegram", "getWebhookInfo");
     return json({ ok: true, result: body.result, webhook: info.result || info });
   } catch (error) {
-    return json({ error: error.message || "Reset webhook انجام نشد" }, 500);
+    return json({ error: error.message || "ریست وبهوک انجام نشد" }, 500);
   }
 }
 
@@ -3650,7 +3664,7 @@ async function resetBaleWebhook(request, env) {
     const info = await botApi(env, "bale", "getWebhookInfo");
     return json({ ok: true, result: body.result, webhook: info.result || info });
   } catch (error) {
-    return json({ error: error.message || "Reset webhook بله انجام نشد" }, 500);
+    return json({ error: error.message || "ریست وبهوک بله انجام نشد" }, 500);
   }
 }
 
@@ -3780,14 +3794,14 @@ async function fetchMessages(request, env) {
     headers,
   });
   if (!response.ok) {
-    return json({ error: "Supabase request failed", detail: await response.text() }, 500);
+    return json({ error: "درخواست دیتابیس انجام نشد", detail: await response.text() }, 500);
   }
 
   const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?select=platform,chat_id,message_thread_id,topic_name&limit=10000`, {
     headers,
   });
   if (!topicsResponse.ok) {
-    return json({ error: "Supabase topics request failed", detail: await topicsResponse.text() }, 500);
+    return json({ error: "درخواست تاپیک‌ها از دیتابیس انجام نشد", detail: await topicsResponse.text() }, 500);
   }
 
   const topics = await topicsResponse.json();
@@ -3811,13 +3825,13 @@ async function fetchMessages(request, env) {
     try {
       messages = await withThreadAncestors(env, headers, messages, topicByThread);
     } catch (error) {
-      return json({ error: "Supabase thread ancestors request failed", detail: String(error?.message || error) }, 500);
+      return json({ error: "درخواست پیام‌های اصلی ترد از دیتابیس انجام نشد", detail: String(error?.message || error) }, 500);
     }
   }
   try {
     messages = await withMediaGroupRows(env, headers, messages, topicByThread);
   } catch (error) {
-    return json({ error: "Supabase media group request failed", detail: String(error?.message || error) }, 500);
+    return json({ error: "درخواست گروه رسانه از دیتابیس انجام نشد", detail: String(error?.message || error) }, 500);
   }
   let historyRows = messages;
   const editedKeys = [...new Set(
@@ -3888,7 +3902,7 @@ async function fetchGroups(request, env) {
   const headers = supabaseHeaders(env);
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${params}`, { headers });
   if (!response.ok) {
-    return json({ error: "Supabase groups request failed", detail: await response.text() }, 500);
+    return json({ error: "درخواست گروه‌ها از دیتابیس انجام نشد", detail: await response.text() }, 500);
   }
 
   const topicParams = new URLSearchParams();
@@ -3896,7 +3910,7 @@ async function fetchGroups(request, env) {
   topicParams.set("limit", "10000");
   const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?${topicParams}`, { headers });
   if (!topicsResponse.ok) {
-    return json({ error: "Supabase topics request failed", detail: await topicsResponse.text() }, 500);
+    return json({ error: "درخواست تاپیک‌ها از دیتابیس انجام نشد", detail: await topicsResponse.text() }, 500);
   }
   const topicsByChat = new Map();
   for (const topic of await topicsResponse.json()) {
@@ -3971,7 +3985,7 @@ async function fetchDashboard(request, env) {
     headers: supabaseHeaders(env),
   });
   if (!response.ok) {
-    return json({ error: "Supabase dashboard request failed", detail: await response.text() }, 500);
+    return json({ error: "درخواست داشبورد از دیتابیس انجام نشد", detail: await response.text() }, 500);
   }
   const byDate = new Map();
   const groupTotals = new Map();
@@ -4007,7 +4021,7 @@ async function fetchThreadFilterOptions(request, env) {
   groupParams.set("limit", "1000");
   const groupsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${groupParams}`, { headers });
   if (!groupsResponse.ok) {
-    return json({ error: "Supabase groups request failed", detail: await groupsResponse.text() }, 500);
+    return json({ error: "درخواست گروه‌ها از دیتابیس انجام نشد", detail: await groupsResponse.text() }, 500);
   }
 
   const dateParams = new URLSearchParams();
@@ -4017,7 +4031,7 @@ async function fetchThreadFilterOptions(request, env) {
   dateParams.set("limit", "10000");
   const datesResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${dateParams}`, { headers });
   if (!datesResponse.ok) {
-    return json({ error: "Supabase dates request failed", detail: await datesResponse.text() }, 500);
+    return json({ error: "درخواست تاریخ‌ها از دیتابیس انجام نشد", detail: await datesResponse.text() }, 500);
   }
 
   const topicsParams = new URLSearchParams();
@@ -4025,7 +4039,7 @@ async function fetchThreadFilterOptions(request, env) {
   topicsParams.set("limit", "10000");
   const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?${topicsParams}`, { headers });
   if (!topicsResponse.ok) {
-    return json({ error: "Supabase topics request failed", detail: await topicsResponse.text() }, 500);
+    return json({ error: "درخواست تاپیک‌ها از دیتابیس انجام نشد", detail: await topicsResponse.text() }, 500);
   }
   const groups = (await groupsResponse.json()).filter((group) => group.chat_title);
   const groupTitleById = new Map(groups.map((group) => [chatKey(group), group.chat_title]));
@@ -4085,7 +4099,7 @@ export default {
       return text(loginHtml("برای مشاهده داشبورد ابتدا وارد شوید."), 200, "text/html; charset=utf-8");
     }
     if (authUser.must_change_password) {
-      if (apiPath) return json({ error: "Password change required" }, 403);
+      if (apiPath) return json({ error: "تغییر پسورد الزامی است" }, 403);
       return redirect("/set-password");
     }
     if (url.pathname === "/") {
