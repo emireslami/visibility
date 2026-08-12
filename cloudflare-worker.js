@@ -559,6 +559,25 @@ const HTML = `<!doctype html>
         </table>
         <div class="analytics-section-title">
           <div>
+            <h3>به تفکیک لیبل افراد</h3>
+            <p>میانگین پاسخ‌گویی بر اساس لیبل کسی که پاسخ را ارسال کرده است.</p>
+          </div>
+        </div>
+        <table class="analytics-table">
+          <thead>
+            <tr>
+              <th>لیبل فرد</th>
+              <th>تعداد پاسخ</th>
+              <th>میانگین</th>
+              <th>میانه</th>
+              <th>کمترین</th>
+              <th>بیشترین</th>
+            </tr>
+          </thead>
+          <tbody id="analyticsSenderLabelRows"></tbody>
+        </table>
+        <div class="analytics-section-title">
+          <div>
             <h3>به تفکیک گروه</h3>
             <p>فقط گروه‌هایی که حداقل یک پاسخ قابل محاسبه دارند نمایش داده می‌شوند.</p>
           </div>
@@ -948,6 +967,7 @@ const HTML = `<!doctype html>
     const analyticsMinEl = document.getElementById("analyticsMin");
     const analyticsMaxEl = document.getElementById("analyticsMax");
     const analyticsLabelRowsEl = document.getElementById("analyticsLabelRows");
+    const analyticsSenderLabelRowsEl = document.getElementById("analyticsSenderLabelRows");
     const analyticsGroupRowsEl = document.getElementById("analyticsGroupRows");
     const accessUsersTabEl = document.getElementById("accessUsersTab");
     const accessGroupsTabEl = document.getElementById("accessGroupsTab");
@@ -2331,6 +2351,7 @@ const HTML = `<!doctype html>
         const data = await res.json();
         if (!res.ok || !data.overall) {
           analyticsLabelRowsEl.innerHTML = "";
+          analyticsSenderLabelRowsEl.innerHTML = "";
           analyticsGroupRowsEl.innerHTML = "";
           setStatus(token, data.detail || data.error || "خطا در دریافت تحلیل");
           return;
@@ -2347,6 +2368,12 @@ const HTML = `<!doctype html>
               + analyticsMetricCells(row)
             + '</tr>').join("")
           : '<tr><td colspan="6">پاسخ قابل محاسبه‌ای برای لیبل‌ها وجود ندارد.</td></tr>';
+        analyticsSenderLabelRowsEl.innerHTML = (data.sender_labels || []).length
+          ? data.sender_labels.map((row) => '<tr>'
+              + '<td data-label="لیبل فرد">' + esc(row.label_text || "بدون لیبل") + '</td>'
+              + analyticsMetricCells(row)
+            + '</tr>').join("")
+          : '<tr><td colspan="6">پاسخ قابل محاسبه‌ای برای لیبل افراد وجود ندارد.</td></tr>';
         analyticsGroupRowsEl.innerHTML = (data.groups || []).length
           ? data.groups.map((row) => '<tr>'
               + '<td data-label="گروه">' + esc(row.chat_title || "بدون نام") + '</td>'
@@ -2358,6 +2385,7 @@ const HTML = `<!doctype html>
         setStatus(token, numberFmt.format(overall.count || 0) + " پاسخ محاسبه‌شده");
       } catch (error) {
         analyticsLabelRowsEl.innerHTML = "";
+        analyticsSenderLabelRowsEl.innerHTML = "";
         analyticsGroupRowsEl.innerHTML = "";
         setStatus(token, "خطا در دریافت تحلیل");
       }
@@ -3651,6 +3679,15 @@ function groupLabelTextServer(value) {
     internal_team: "گروه‌های داخلی شرکت",
     customer: "گروه‌های مشتریان",
     provider: "گروه‌های پروایدرهای ما",
+  };
+  return labels[String(value || "")] || "بدون لیبل";
+}
+
+function senderLabelTextServer(value) {
+  const labels = {
+    internal_team: "افراد داخلی شرکت",
+    customer: "افراد مشتری",
+    provider: "افراد پروایدرها",
   };
   return labels[String(value || "")] || "بدون لیبل";
 }
@@ -6731,18 +6768,24 @@ async function fetchAnalytics(request, env, authUser) {
   groupParams.set("select", "platform,chat_id,chat_title,group_label");
   groupParams.set("limit", "10000");
   const messageParams = new URLSearchParams();
-  messageParams.set("select", "platform,chat_id,chat_title,message_id,reply_to_message_id,message_thread_id,is_topic_message,topic_name,sender_is_bot,sent_at_utc,raw_payload_json");
+  messageParams.set("select", "platform,chat_id,chat_title,message_id,reply_to_message_id,message_thread_id,is_topic_message,topic_name,sender_id,sender_is_bot,sent_at_utc,raw_payload_json");
   messageParams.set("sent_at_utc", "not.is.null");
   messageParams.set("order", "sent_at_utc.asc");
   messageParams.set("limit", "10000");
-  const [groupsResponse, messagesResponse] = await Promise.all([
+  const senderLabelParams = new URLSearchParams();
+  senderLabelParams.set("select", "platform,sender_id,sender_label");
+  senderLabelParams.set("limit", "10000");
+  const [groupsResponse, messagesResponse, senderLabelsResponse] = await Promise.all([
     fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${groupParams}`, { headers }),
     fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${messageParams}`, { headers }),
+    fetch(`${env.SUPABASE_URL}/rest/v1/visibility_sender_labels?${senderLabelParams}`, { headers }),
   ]);
   if (!groupsResponse.ok) return json({ error: "درخواست گروه‌ها از دیتابیس انجام نشد", detail: await groupsResponse.text() }, 500);
   if (!messagesResponse.ok) return json({ error: "درخواست پیام‌ها از دیتابیس انجام نشد", detail: await messagesResponse.text() }, 500);
+  if (!senderLabelsResponse.ok) return json({ error: "درخواست لیبل افراد از دیتابیس انجام نشد", detail: await senderLabelsResponse.text() }, 500);
 
   const groupByKey = new Map((await groupsResponse.json()).map((group) => [chatKey(group), group]));
+  const senderLabelByKey = new Map((await senderLabelsResponse.json()).map((row) => [`${normalizePlatform(row.platform)}:${row.sender_id}`, row.sender_label || ""]));
   const allowedSet = await allowedChatKeySet(env, authUser);
   const rows = (await messagesResponse.json()).filter((row) => rowAllowedByChatSet(row, allowedSet));
   const byMessage = new Map();
@@ -6754,6 +6797,7 @@ async function fetchAnalytics(request, env, authUser) {
   const overall = responseMetricBucket();
   const byGroup = new Map();
   const byLabel = new Map();
+  const bySenderLabel = new Map();
 
   for (const row of rows) {
     if (!row.reply_to_message_id || isTopicRootReplyRow(row) || isDashboardGeneratedMessage(row)) continue;
@@ -6767,6 +6811,7 @@ async function fetchAnalytics(request, env, authUser) {
     const groupKey = chatKey(row);
     const group = groupByKey.get(groupKey) || row;
     const label = group?.group_label || "";
+    const senderLabel = row.sender_id ? (senderLabelByKey.get(`${normalizePlatform(row.platform)}:${row.sender_id}`) || "") : "";
     if (!byGroup.has(groupKey)) {
       byGroup.set(groupKey, {
         platform: normalizePlatform(row.platform),
@@ -6783,9 +6828,17 @@ async function fetchAnalytics(request, env, authUser) {
         bucket: responseMetricBucket(),
       });
     }
+    if (!bySenderLabel.has(senderLabel)) {
+      bySenderLabel.set(senderLabel, {
+        sender_label: senderLabel,
+        label_text: senderLabelTextServer(senderLabel),
+        bucket: responseMetricBucket(),
+      });
+    }
     addResponseMetric(overall, diff);
     addResponseMetric(byGroup.get(groupKey).bucket, diff);
     addResponseMetric(byLabel.get(label).bucket, diff);
+    addResponseMetric(bySenderLabel.get(senderLabel).bucket, diff);
   }
 
   const groups = [...byGroup.values()]
@@ -6794,9 +6847,13 @@ async function fetchAnalytics(request, env, authUser) {
   const labels = [...byLabel.values()]
     .map((row) => ({ ...row, ...finishResponseMetric(row.bucket), bucket: undefined }))
     .sort((a, b) => b.count - a.count || a.label_text.localeCompare(b.label_text));
+  const senderLabels = [...bySenderLabel.values()]
+    .map((row) => ({ ...row, ...finishResponseMetric(row.bucket), bucket: undefined }))
+    .sort((a, b) => b.count - a.count || a.label_text.localeCompare(b.label_text));
   return json({
     overall: finishResponseMetric(overall),
     labels,
+    sender_labels: senderLabels,
     groups,
     display_timezone: "Asia/Tehran",
     rule: "response_time = reply.sent_at_utc - parent.sent_at_utc",
