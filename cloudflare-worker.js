@@ -168,6 +168,18 @@ const HTML = `<!doctype html>
     .bot-form .password-wrap { margin:0; }
     .bot-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
     .bots-table td:last-child, .bots-table th:last-child { padding-left:12px; }
+    .broadcast-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
+    .broadcast-panel h2 { margin:0 0 6px; font-size:18px; }
+    .broadcast-form { display:grid; gap:12px; margin-top:16px; }
+    .broadcast-message-input { min-height:140px; border:1px solid var(--line); border-radius:6px; padding:10px; resize:vertical; font-family:inherit; font-size:13px; direction:rtl; text-align:right; }
+    .broadcast-password-row { display:grid; grid-template-columns:minmax(220px, 1fr) 150px; gap:10px; align-items:start; }
+    .broadcast-groups { display:grid; gap:8px; max-height:360px; overflow:auto; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+    .broadcast-labels { display:grid; grid-template-columns:repeat(3, minmax(140px, 1fr)); gap:8px; }
+    .broadcast-group-grid { display:grid; grid-template-columns:repeat(2, minmax(180px, 1fr)); gap:8px; }
+    .broadcast-option { min-height:34px; display:flex; align-items:center; justify-content:flex-start; gap:8px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; font-size:12px; direction:rtl; }
+    .broadcast-option input { width:15px; height:15px; flex:0 0 auto; }
+    .broadcast-option .group-label-chip { margin-inline-start:auto; padding:2px 6px; border:1px solid var(--line); border-radius:999px; background:#eef4f8; color:var(--muted); font-size:10px; font-weight:700; white-space:nowrap; }
+    .broadcast-result { min-height:24px; color:var(--muted); font-size:12px; white-space:pre-wrap; }
     .access-tabs { display:flex; justify-content:flex-start; gap:8px; margin:14px 0; direction:ltr; }
     .access-tab { height:32px; padding:0 12px; background:#fff; color:var(--ink); border-color:var(--line); }
     .access-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
@@ -288,8 +300,9 @@ const HTML = `<!doctype html>
     .modal-close { border-radius:0; }
     .detail-row { border-radius:0; border-color:var(--line); background:#fff; }
     .detail-label { color:#525252; }
-    .chart-panel, .access-panel, .profile-panel, .bots-panel { border-radius:0; border-color:var(--line); box-shadow:0 1px 0 rgba(22,22,22,.04); }
-    .chart-head h2, .access-panel h2, .profile-panel h2, .bots-panel h2 { font-size:20px; font-weight:800; }
+    .chart-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel { border-radius:0; border-color:var(--line); box-shadow:0 1px 0 rgba(22,22,22,.04); }
+    .chart-head h2, .access-panel h2, .profile-panel h2, .bots-panel h2, .broadcast-panel h2 { font-size:20px; font-weight:800; }
+    .broadcast-message-input, .broadcast-option { border-radius:0; border-color:#dfe1e6; }
     .bar-stack { border-radius:0; border-color:#c6c6c6; }
     .bar-segment { transition:filter .12s ease; }
     .access-tabs { direction:ltr; }
@@ -369,14 +382,15 @@ const HTML = `<!doctype html>
       .group-label-filter .multi-button { min-height:36px; }
       .access-log-table { margin-top:10px; direction:rtl; }
       .access-log-table th, .access-log-table td { direction:rtl; text-align:right; }
-      .chart-panel, .access-panel, .profile-panel, .bots-panel { padding:14px; }
+      .chart-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel { padding:14px; }
       .chart-head { align-items:flex-start; flex-direction:column; }
       .legend-grid { grid-template-columns:1fr; }
       .bot-form { grid-template-columns:1fr; }
-      .access-form, .access-main { grid-template-columns:1fr; }
+      .access-form, .access-main, .broadcast-password-row { grid-template-columns:1fr; }
       .access-row { direction:rtl; }
       .access-email { white-space:normal; overflow-wrap:anywhere; text-align:left; direction:ltr; }
       .permission-grid, .access-row .permission-grid { grid-template-columns:1fr; direction:rtl; }
+      .broadcast-labels, .broadcast-group-grid { grid-template-columns:1fr; }
       .permission-option { justify-content:flex-start; direction:ltr; }
       .access-actions { justify-content:stretch; display:grid; grid-template-columns:1fr; }
       .revoke-button, .reactivate-button, .secondary-button { width:100%; }
@@ -416,6 +430,7 @@ const HTML = `<!doctype html>
         <button class="nav-button active" id="messagesNav" type="button">پیام‌ها</button>
         <button class="nav-button" id="groupsNav" type="button">گروه‌ها</button>
         <button class="nav-button" id="threadsNav" type="button">تردها</button>
+        <button class="nav-button" id="broadcastNav" type="button">اطلاع‌رسانی</button>
         <button class="nav-button" id="botsNav" type="button">بات‌ها</button>
         <button class="nav-button" id="accessNav" type="button">دسترسی</button>
       </nav>
@@ -582,6 +597,31 @@ const HTML = `<!doctype html>
         </table>
       </section>
     </section>
+    <section class="page" id="broadcastPage" hidden>
+      <section class="broadcast-panel">
+        <h2>اطلاع‌رسانی گروهی</h2>
+        <p class="thread-muted">ارسال پیام گروهی حساس است. فقط گروه‌هایی که به آن‌ها دسترسی دارید قابل انتخاب هستند و قبل از ارسال، پسورد شما دوباره بررسی می‌شود.</p>
+        <form class="broadcast-form" id="broadcastForm">
+          <div class="group-access-title"><strong>انتخاب سریع بر اساس لیبل</strong><span id="broadcastSelectedCount">۰ گروه انتخاب شده</span></div>
+          <div class="broadcast-labels" id="broadcastLabels"></div>
+          <div class="group-access-title"><strong>گروه‌ها</strong><span>پیام به همه گروه‌های انتخاب‌شده ارسال می‌شود.</span></div>
+          <div class="broadcast-groups">
+            <div class="broadcast-group-grid" id="broadcastGroups"></div>
+          </div>
+          <textarea class="broadcast-message-input" id="broadcastBody" maxlength="3500" placeholder="متن اطلاع‌رسانی..."></textarea>
+          <div class="broadcast-password-row">
+            <span class="password-wrap">
+              <input id="broadcastPassword" type="password" placeholder="پسورد شما برای تایید نهایی" autocomplete="current-password" />
+              <button class="password-toggle" id="broadcastPasswordToggle" type="button" aria-label="نمایش پسورد">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </span>
+            <button type="submit">ارسال گروهی</button>
+          </div>
+          <div class="broadcast-result" id="broadcastResult"></div>
+        </form>
+      </section>
+    </section>
     <section class="page" id="accessPage" hidden>
       <section class="access-panel">
         <h2>دسترسی</h2>
@@ -679,12 +719,14 @@ const HTML = `<!doctype html>
     const messagesNavEl = document.getElementById("messagesNav");
     const groupsNavEl = document.getElementById("groupsNav");
     const threadsNavEl = document.getElementById("threadsNav");
+    const broadcastNavEl = document.getElementById("broadcastNav");
     const botsNavEl = document.getElementById("botsNav");
     const accessNavEl = document.getElementById("accessNav");
     const dashboardPageEl = document.getElementById("dashboardPage");
     const messagesPageEl = document.getElementById("messagesPage");
     const groupsPageEl = document.getElementById("groupsPage");
     const threadsPageEl = document.getElementById("threadsPage");
+    const broadcastPageEl = document.getElementById("broadcastPage");
     const botsPageEl = document.getElementById("botsPage");
     const accessPageEl = document.getElementById("accessPage");
     const searchEl = document.getElementById("search");
@@ -741,6 +783,14 @@ const HTML = `<!doctype html>
     const botTokenEl = document.getElementById("botToken");
     const botTokenToggleEl = document.getElementById("botTokenToggle");
     const botMessageEl = document.getElementById("botMessage");
+    const broadcastFormEl = document.getElementById("broadcastForm");
+    const broadcastLabelsEl = document.getElementById("broadcastLabels");
+    const broadcastGroupsEl = document.getElementById("broadcastGroups");
+    const broadcastSelectedCountEl = document.getElementById("broadcastSelectedCount");
+    const broadcastBodyEl = document.getElementById("broadcastBody");
+    const broadcastPasswordEl = document.getElementById("broadcastPassword");
+    const broadcastPasswordToggleEl = document.getElementById("broadcastPasswordToggle");
+    const broadcastResultEl = document.getElementById("broadcastResult");
     const currentUserPermissions = new Set(__CURRENT_USER_PERMISSIONS__);
     const currentUser = __CURRENT_USER__;
     const permissionOptions = [
@@ -751,6 +801,7 @@ const HTML = `<!doctype html>
       { key:"dashboard", label:"داشبورد" },
       { key:"bots", label:"بات‌ها" },
       { key:"reply", label:"پاسخ" },
+      { key:"broadcast", label:"اطلاع‌رسانی" },
     ];
     const fullTextByKey = new Map();
     const detailByKey = new Map();
@@ -759,6 +810,7 @@ const HTML = `<!doctype html>
     const selectedUserChartItems = new Set();
     let accessGroupOptions = [];
     let accessUserOptions = [];
+    let broadcastGroupOptions = [];
     const chartColors = ["#087f8c", "#f25f5c", "#3b82f6", "#f59e0b", "#7c3aed", "#10b981", "#ef476f", "#6b7280", "#06b6d4", "#84cc16"];
     const ownerEmail = "a.eslami@toman.ir";
     let threadFilterOptions = null;
@@ -839,6 +891,50 @@ const HTML = `<!doctype html>
         <div class="group-access-grid groups">\${groupOptions || '<span class="thread-muted">گروهی برای انتخاب وجود ندارد.</span>'}</div>
       </div>\`;
     }
+    function selectedBroadcastGroups() {
+      return [...broadcastGroupsEl.querySelectorAll("input[data-broadcast-group]:checked")].map((input) => input.dataset.broadcastGroup);
+    }
+    function updateBroadcastSelectedCount() {
+      const count = selectedBroadcastGroups().length;
+      broadcastSelectedCountEl.textContent = count + " گروه انتخاب شده";
+    }
+    function renderBroadcastGroups() {
+      const labels = groupLabelOptions.filter(([value]) => value);
+      broadcastLabelsEl.innerHTML = labels.map(([value, label]) => \`
+        <label class="broadcast-option">
+          <input type="checkbox" data-broadcast-label="\${esc(value)}" />
+          <span>\${esc(label)}</span>
+        </label>\`).join("");
+      broadcastGroupsEl.innerHTML = broadcastGroupOptions.length ? broadcastGroupOptions.map((group) => \`
+        <label class="broadcast-option">
+          <input type="checkbox" data-broadcast-group="\${esc(group.key)}" data-broadcast-group-label="\${esc(group.group_label || "")}" />
+          <span>\${esc(group.title)}</span>
+          \${groupLabelShort(group.group_label) ? \`<span class="group-label-chip">\${esc(groupLabelShort(group.group_label))}</span>\` : ""}
+          <span class="thread-muted">\${esc(platformText(group.platform))}</span>
+        </label>\`).join("") : '<div class="empty">گروهی برای ارسال ندارید.</div>';
+      updateBroadcastSelectedCount();
+    }
+    async function loadBroadcast() {
+      const token = showLoading("در حال دریافت گروه‌های مجاز...");
+      try {
+        const res = await fetch("/api/broadcast-groups");
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.groups)) {
+          broadcastGroupOptions = [];
+          renderBroadcastGroups();
+          setStatus(token, data.detail || data.error || "خطا در دریافت گروه‌ها");
+          return;
+        }
+        broadcastGroupOptions = data.groups;
+        renderBroadcastGroups();
+        broadcastResultEl.textContent = "";
+        setStatus(token, data.groups.length + " گروه مجاز");
+      } catch (error) {
+        broadcastGroupOptions = [];
+        renderBroadcastGroups();
+        setStatus(token, "خطا در دریافت گروه‌ها");
+      }
+    }
     function groupLabelSelect(row) {
       const current = String(row.group_label || "");
       return \`<div class="multi-filter single-filter group-label-filter" data-group-label-filter data-platform="\${esc(row.platform || "telegram")}" data-chat-id="\${esc(row.chat_id)}" data-current="\${esc(current)}"></div>\`;
@@ -886,6 +982,7 @@ const HTML = `<!doctype html>
         bot_create: "ثبت بات",
         bot_rotate: "تغییر توکن بات",
         thread_reply: "ارسال پاسخ",
+        group_broadcast: "ارسال اطلاع‌رسانی گروهی",
       };
       return labels[String(action || "")] || String(action || "");
     }
@@ -933,7 +1030,7 @@ const HTML = `<!doctype html>
       else if (isGroups) loadAccessGroupView();
       else loadAccessUsers();
     }
-    const routablePages = ["dashboard", "messages", "groups", "threads", "bots", "access", "profile"];
+    const routablePages = ["dashboard", "messages", "groups", "threads", "broadcast", "bots", "access", "profile"];
     function pagePath(page) {
       return "/main/" + page;
     }
@@ -943,11 +1040,11 @@ const HTML = `<!doctype html>
       return routablePages.includes(page) ? page : "messages";
     }
     function firstAccessiblePage() {
-      return ["messages", "threads", "groups", "dashboard", "bots", "access"].find(canOpen);
+      return ["messages", "threads", "groups", "dashboard", "broadcast", "bots", "access"].find(canOpen);
     }
     function setupAccessShell() {
       accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
-      const navByPage = { dashboard:dashboardNavEl, messages:messagesNavEl, groups:groupsNavEl, threads:threadsNavEl, bots:botsNavEl, access:accessNavEl };
+      const navByPage = { dashboard:dashboardNavEl, messages:messagesNavEl, groups:groupsNavEl, threads:threadsNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
       Object.entries(navByPage).forEach(([page, element]) => { element.hidden = !canOpen(page); });
       const firstPage = firstAccessiblePage();
       if (!firstPage) {
@@ -2068,25 +2165,29 @@ const HTML = `<!doctype html>
       const isDashboard = page === "dashboard";
       const isGroups = page === "groups";
       const isThreads = page === "threads";
+      const isBroadcast = page === "broadcast";
       const isBots = page === "bots";
       const isAccess = page === "access";
       const isProfile = page === "profile";
       dashboardPageEl.hidden = !isDashboard;
-      messagesPageEl.hidden = isDashboard || isGroups || isThreads || isBots || isAccess || isProfile;
+      messagesPageEl.hidden = isDashboard || isGroups || isThreads || isBroadcast || isBots || isAccess || isProfile;
       groupsPageEl.hidden = !isGroups;
       threadsPageEl.hidden = !isThreads;
+      broadcastPageEl.hidden = !isBroadcast;
       botsPageEl.hidden = !isBots;
       accessPageEl.hidden = !isAccess;
       profilePageEl.hidden = !isProfile;
       dashboardNavEl.classList.toggle("active", isDashboard);
-      messagesNavEl.classList.toggle("active", !isDashboard && !isGroups && !isThreads && !isBots && !isAccess && !isProfile);
+      messagesNavEl.classList.toggle("active", !isDashboard && !isGroups && !isThreads && !isBroadcast && !isBots && !isAccess && !isProfile);
       groupsNavEl.classList.toggle("active", isGroups);
       threadsNavEl.classList.toggle("active", isThreads);
+      broadcastNavEl.classList.toggle("active", isBroadcast);
       botsNavEl.classList.toggle("active", isBots);
       accessNavEl.classList.toggle("active", isAccess);
       if (isDashboard) loadDashboard();
       else if (isGroups) loadGroups();
       else if (isThreads) loadThreadFilterOptions().then(loadThreads);
+      else if (isBroadcast) loadBroadcast();
       else if (isBots) loadBots();
       else if (isAccess) showAccessSection(accessLogsSectionEl.hidden ? "users" : "logs");
       else if (isProfile) loadProfile();
@@ -2120,6 +2221,71 @@ const HTML = `<!doctype html>
     });
     botTokenToggleEl.addEventListener("click", () => {
       botTokenEl.type = botTokenEl.type === "password" ? "text" : "password";
+    });
+    broadcastPasswordToggleEl.addEventListener("click", () => {
+      broadcastPasswordEl.type = broadcastPasswordEl.type === "password" ? "text" : "password";
+    });
+    broadcastLabelsEl.addEventListener("change", (event) => {
+      const input = event.target.closest("input[data-broadcast-label]");
+      if (!input) return;
+      broadcastGroupsEl.querySelectorAll('input[data-broadcast-group-label="' + input.dataset.broadcastLabel + '"]').forEach((groupInput) => {
+        groupInput.checked = input.checked;
+      });
+      updateBroadcastSelectedCount();
+    });
+    broadcastGroupsEl.addEventListener("change", (event) => {
+      if (event.target.closest("input[data-broadcast-group]")) updateBroadcastSelectedCount();
+    });
+    broadcastFormEl.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const groups = selectedBroadcastGroups();
+      const body = broadcastBodyEl.value.trim();
+      const password = broadcastPasswordEl.value;
+      if (!groups.length) {
+        broadcastResultEl.textContent = "حداقل یک گروه را انتخاب کنید.";
+        return;
+      }
+      if (!body) {
+        broadcastResultEl.textContent = "متن اطلاع‌رسانی را وارد کنید.";
+        return;
+      }
+      if (!password) {
+        broadcastResultEl.textContent = "برای تایید نهایی پسورد خود را وارد کنید.";
+        return;
+      }
+      const confirmed = await openConfirmModal({
+        title: "تایید ارسال گروهی",
+        message: \`این پیام برای <strong>\${groups.length}</strong> گروه ارسال شود؟<br><br><span class="confirm-target">\${esc(shortText(body, 160))}</span>\`,
+        confirmText: "ارسال قطعی",
+        cancelText: "انصراف",
+      });
+      if (!confirmed) return;
+      const submitButton = broadcastFormEl.querySelector("button[type='submit']");
+      submitButton.disabled = true;
+      broadcastResultEl.textContent = "در حال ارسال اطلاع‌رسانی...";
+      try {
+        const res = await fetch("/api/group-broadcast", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ groups, body, password }),
+        });
+        const data = await res.json();
+        if (!res.ok && res.status !== 207) {
+          broadcastResultEl.textContent = data.error || "ارسال گروهی انجام نشد";
+          submitButton.disabled = false;
+          return;
+        }
+        broadcastResultEl.textContent = \`ارسال‌شده: \${data.sent || 0} / ناموفق: \${data.failed || 0}\`;
+        if (!data.failed) {
+          broadcastBodyEl.value = "";
+          broadcastPasswordEl.value = "";
+        }
+        setTimeout(() => loadBroadcast(), 800);
+      } catch (error) {
+        broadcastResultEl.textContent = "ارسال گروهی انجام نشد";
+      } finally {
+        submitButton.disabled = false;
+      }
     });
     botFormEl.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -2225,6 +2391,7 @@ const HTML = `<!doctype html>
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
+    broadcastNavEl.addEventListener("click", () => showPage("broadcast"));
     botsNavEl.addEventListener("click", () => showPage("bots"));
     accessNavEl.addEventListener("click", () => showPage("access"));
     userMenuButtonEl.addEventListener("click", () => userMenuEl.classList.toggle("open"));
@@ -2451,7 +2618,7 @@ const HTML = `<!doctype html>
     window.addEventListener("scroll", () => document.querySelectorAll(".multi-filter.open").forEach((filter) => filter.classList.remove("open")), true);
     syncProfileUi();
     setupAccessShell();
-    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
+    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
   </script>
 </body>
 </html>`;
@@ -2877,7 +3044,7 @@ function normalizeGroupLabel(value) {
 }
 
 const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "dashboard", "bots"];
-const EXTRA_ACCESS_PERMISSIONS = ["reply"];
+const EXTRA_ACCESS_PERMISSIONS = ["reply", "broadcast"];
 const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS, ...EXTRA_ACCESS_PERMISSIONS];
 const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
 const GROUP_LABELS = ["internal_team", "customer", "provider"];
@@ -2980,7 +3147,9 @@ function normalizeAccessPermissions(value) {
   const allowed = new Set(ACCESS_PERMISSIONS);
   const normalized = source.map((item) => String(item || "").trim().toLowerCase()).filter((item) => allowed.has(item));
   const replyEnabled = (Array.isArray(value) && value.includes("reply")) || value?.reply === true;
+  const broadcastEnabled = (Array.isArray(value) && value.includes("broadcast")) || value?.broadcast === true;
   if (replyEnabled) normalized.push("reply");
+  if (broadcastEnabled) normalized.push("broadcast");
   return [...new Set(normalized)];
 }
 
@@ -3005,6 +3174,7 @@ function accessPayload(pages, groupAccess = {}) {
     pages: normalizeAccessPermissions(pages).filter((item) => ACCESS_PERMISSIONS.includes(item)),
     group_access: normalizeGroupAccess(groupAccess),
     reply: requested.includes("reply"),
+    broadcast: requested.includes("broadcast"),
   };
 }
 
@@ -3031,7 +3201,7 @@ function hasAnyAccessPermission(user, permissions) {
 }
 
 function defaultMainPathForUser(user) {
-  const firstPage = ["messages", "threads", "groups", "dashboard", "bots", "access"].find((permission) => hasAccessPermission(user, permission));
+  const firstPage = ["messages", "threads", "groups", "dashboard", "broadcast", "bots", "access"].find((permission) => hasAccessPermission(user, permission));
   return `/main/${firstPage || "messages"}`;
 }
 
@@ -3055,6 +3225,11 @@ async function allowedChatKeySet(env, user) {
 
 function rowAllowedByChatSet(row, allowedSet) {
   return !allowedSet || allowedSet.has(chatKey(row));
+}
+
+async function verifyUserPassword(user, password) {
+  if (!user?.password_salt || !user?.password_hash || !password) return false;
+  return await hashPassword(password, user.password_salt) === user.password_hash;
 }
 
 function profilePhotoUrlFromRow(row) {
@@ -5340,6 +5515,99 @@ async function fetchGroups(request, env, authUser) {
   return json({ groups });
 }
 
+async function listBroadcastGroups(env, authUser) {
+  const params = new URLSearchParams();
+  params.set("select", "platform,bot_id,bot_username,bot_name,chat_id,chat_title,chat_username,chat_type,group_label,message_count,last_message_at_utc");
+  params.set("order", "last_message_at_utc.desc.nullslast,chat_title.asc");
+  params.set("limit", "1000");
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${params}`, { headers: supabaseHeaders(env) });
+  if (!response.ok) throw new Error(await response.text());
+  const groupAccess = groupAccessForUser(authUser);
+  return (await response.json())
+    .filter((row) => row.chat_id && row.chat_title)
+    .filter((row) => groupRowAllowedByAccess(row, groupAccess))
+    .map((row) => ({
+      ...row,
+      key: chatKey(row),
+      platform: normalizePlatform(row.platform),
+      title: row.chat_title,
+      group_label: row.group_label || "",
+      message_count: Number(row.message_count || 0),
+    }));
+}
+
+async function fetchBroadcastGroups(env, authUser) {
+  try {
+    return json({ groups: await listBroadcastGroups(env, authUser) });
+  } catch (error) {
+    return json({ error: "درخواست گروه‌های اطلاع‌رسانی انجام نشد", detail: error.message || String(error) }, 500);
+  }
+}
+
+async function sendGroupBroadcast(request, env, authUser) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const messageBody = String(body.body || "").trim();
+  const password = String(body.password || "");
+  const requestedGroups = Array.isArray(body.groups)
+    ? [...new Set(body.groups.map((item) => {
+      const [platform, chatId] = String(item || "").split(":");
+      return platform && /^-?\d+$/.test(chatId || "") ? `${normalizePlatform(platform)}:${chatId}` : "";
+    }).filter(Boolean))]
+    : [];
+  if (!requestedGroups.length) return json({ error: "حداقل یک گروه را انتخاب کنید" }, 400);
+  if (requestedGroups.length > 100) return json({ error: "در هر نوبت حداکثر ۱۰۰ گروه قابل ارسال است" }, 400);
+  if (!messageBody) return json({ error: "متن اطلاع‌رسانی را وارد کنید" }, 400);
+  if (messageBody.length > 3500) return json({ error: "متن اطلاع‌رسانی بیش از حد طولانی است" }, 400);
+  if (!await verifyUserPassword(authUser, password)) return json({ error: "پسورد واردشده درست نیست" }, 401);
+
+  try {
+    const allowedGroups = await listBroadcastGroups(env, authUser);
+    const groupByKey = new Map(allowedGroups.map((group) => [group.key, group]));
+    const disallowed = requestedGroups.filter((key) => !groupByKey.has(key));
+    if (disallowed.length) return forbiddenAccess();
+    const outgoingText = `${normalizeEmail(authUser.email)} :\n${messageBody}`;
+    const results = [];
+    for (const key of requestedGroups) {
+      const group = groupByKey.get(key);
+      try {
+        const runtimeConfig = await runtimeConfigForMessageBot(env, group);
+        const sent = await sendBotMessage(env, group.platform, group.chat_id, outgoingText, runtimeConfig);
+        if (!sent.ok) {
+          results.push({ key, chat_title: group.chat_title, ok: false, error: sent.body?.description || sent.body?.error || "ارسال توسط بات انجام نشد" });
+          continue;
+        }
+        await persistOutgoingBotMessage(env, sent.result, group, runtimeConfig, outgoingText, null);
+        results.push({ key, chat_title: group.chat_title, ok: true, message_id: sent.result?.message_id || null });
+      } catch (error) {
+        results.push({ key, chat_title: group?.chat_title || key, ok: false, error: error.message || String(error) });
+      }
+    }
+    dashboardApiCache = null;
+    threadFilterOptionsApiCache = null;
+    const sentCount = results.filter((result) => result.ok).length;
+    const failedCount = results.length - sentCount;
+    try {
+      await insertAccessAuditLog(env, {
+        actorEmail: authUser.email,
+        targetEmail: authUser.email,
+        action: "group_broadcast",
+        newValues: { groups: requestedGroups, sent: sentCount, failed: failedCount },
+        metadata: { group_titles: results.map((result) => result.chat_title), message_length: messageBody.length },
+      });
+    } catch (auditError) {
+      console.error("group broadcast audit failed", auditError?.message || auditError);
+    }
+    return json({ ok: failedCount === 0, sent: sentCount, failed: failedCount, results }, failedCount ? 207 : 200);
+  } catch (error) {
+    return json({ error: error.message || "ارسال گروهی انجام نشد" }, 500);
+  }
+}
+
 async function fetchSingleMessageForReply(env, platform, chatId, messageId) {
   const params = new URLSearchParams();
   params.set("select", TELEGRAM_MESSAGE_SELECT);
@@ -5643,6 +5911,14 @@ export default {
     if (url.pathname === "/api/thread-reply" && request.method === "POST") {
       if (!hasAccessPermission(authUser, "reply")) return forbiddenAccess();
       return sendThreadReply(request, env, authUser);
+    }
+    if (url.pathname === "/api/broadcast-groups" && request.method === "GET") {
+      if (!hasAccessPermission(authUser, "broadcast")) return forbiddenAccess();
+      return fetchBroadcastGroups(env, authUser);
+    }
+    if (url.pathname === "/api/group-broadcast" && request.method === "POST") {
+      if (!hasAccessPermission(authUser, "broadcast")) return forbiddenAccess();
+      return sendGroupBroadcast(request, env, authUser);
     }
     if (url.pathname === "/api/groups") {
       if (!hasAccessPermission(authUser, "groups")) return forbiddenAccess();
