@@ -843,11 +843,12 @@ const HTML = `<!doctype html>
           <table class="access-users-table">
             <colgroup>
               <col style="width:8%" />
-              <col style="width:25%" />
-              <col style="width:18%" />
-              <col style="width:17%" />
+              <col style="width:22%" />
               <col style="width:16%" />
-              <col style="width:16%" />
+              <col style="width:14%" />
+              <col style="width:14%" />
+              <col style="width:14%" />
+              <col style="width:12%" />
             </colgroup>
             <thead>
               <tr>
@@ -855,6 +856,7 @@ const HTML = `<!doctype html>
                 <th>ایمیل</th>
                 <th>یوزرنیم تلگرام</th>
                 <th>وضعیت</th>
+                <th>تاریخ ثبت</th>
                 <th>آخرین ورود</th>
                 <th>دسترسی‌ها</th>
               </tr>
@@ -2647,14 +2649,15 @@ const HTML = `<!doctype html>
             <td class="full-cell" data-label="ایمیل">\${esc(user.email)}</td>
             <td class="full-cell" data-label="یوزرنیم تلگرام">\${esc(user.telegram_username || "-")}</td>
             <td data-label="وضعیت">\${esc(!user.is_active ? "لغوشده" : (user.must_change_password ? "نیازمند تغییر پسورد" : "فعال"))}</td>
+            <td data-label="تاریخ ثبت">\${esc(user.created_at_utc ? tehranDisplay(user.created_at_utc) : "-")}</td>
             <td data-label="آخرین ورود">\${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</td>
             <td data-label="دسترسی‌ها"><div class="access-permission-summary">\${permissionSummaryHtml(user.permissions)}</div></td>
-          </tr>\`).join("") || '<tr><td colspan="6" class="empty">کاربری ثبت نشده است</td></tr>';
+          </tr>\`).join("") || '<tr><td colspan="7" class="empty">کاربری ثبت نشده است</td></tr>';
         accessRowsEl.innerHTML = data.users.map((user) => \`
           <div class="access-row" data-access-card-email="\${esc(user.email)}">
             <div class="access-main">
               <span class="access-email">\${esc(user.email)}</span>
-              <span class="access-state">\${!user.is_active ? "لغوشده" : (user.must_change_password ? "نیازمند تغییر پسورد" : "فعال")} · \${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</span>
+              <span class="access-state">\${!user.is_active ? "لغوشده" : (user.must_change_password ? "نیازمند تغییر پسورد" : "فعال")} · ثبت: \${esc(user.created_at_utc ? tehranDisplay(user.created_at_utc) : "-")} · آخرین ورود: \${esc(user.last_login_at_utc ? tehranDisplay(user.last_login_at_utc) : "بدون ورود")}</span>
               <span class="access-actions">
                 <button class="secondary-button" type="button" data-resend-email="\${esc(user.email)}">ارسال دوباره دعوت</button>
                 \${user.is_owner
@@ -4309,23 +4312,19 @@ async function dashboardAuthorized(request, env) {
   const cookie = request.headers.get("cookie") || "";
   const session = cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith("visibility_session="))?.split("=")[1];
   if (!session || !session.includes(".")) return null;
-  const [payload, signature] = session.split(".");
   try {
+    const [payload, signature] = session.split(".");
     if (signature !== await signSessionPayload(payload, env)) return null;
-  } catch {
+    const data = JSON.parse(base64UrlDecode(payload));
+    if (!data.email || !data.exp || Date.now() > data.exp) return null;
+    const user = await getAccessUserByEmail(env, data.email);
+    if (!user || String(user.password_hash || "").slice(0, 16) !== data.ph) return null;
+    if (!user.is_active && !isAccessOwnerEmail(user.email)) return null;
+    return user;
+  } catch (error) {
+    console.error("dashboard auth failed", error?.message || error);
     return null;
   }
-  let data;
-  try {
-    data = JSON.parse(base64UrlDecode(payload));
-  } catch {
-    return null;
-  }
-  if (!data.email || !data.exp || Date.now() > data.exp) return null;
-  const user = await getAccessUserByEmail(env, data.email);
-  if (!user || String(user.password_hash || "").slice(0, 16) !== data.ph) return null;
-  if (!user.is_active && !isAccessOwnerEmail(user.email)) return null;
-  return user;
 }
 
 async function handleLogin(request, env) {
@@ -4351,11 +4350,23 @@ async function handleLogin(request, env) {
   const now = new Date().toISOString();
   const loginPatch = { last_login_at_utc: now, updated_at_utc: now };
   if (passwordHashNeedsUpgrade(user.password_hash)) {
-    const salt = randomHex();
-    loginPatch.password_salt = salt;
-    loginPatch.password_hash = await hashPassword(password, salt);
+    try {
+      const salt = randomHex();
+      loginPatch.password_salt = salt;
+      loginPatch.password_hash = await hashPassword(password, salt);
+    } catch (error) {
+      console.error("password hash upgrade skipped", error?.message || error);
+    }
   }
-  const updatedUser = await patchAccessUser(env, email, loginPatch);
+  let updatedUser = user;
+  try {
+    updatedUser = await patchAccessUser(env, email, loginPatch);
+  } catch (error) {
+    console.error("login profile update failed", error?.message || error);
+    if (loginPatch.password_hash) {
+      return text(await loginHtml(env, "به‌روزرسانی امنیتی پسورد انجام نشد. لطفاً دوباره تلاش کنید.", email), 500, "text/html; charset=utf-8");
+    }
+  }
   let cookieValue;
   try {
     cookieValue = await makeSessionCookie(updatedUser, env);
@@ -7282,6 +7293,30 @@ async function fetchThreadFilterOptions(request, env, authUser) {
 
 export default {
   async fetch(request, env) {
+    try {
+      return await handleRequest(request, env);
+    } catch (error) {
+      console.error("unhandled worker error", error?.stack || error?.message || error);
+      const url = new URL(request.url);
+      if (!url.pathname.startsWith("/api/") && request.headers.get("cookie")?.includes("visibility_session=")) {
+        return new Response(null, {
+          status: 303,
+          headers: secureHeaders({
+            location: "/",
+            "set-cookie": clearSessionCookie(),
+            "cache-control": "no-store",
+          }),
+        });
+      }
+      if (url.pathname.startsWith("/api/")) {
+        return json({ error: "خطای موقت سرور. لطفاً دوباره تلاش کنید." }, 500);
+      }
+      return text("خطای موقت سرور. لطفاً دوباره تلاش کنید.", 500);
+    }
+  },
+};
+
+async function handleRequest(request, env) {
     const url = new URL(request.url);
     if ((url.pathname.startsWith("/assets/") || url.pathname.startsWith("/fonts/")) && env.ASSETS) {
       const assetResponse = await env.ASSETS.fetch(request);
@@ -7422,5 +7457,4 @@ export default {
       return fetchBotFile(request, env, authUser);
     }
     return text("Not found", 404);
-  },
-};
+}
