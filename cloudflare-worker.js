@@ -3388,6 +3388,26 @@ const HTML = `<!doctype html>
 
 const AUTH_FONT_FACE = HTML.match(/@font-face\s*\{[^}]+\}/)?.[0] || "";
 const SESSION_MAX_AGE_SECONDS = 24 * 60 * 60;
+const SECURITY_HEADERS = {
+  "content-security-policy": [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "script-src 'self' 'unsafe-inline'",
+    "connect-src 'self'",
+    "form-action 'self'",
+  ].join("; "),
+  "referrer-policy": "no-referrer",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+  "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+};
+const PASSWORD_HASH_VERSION = "pbkdf2-sha256";
+const PASSWORD_HASH_ITERATIONS = 210000;
 
 async function loginHtml(env, error = "", email = "", message = "", authUser = null) {
   const profile = authUser ? await publicUserProfile(env, authUser) : null;
@@ -3753,21 +3773,28 @@ const MEDIA_KEYS = ["photo", "video", "document", "voice", "audio", "video_note"
 function json(value, status = 200) {
   return new Response(JSON.stringify(value), {
     status,
-    headers: {
+    headers: secureHeaders({
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
-    },
+    }),
   });
 }
 
 function text(value, status = 200, contentType = "text/plain; charset=utf-8") {
   return new Response(value, {
     status,
-    headers: {
+    headers: secureHeaders({
       "content-type": contentType,
       "cache-control": "no-store",
-    },
+    }),
   });
+}
+
+function secureHeaders(headers = {}) {
+  return {
+    ...SECURITY_HEADERS,
+    ...headers,
+  };
 }
 
 function authEmailError(message, fallback = "ارسال ایمیل انجام نشد") {
@@ -3798,7 +3825,7 @@ function htmlEscape(value) {
 function redirect(location) {
   return new Response(null, {
     status: 303,
-    headers: { location },
+    headers: secureHeaders({ location }),
   });
 }
 
@@ -4041,9 +4068,39 @@ function rowAllowedByChatSet(row, allowedSet) {
   return !allowedSet || allowedSet.has(chatKey(row));
 }
 
+function clientDocumentPayload(payload, key) {
+  const fileName = payload?.[key]?.document?.file_name;
+  return fileName ? { document: { file_name: fileName } } : undefined;
+}
+
+function rawPayloadForClient(payload) {
+  if (!payload || typeof payload !== "object") return null;
+  const result = {
+    redacted: true,
+  };
+  for (const key of ["dashboard_broadcast", "dashboard_thread_reply", "dashboard_outgoing"]) {
+    if (payload[key] === true) result[key] = true;
+  }
+  for (const key of ["message", "edited_message", "channel_post", "edited_channel_post"]) {
+    const value = clientDocumentPayload(payload, key);
+    if (value) result[key] = value;
+  }
+  return result;
+}
+
+function messageRowForClient(row) {
+  if (!row || typeof row !== "object") return row;
+  return {
+    ...row,
+    raw_payload_json: rawPayloadForClient(row.raw_payload_json),
+    reactions: Array.isArray(row.reactions)
+      ? row.reactions.map(({ reaction_json, ...reaction }) => reaction)
+      : row.reactions,
+  };
+}
+
 async function verifyUserPassword(user, password) {
-  if (!user?.password_salt || !user?.password_hash || !password) return false;
-  return await hashPassword(password, user.password_salt) === user.password_hash;
+  return verifyPasswordHash(password, user?.password_salt, user?.password_hash);
 }
 
 function profilePhotoUrlFromRow(row) {
@@ -4135,6 +4192,27 @@ async function sha256Hex(value) {
   return bytesToHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
 }
 
+async function pbkdf2Hash(password, salt, iterations = PASSWORD_HASH_ITERATIONS) {
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      hash: "SHA-256",
+      salt: new TextEncoder().encode(salt),
+      iterations,
+    },
+    keyMaterial,
+    256,
+  );
+  return bytesToBase64Url(new Uint8Array(bits));
+}
+
 async function botCredentialKey(env) {
   const secret = env.BOT_CREDENTIAL_ENCRYPTION_KEY;
   if (!secret || String(secret).length < 24) {
@@ -4167,16 +4245,50 @@ async function decryptBotCredential(env, row) {
   return new TextDecoder().decode(plaintext);
 }
 
-async function hashPassword(password, salt) {
+async function legacyHashPassword(password, salt) {
   return sha256Hex(`${salt}:${password}`);
 }
 
+async function hashPassword(password, salt) {
+  const iterations = PASSWORD_HASH_ITERATIONS;
+  const hash = await pbkdf2Hash(password, salt, iterations);
+  return `${PASSWORD_HASH_VERSION}$${iterations}$${hash}`;
+}
+
+async function verifyPasswordHash(password, salt, storedHash) {
+  const hash = String(storedHash || "");
+  if (!password || !salt || !hash) return false;
+  if (hash.startsWith(`${PASSWORD_HASH_VERSION}$`)) {
+    const [, iterationsValue, expected] = hash.split("$");
+    const iterations = Number(iterationsValue);
+    if (!Number.isInteger(iterations) || iterations < 100000 || !expected) return false;
+    return await pbkdf2Hash(password, salt, iterations) === expected;
+  }
+  return await legacyHashPassword(password, salt) === hash;
+}
+
+function passwordHashNeedsUpgrade(storedHash) {
+  return !String(storedHash || "").startsWith(`${PASSWORD_HASH_VERSION}$${PASSWORD_HASH_ITERATIONS}$`);
+}
+
 function sessionSecret(env) {
-  return env.SESSION_SECRET || env.SUPABASE_SERVICE_ROLE_KEY || env.DASHBOARD_PASSWORD || "visibility-session";
+  const secret = String(env.SESSION_SECRET || "").trim();
+  if (secret.length < 32) {
+    throw new Error("SESSION_SECRET must be configured with at least 32 characters");
+  }
+  return secret;
 }
 
 async function signSessionPayload(payload, env) {
-  return sha256Hex(`${payload}.${sessionSecret(env)}`);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(sessionSecret(env)),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  return bytesToBase64Url(new Uint8Array(signature));
 }
 
 async function makeSessionCookie(user, env) {
@@ -4198,7 +4310,11 @@ async function dashboardAuthorized(request, env) {
   const session = cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith("visibility_session="))?.split("=")[1];
   if (!session || !session.includes(".")) return null;
   const [payload, signature] = session.split(".");
-  if (signature !== await signSessionPayload(payload, env)) return null;
+  try {
+    if (signature !== await signSessionPayload(payload, env)) return null;
+  } catch {
+    return null;
+  }
   let data;
   try {
     data = JSON.parse(base64UrlDecode(payload));
@@ -4229,17 +4345,29 @@ async function handleLogin(request, env) {
   if (!user.is_active && !isAccessOwnerEmail(user.email)) {
     return text(await loginHtml(env, "دسترسی این ایمیل لغو شده است.", email), 403, "text/html; charset=utf-8");
   }
-  if (await hashPassword(password, user.password_salt) !== user.password_hash) {
+  if (!await verifyUserPassword(user, password)) {
     return text(await loginHtml(env, "پسورد وارد شده درست نیست.", email), 401, "text/html; charset=utf-8");
   }
-  await patchAccessUser(env, email, { last_login_at_utc: new Date().toISOString(), updated_at_utc: new Date().toISOString() });
-  const cookieValue = await makeSessionCookie(user, env);
+  const now = new Date().toISOString();
+  const loginPatch = { last_login_at_utc: now, updated_at_utc: now };
+  if (passwordHashNeedsUpgrade(user.password_hash)) {
+    const salt = randomHex();
+    loginPatch.password_salt = salt;
+    loginPatch.password_hash = await hashPassword(password, salt);
+  }
+  const updatedUser = await patchAccessUser(env, email, loginPatch);
+  let cookieValue;
+  try {
+    cookieValue = await makeSessionCookie(updatedUser, env);
+  } catch (error) {
+    return text(await loginHtml(env, "تنظیم SESSION_SECRET سرور معتبر نیست.", email), 500, "text/html; charset=utf-8");
+  }
   return new Response(null, {
     status: 303,
-    headers: {
+    headers: secureHeaders({
       location: user.must_change_password ? "/set-password" : defaultMainPathForUser(user),
       "set-cookie": `visibility_session=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_SECONDS}`,
-    },
+    }),
   });
 }
 
@@ -4383,7 +4511,7 @@ async function handleSetPassword(request, env, user) {
     return text(passwordPageHtml("یوزرنیم تلگرام باید بعد از @ با حرف انگلیسی شروع شود، ۵ تا ۳۲ کاراکتر باشد و فقط شامل حروف انگلیسی، عدد و _ باشد.", rawTelegramUsername), 400, "text/html; charset=utf-8");
   }
   const telegramUsername = normalizeTelegramUsername(rawTelegramUsername);
-  if (await hashPassword(currentPassword, user.password_salt) !== user.password_hash) {
+  if (!await verifyUserPassword(user, currentPassword)) {
     return text(passwordPageHtml("پسورد فعلی درست نیست.", telegramUsername), 401, "text/html; charset=utf-8");
   }
   if (newPassword !== newPasswordConfirm) {
@@ -4409,10 +4537,10 @@ async function handleSetPassword(request, env, user) {
   });
   return new Response(null, {
     status: 303,
-    headers: {
+    headers: secureHeaders({
       location: "/",
       "set-cookie": clearSessionCookie(),
-    },
+    }),
   });
 }
 
@@ -4549,10 +4677,10 @@ async function handleRecoveryPassword(request, env) {
     });
     return new Response(null, {
       status: 303,
-      headers: {
+      headers: secureHeaders({
         location: "/?recovered=1",
         "set-cookie": clearSessionCookie(),
-      },
+      }),
     });
   } catch (error) {
     return text(recoveryPasswordHtml(error.message || "تغییر پسورد انجام نشد", accessToken), 400, "text/html; charset=utf-8");
@@ -5831,10 +5959,10 @@ async function fetchTelegramProfilePhoto(request, env, authUser) {
   if (!imageResponse.ok || !imageResponse.body) return text("دریافت عکس پروفایل انجام نشد", 502);
   return new Response(imageResponse.body, {
     status: 200,
-    headers: {
+    headers: secureHeaders({
       "content-type": imageResponse.headers.get("content-type") || "image/jpeg",
       "cache-control": "private, max-age=86400",
-    },
+    }),
   });
 }
 
@@ -5895,10 +6023,10 @@ async function fetchBotFile(request, env, authUser) {
   const fileDownloadResponse = await fetch(`${config.fileBase}/bot${config.token}/${filePath}`);
   if (!fileDownloadResponse.ok || !fileDownloadResponse.body) return text("دریافت فایل انجام نشد", 502);
   const telegramType = fileDownloadResponse.headers.get("content-type") || "";
-  const headers = new Headers({
+  const headers = new Headers(secureHeaders({
     "content-type": telegramType.startsWith("application/octet-stream") ? contentTypeFromPath(filePath, telegramType) : (telegramType || contentTypeFromPath(filePath)),
     "cache-control": "private, max-age=86400",
-  });
+  }));
   if (url.searchParams.get("download") === "1") {
     const filename = filePath.split("/").pop() || "telegram-file";
     headers.set("content-disposition", `attachment; filename="${filename.replace(/"/g, "")}"`);
@@ -6329,7 +6457,6 @@ async function fetchMessages(request, env, authUser) {
       "reaction_type",
       "reaction_emoji",
       "custom_emoji_id",
-      "reaction_json",
       "user_username",
       "user_first_name",
       "user_last_name",
@@ -6348,7 +6475,7 @@ async function fetchMessages(request, env, authUser) {
     });
     if (reactionsResponse.ok) reactionRows = await reactionsResponse.json();
   }
-  messages = aggregateMediaGroups(withReactions(withEditHistory(messages, historyRows), reactionRows));
+  messages = aggregateMediaGroups(withReactions(withEditHistory(messages, historyRows), reactionRows)).map(messageRowForClient);
   return json({ messages });
 }
 
@@ -6761,7 +6888,34 @@ async function sendThreadReply(request, env, authUser) {
   }
 }
 
-async function updateGroupLabel(request, env) {
+async function fetchGroupStatsRow(env, platform, chatId) {
+  const params = new URLSearchParams({
+    select: "platform,chat_id,chat_title,group_label",
+    platform: `eq.${normalizePlatform(platform)}`,
+    chat_id: `eq.${chatId}`,
+    limit: "1",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${params}`, { headers: supabaseHeaders(env) });
+  if (!response.ok) throw new Error(await response.text());
+  const rows = await response.json();
+  return rows[0] || null;
+}
+
+async function userCanAccessSender(env, authUser, platform, senderId) {
+  if (groupAccessForUser(authUser).unrestricted) return true;
+  const params = new URLSearchParams({
+    select: "platform,chat_id",
+    platform: `eq.${normalizePlatform(platform)}`,
+    sender_id: `eq.${senderId}`,
+    limit: "1000",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers: supabaseHeaders(env) });
+  if (!response.ok) throw new Error(await response.text());
+  const allowedSet = await allowedChatKeySet(env, authUser);
+  return (await response.json()).some((row) => rowAllowedByChatSet(row, allowedSet));
+}
+
+async function updateGroupLabel(request, env, authUser) {
   let body;
   try {
     body = await request.json();
@@ -6775,6 +6929,10 @@ async function updateGroupLabel(request, env) {
   if (body.group_label && !groupLabel) {
     return json({ error: "لیبل گروه نامعتبر است" }, 400);
   }
+  const currentGroup = await fetchGroupStatsRow(env, platform, chatId);
+  if (!currentGroup) return json({ error: "گروه پیدا نشد" }, 404);
+  const allowedSet = await allowedChatKeySet(env, authUser);
+  if (!rowAllowedByChatSet(currentGroup, allowedSet)) return forbiddenAccess();
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_chats?platform=eq.${platform}&chat_id=eq.${encodeURIComponent(chatId)}`, {
     method: "PATCH",
     headers: supabaseHeaders(env, "return=representation"),
@@ -6787,10 +6945,19 @@ async function updateGroupLabel(request, env) {
     return json({ error: "ذخیره لیبل گروه انجام نشد", detail: await response.text() }, 500);
   }
   const rows = await response.json();
+  const saved = rows?.[0] || {};
+  await insertAccessAuditLog(env, {
+    actorEmail: authUser?.email,
+    targetEmail: authUser?.email,
+    action: "group_label_update",
+    oldValues: { platform, chat_id: chatId, group_label: currentGroup.group_label || "" },
+    newValues: { platform, chat_id: chatId, group_label: saved.group_label || "" },
+    metadata: { chat_title: currentGroup.chat_title || "" },
+  });
   return json({ group_label: rows?.[0]?.group_label || "" });
 }
 
-async function updateSenderLabel(request, env) {
+async function updateSenderLabel(request, env, authUser) {
   let body;
   try {
     body = await request.json();
@@ -6804,6 +6971,16 @@ async function updateSenderLabel(request, env) {
   if (body.sender_label && !senderLabel) {
     return json({ error: "لیبل ارسال‌کننده نامعتبر است" }, 400);
   }
+  if (!await userCanAccessSender(env, authUser, platform, senderId)) return forbiddenAccess();
+  const existingParams = new URLSearchParams({
+    select: "sender_label",
+    platform: `eq.${platform}`,
+    sender_id: `eq.${senderId}`,
+    limit: "1",
+  });
+  const existingResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_sender_labels?${existingParams}`, { headers: supabaseHeaders(env) });
+  const existingRows = existingResponse.ok ? await existingResponse.json() : [];
+  const oldSenderLabel = existingRows?.[0]?.sender_label || "";
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_sender_labels?on_conflict=platform,sender_id`, {
     method: "POST",
     headers: supabaseHeaders(env, "resolution=merge-duplicates,return=representation"),
@@ -6818,6 +6995,13 @@ async function updateSenderLabel(request, env) {
     return json({ error: "ذخیره لیبل ارسال‌کننده انجام نشد", detail: await response.text() }, 500);
   }
   const rows = await response.json();
+  await insertAccessAuditLog(env, {
+    actorEmail: authUser?.email,
+    targetEmail: authUser?.email,
+    action: "sender_label_update",
+    oldValues: { platform, sender_id: senderId, sender_label: oldSenderLabel },
+    newValues: { platform, sender_id: senderId, sender_label: rows?.[0]?.sender_label || "" },
+  });
   return json({ sender_label: rows?.[0]?.sender_label || "" });
 }
 
@@ -7100,7 +7284,14 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if ((url.pathname.startsWith("/assets/") || url.pathname.startsWith("/fonts/")) && env.ASSETS) {
-      return env.ASSETS.fetch(request);
+      const assetResponse = await env.ASSETS.fetch(request);
+      const headers = new Headers(assetResponse.headers);
+      for (const [key, value] of Object.entries(SECURITY_HEADERS)) headers.set(key, value);
+      return new Response(assetResponse.body, {
+        status: assetResponse.status,
+        statusText: assetResponse.statusText,
+        headers,
+      });
     }
     if (url.pathname === "/telegram-webhook") return handleTelegramWebhook(request, env);
     if (url.pathname === "/bale-webhook") return handleBaleWebhook(request, env);
@@ -7112,10 +7303,10 @@ export default {
     if (url.pathname === "/logout") {
       return new Response(null, {
         status: 303,
-        headers: {
+        headers: secureHeaders({
           location: "/",
           "set-cookie": clearSessionCookie(),
-        },
+        }),
       });
     }
     const authUser = await dashboardAuthorized(request, env);
@@ -7188,7 +7379,7 @@ export default {
     }
     if (url.pathname === "/api/groups/label" && request.method === "POST") {
       if (!hasAccessPermission(authUser, "groups")) return forbiddenAccess();
-      return updateGroupLabel(request, env);
+      return updateGroupLabel(request, env, authUser);
     }
     if (url.pathname === "/api/senders") {
       if (!hasAccessPermission(authUser, "senders")) return forbiddenAccess();
@@ -7196,7 +7387,7 @@ export default {
     }
     if (url.pathname === "/api/senders/label" && request.method === "POST") {
       if (!hasAccessPermission(authUser, "senders")) return forbiddenAccess();
-      return updateSenderLabel(request, env);
+      return updateSenderLabel(request, env, authUser);
     }
     if (url.pathname === "/api/bots" && request.method === "GET") {
       if (!hasAccessPermission(authUser, "bots")) return forbiddenAccess();
