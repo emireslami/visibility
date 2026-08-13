@@ -1659,6 +1659,7 @@ const HTML = `<!doctype html>
       return threadPlatformFilter.values().length + threadGroupFilter.values().length + threadTopicFilter.values().length + (selectedThreadJalaliDate() ? 1 : 0);
     }
     function syncMobileFilterToggle(toggle, filtersRoot, count) {
+      if (!toggle || !filtersRoot) return;
       const isOpen = filtersRoot.classList.contains("mobile-open");
       toggle.textContent = isOpen ? "بستن فیلترها" : (count ? "فیلترها (" + numberFmt.format(count) + ")" : "نمایش فیلترها");
       toggle.classList.toggle("secondary-button", isOpen);
