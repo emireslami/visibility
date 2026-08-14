@@ -238,6 +238,8 @@ function sendHtml(res) {
     .thread-replies { border-top:1px solid var(--line); }
     .thread-reply { position:relative; margin-right:28px; border-right:2px solid var(--line); background:#fff; }
     .thread-reply + .thread-reply { border-top:1px solid var(--line); }
+    .thread-expand { padding:10px 16px; margin-right:28px; border-right:2px dashed var(--line); background:#fbfcfd; }
+    .thread-expand-button { min-height:30px; padding:0 10px; font-size:12px; }
     .thread-missing { color:var(--muted); background:#fbfcfd; }
     .thread-item { display:grid; grid-template-columns:42px minmax(0, 1fr); gap:10px; align-items:start; }
     .thread-content { min-width:0; }
@@ -432,6 +434,7 @@ function sendHtml(res) {
     const modalCloseEl = document.getElementById("modalClose");
     const fullTextByKey = new Map();
     const detailByKey = new Map();
+    const expandedThreadKeys = new Set();
     const chartColors = ["#087f8c", "#f25f5c", "#3b82f6", "#f59e0b", "#7c3aed", "#10b981", "#ef476f", "#6b7280", "#06b6d4", "#84cc16"];
     let threadFilterOptions = null;
     let currentPage = "messages";
@@ -916,10 +919,22 @@ function sendHtml(res) {
         const activityTime = [root, ...replies]
           .map((row) => Date.parse(row.edited_at_utc || row.sent_at_utc || 0) || 0)
           .reduce((latest, time) => Math.max(latest, time), 0);
-        return { root, replies, activityTime };
+        return { key, root, replies, activityTime };
       }).sort((a, b) => {
         return b.activityTime - a.activityTime;
       });
+    }
+    function threadRepliesHtml(thread, indexByRow) {
+      const replies = thread.replies || [];
+      const expanded = expandedThreadKeys.has(thread.key);
+      if (replies.length <= 2 || expanded) {
+        return replies.map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply))).join("");
+      }
+      const hiddenCount = replies.length - 2;
+      const expandButton = \`<div class="thread-expand">
+        <button class="secondary-button thread-expand-button" type="button" data-thread-expand="\${esc(thread.key)}">نمایش \${hiddenCount.toLocaleString("fa-IR")} پاسخ قدیمی‌تر</button>
+      </div>\`;
+      return expandButton + replies.slice(-2).map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply))).join("");
     }
     function openModal(text) {
       modalTitleEl.textContent = "متن کامل پیام";
@@ -1077,7 +1092,7 @@ function sendHtml(res) {
           return \`<section class="thread-card">
             \${threadNode(thread.root, "thread-root", rootIndex)}
             <div class="thread-replies">
-              \${thread.replies.map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply))).join("")}
+              \${threadRepliesHtml(thread, indexByRow)}
             </div>
           </section>\`;
         }).join("");
@@ -1114,6 +1129,12 @@ function sendHtml(res) {
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "");
     });
     threadRowsEl.addEventListener("click", event => {
+      const expand = event.target.closest("[data-thread-expand]");
+      if (expand) {
+        expandedThreadKeys.add(expand.dataset.threadExpand || "");
+        loadThreads();
+        return;
+      }
       const mediaButton = event.target.closest("[data-media-src]");
       if (mediaButton) {
         openMediaModal(mediaButton.dataset.mediaSrc, mediaButton.dataset.mediaDownload);
