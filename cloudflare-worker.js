@@ -3410,7 +3410,7 @@ const SECURITY_HEADERS = {
   "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
 };
 const PASSWORD_HASH_VERSION = "pbkdf2-sha256";
-const PASSWORD_HASH_ITERATIONS = 210000;
+const PASSWORD_HASH_ITERATIONS = 100000;
 
 async function loginHtml(env, error = "", email = "", message = "", authUser = null) {
   const profile = authUser ? await publicUserProfile(env, authUser) : null;
@@ -3899,6 +3899,9 @@ const PLATFORM_LABELS = {
   whatsapp: "واتساپ",
 };
 const API_CACHE_TTL_MS = 60 * 1000;
+const SUPABASE_DEFAULT_TIMEOUT_MS = 10000;
+const SUPABASE_AUTH_TIMEOUT_MS = 5000;
+const SUPABASE_PROFILE_TIMEOUT_MS = 2500;
 let dashboardApiCache = null;
 let threadFilterOptionsApiCache = null;
 const TELEGRAM_MESSAGE_SELECT = [
@@ -3950,6 +3953,16 @@ function platformLabel(value) {
 
 function platformQuery(platform = DEFAULT_PLATFORM) {
   return `eq.${normalizePlatform(platform)}`;
+}
+
+async function fetchWithTimeout(url, init = {}, timeoutMs = SUPABASE_DEFAULT_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort("timeout"), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function messageKey(row, messageId = row?.message_id) {
@@ -4128,7 +4141,7 @@ async function latestTelegramProfilePhotoForUsername(env, username) {
     limit: "1",
   });
   try {
-    const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers: supabaseHeaders(env) });
+    const response = await fetchWithTimeout(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers: supabaseHeaders(env) }, SUPABASE_PROFILE_TIMEOUT_MS);
     if (!response.ok) return null;
     const rows = await response.json();
     return rows[0] || null;
@@ -4317,7 +4330,7 @@ async function dashboardAuthorized(request, env) {
     if (signature !== await signSessionPayload(payload, env)) return null;
     const data = JSON.parse(base64UrlDecode(payload));
     if (!data.email || !data.exp || Date.now() > data.exp) return null;
-    const user = await getAccessUserByEmail(env, data.email);
+    const user = await getAccessUserByEmail(env, data.email, SUPABASE_AUTH_TIMEOUT_MS);
     if (!user || String(user.password_hash || "").slice(0, 16) !== data.ph) return null;
     if (!user.is_active && !isAccessOwnerEmail(user.email)) return null;
     return user;
@@ -4423,13 +4436,13 @@ async function readSupabaseJson(response) {
   }
 }
 
-async function getAccessUserByEmail(env, email) {
+async function getAccessUserByEmail(env, email, timeoutMs = SUPABASE_DEFAULT_TIMEOUT_MS) {
   const params = new URLSearchParams({
     select: "id,email,password_hash,password_salt,must_change_password,is_active,permissions,telegram_username,last_login_at_utc,created_at_utc,updated_at_utc",
     email: `eq.${normalizeEmail(email)}`,
     limit: "1",
   });
-  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_access_users?${params}`, { headers: supabaseHeaders(env) });
+  const response = await fetchWithTimeout(`${env.SUPABASE_URL}/rest/v1/visibility_access_users?${params}`, { headers: supabaseHeaders(env) }, timeoutMs);
   if (!response.ok) return null;
   const rows = await response.json();
   return rows[0] || null;

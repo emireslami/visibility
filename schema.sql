@@ -215,6 +215,7 @@ ALTER TABLE public.telegram_topics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.telegram_chats ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.telegram_message_reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.visibility_access_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.visibility_sender_labels ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "telegram_messages_no_public_access" ON public.telegram_messages;
 CREATE POLICY "telegram_messages_no_public_access"
@@ -247,6 +248,13 @@ CREATE POLICY "telegram_message_reactions_no_public_access"
 DROP POLICY IF EXISTS "visibility_access_users_no_public_access" ON public.visibility_access_users;
 CREATE POLICY "visibility_access_users_no_public_access"
     ON public.visibility_access_users
+    FOR ALL
+    USING (false)
+    WITH CHECK (false);
+
+DROP POLICY IF EXISTS "visibility_sender_labels_no_public_access" ON public.visibility_sender_labels;
+CREATE POLICY "visibility_sender_labels_no_public_access"
+    ON public.visibility_sender_labels
     FOR ALL
     USING (false)
     WITH CHECK (false);
