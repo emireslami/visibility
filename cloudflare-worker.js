@@ -5368,6 +5368,60 @@ async function fetchThreadRowsByTarget(env, headers, threadTarget) {
   return rows;
 }
 
+function messageMatchesSearch(row, query) {
+  const normalized = String(query || "").trim().toLowerCase();
+  if (!normalized) return true;
+  return [
+    row.body,
+    row.caption,
+    row.chat_title,
+    row.topic_name,
+    row.sender_username,
+  ].some((value) => String(value || "").toLowerCase().includes(normalized));
+}
+
+async function fetchRowsForGroupLabels(env, headers, labels, authUser, platforms = []) {
+  const normalizedLabels = [...new Set(labels.map(normalizeGroupLabel).filter(Boolean))];
+  if (!normalizedLabels.length) return [];
+
+  const groupParams = new URLSearchParams();
+  groupParams.set("select", "platform,chat_id,chat_title,group_label");
+  groupParams.set("group_label", `in.(${normalizedLabels.join(",")})`);
+  groupParams.set("limit", "10000");
+
+  const groupResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_group_stats?${groupParams}`, { headers });
+  if (!groupResponse.ok) throw new Error(await groupResponse.text());
+
+  const selectedPlatforms = new Set(platforms);
+  const groupAccess = groupAccessForUser(authUser);
+  const groups = (await groupResponse.json())
+    .filter((row) => groupRowAllowedByAccess(row, groupAccess))
+    .filter((row) => !selectedPlatforms.size || selectedPlatforms.has(normalizePlatform(row.platform)));
+  const groupsByKey = new Map(groups.map((row) => [chatKey(row), row]));
+  const keys = [...groupsByKey.keys()].filter(Boolean);
+  if (!keys.length) return [];
+
+  const rows = [];
+  for (let index = 0; index < keys.length; index += 20) {
+    const chunk = keys.slice(index, index + 20);
+    const params = new URLSearchParams();
+    params.set("select", TELEGRAM_MESSAGE_SELECT);
+    params.set("order", "sent_at_utc.desc.nullslast,id.desc");
+    params.set("limit", "10000");
+    params.set("or", `(${chunk.map((key) => {
+      const [platform, chatId] = key.split(":");
+      return `and(platform.eq.${normalizePlatform(platform)},chat_id.eq.${chatId})`;
+    }).join(",")})`);
+    const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers });
+    if (!response.ok) throw new Error(await response.text());
+    rows.push(...(await response.json()).map((row) => ({
+      ...row,
+      group_label: groupsByKey.get(chatKey(row))?.group_label || "",
+    })));
+  }
+  return rows;
+}
+
 function enrichMessageRows(rows, topicByThread) {
   return rows.map((row) => {
     const date = row.sent_at_utc ? new Date(row.sent_at_utc) : null;
@@ -6594,11 +6648,15 @@ async function fetchMessages(request, env, authUser) {
   }
 
   const headers = supabaseHeaders(env);
-  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, {
-    headers,
-  });
-  if (!response.ok) {
-    return json({ error: "درخواست دیتابیس انجام نشد", detail: await response.text() }, 500);
+  let sourceRows = [];
+  if (!threadTarget && !labels.length) {
+    const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, {
+      headers,
+    });
+    if (!response.ok) {
+      return json({ error: "درخواست دیتابیس انجام نشد", detail: await response.text() }, 500);
+    }
+    sourceRows = await response.json();
   }
 
   const topicsResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_topics?select=platform,chat_id,message_thread_id,topic_name&limit=10000`, {
@@ -6613,9 +6671,24 @@ async function fetchMessages(request, env, authUser) {
     topics.map((topicRow) => [topicThreadKey(topicRow), topicRow.topic_name])
   );
   const allowedSet = await allowedChatKeySet(env, authUser);
-  const sourceRows = threadTarget ? await fetchThreadRowsByTarget(env, headers, threadTarget) : await response.json();
+  if (threadTarget) {
+    try {
+      sourceRows = await fetchThreadRowsByTarget(env, headers, threadTarget);
+    } catch (error) {
+      return json({ error: "درخواست ترد از دیتابیس انجام نشد", detail: String(error?.message || error) }, 500);
+    }
+  } else if (labels.length) {
+    try {
+      sourceRows = await fetchRowsForGroupLabels(env, headers, labels, authUser, platforms);
+    } catch (error) {
+      return json({ error: "درخواست پیام‌های لیبل از دیتابیس انجام نشد", detail: String(error?.message || error) }, 500);
+    }
+  }
   const rows = sourceRows.filter((row) => rowAllowedByChatSet(row, allowedSet));
   let messages = enrichMessageRows(rows, topicByThread);
+  if (q && labels.length) {
+    messages = messages.filter((row) => messageMatchesSearch(row, q));
+  }
   if (topicsFilter.length) {
     const normalizedTopics = topicsFilter.map((value) => value.toLowerCase());
     messages = messages.filter((row) => normalizedTopics.includes(String(row.topic_name || "").toLowerCase()));
