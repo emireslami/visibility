@@ -96,6 +96,8 @@ const HTML = `<!doctype html>
     .thread-reply + .thread-reply { border-top:1px solid var(--line); }
     .thread-expand { padding:10px 16px; margin-right:28px; border-right:2px dashed var(--line); background:#fbfcfd; }
     .thread-expand-button { min-height:30px; padding:0 10px; font-size:12px; }
+    .thread-link-row { padding:0 16px 12px; display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:8px; }
+    .thread-link-row .thread-muted { direction:ltr; }
     .thread-missing { color:var(--muted); background:#fbfcfd; }
     .thread-item { display:grid; grid-template-columns:42px minmax(0, 1fr); gap:10px; align-items:start; }
     .thread-content { min-width:0; }
@@ -1066,8 +1068,38 @@ const HTML = `<!doctype html>
     let pendingConfirm = null;
     let pendingBroadcastConfirm = null;
     const numberFmt = new Intl.NumberFormat("fa-IR");
+    const THREAD_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const THREAD_PLATFORM_CODES = { telegram: 1, bale: 2, whatsapp: 3 };
+    const THREAD_PLATFORM_BY_CODE = { 1: "telegram", 2: "bale", 3: "whatsapp" };
     function esc(value) {
       return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
+    }
+    function bytesToUuid(bytes) {
+      const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+      return \`\${hex.slice(0, 8)}-\${hex.slice(8, 12)}-\${hex.slice(12, 16)}-\${hex.slice(16, 20)}-\${hex.slice(20)}\`;
+    }
+    function threadUuidForParts(platform, chatId, messageId) {
+      const code = THREAD_PLATFORM_CODES[rowPlatform({ platform })] || THREAD_PLATFORM_CODES.telegram;
+      let chat = BigInt(String(chatId || "0"));
+      const two64 = 1n << 64n;
+      if (chat < 0) chat = two64 + chat;
+      const message = BigInt(String(messageId || "0"));
+      const bytes = new Uint8Array(16);
+      bytes[0] = code;
+      for (let index = 0; index < 8; index += 1) bytes[1 + index] = Number((chat >> BigInt((7 - index) * 8)) & 255n);
+      for (let index = 0; index < 6; index += 1) bytes[9 + index] = Number((message >> BigInt((5 - index) * 8)) & 255n);
+      bytes[15] = bytes.slice(0, 15).reduce((checksum, byte) => checksum ^ byte, 0);
+      return bytesToUuid(bytes);
+    }
+    function threadUuidForKey(key) {
+      const [platform, chatId, messageId] = String(key || "").split(":");
+      if (!chatId || !messageId) return "";
+      return threadUuidForParts(platform, chatId, messageId);
+    }
+    function threadUuidFromPath() {
+      const match = window.location.pathname.match(/^\\/main\\/threads\\/([0-9a-f-]{36})$/i);
+      const uuid = match?.[1]?.toLowerCase() || "";
+      return THREAD_UUID_PATTERN.test(uuid) ? uuid : "";
     }
     function telegramUsernameLocal(value) {
       return String(value || "").trim().replace(/^@+/, "");
@@ -1413,7 +1445,8 @@ const HTML = `<!doctype html>
         return;
       }
       const requestedPage = pageFromPath();
-      showPage(requestedPage === "profile" || canOpen(requestedPage) ? requestedPage : firstPage, { replace: true });
+      const requestedPath = threadUuidFromPath() ? window.location.pathname : undefined;
+      showPage(requestedPage === "profile" || canOpen(requestedPage) ? requestedPage : firstPage, { replace: true, path: requestedPath });
     }
     function tehranDisplay(value) {
       return new Date(value).toLocaleString("fa-IR", { timeZone:"Asia/Tehran", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit" });
@@ -2193,20 +2226,21 @@ const HTML = `<!doctype html>
         const activityTime = [root, ...replies]
           .map((row) => Date.parse(row.edited_at_utc || row.sent_at_utc || 0) || 0)
           .reduce((latest, time) => Math.max(latest, time), 0);
-        return { key, root, replies, activityTime };
+        const uuid = threadUuidForKey(key);
+        return { key, uuid, root, replies, activityTime };
       }).sort((a, b) => {
         return b.activityTime - a.activityTime;
       });
     }
     function threadRepliesHtml(thread, indexByRow) {
       const replies = thread.replies || [];
-      const expanded = expandedThreadKeys.has(thread.key);
+      const expanded = expandedThreadKeys.has(thread.uuid) || threadUuidFromPath() === thread.uuid;
       if (replies.length <= 2 || expanded) {
         return replies.map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply))).join("");
       }
       const hiddenCount = replies.length - 2;
       const expandButton = \`<div class="thread-expand">
-        <button class="secondary-button thread-expand-button" type="button" data-thread-expand="\${esc(thread.key)}">نمایش \${numberFmt.format(hiddenCount)} پاسخ قدیمی‌تر</button>
+        <button class="secondary-button thread-expand-button" type="button" data-thread-expand="\${esc(thread.uuid)}">نمایش \${numberFmt.format(hiddenCount)} پاسخ قدیمی‌تر</button>
       </div>\`;
       return expandButton + replies.slice(-2).map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply))).join("");
     }
@@ -2820,14 +2854,19 @@ const HTML = `<!doctype html>
       updateFilterButtons();
       const token = showLoading("در حال دریافت تردها...");
       try {
-        await loadThreadFilterOptions();
+        const threadUuid = threadUuidFromPath();
+        if (!threadUuid) await loadThreadFilterOptions();
         const params = new URLSearchParams();
-        appendFilterValues(params, "platform", selectedPlatformValues(threadPlatformFilter));
-        appendFilterValues(params, "group", threadGroupFilter.values());
-        appendFilterValues(params, "topic", threadTopicFilter.values());
         params.set("view", "threads");
-        const jalaliDate = selectedThreadJalaliDate();
-        if (jalaliDate) params.set("jalali_date", jalaliDate);
+        if (threadUuid) {
+          params.set("thread_uuid", threadUuid);
+        } else {
+          appendFilterValues(params, "platform", selectedPlatformValues(threadPlatformFilter));
+          appendFilterValues(params, "group", threadGroupFilter.values());
+          appendFilterValues(params, "topic", threadTopicFilter.values());
+          const jalaliDate = selectedThreadJalaliDate();
+          if (jalaliDate) params.set("jalali_date", jalaliDate);
+        }
         const res = await fetch("/api/messages?" + params);
         const data = await res.json();
         if (!res.ok || !Array.isArray(data.messages)) {
@@ -2840,16 +2879,22 @@ const HTML = `<!doctype html>
         data.messages.forEach((row, index) => detailByKey.set("thread-detail-" + index, detailHtml(row)));
         const indexByRow = new Map(data.messages.map((row, index) => [row, index]));
         const threads = buildThreads(data.messages);
-        threadRowsEl.innerHTML = threads.length ? threads.map((thread) => {
+        if (threadUuid) expandedThreadKeys.add(threadUuid);
+        const visibleThreads = threadUuid ? threads.filter((thread) => thread.uuid === threadUuid) : threads;
+        threadRowsEl.innerHTML = visibleThreads.length ? visibleThreads.map((thread) => {
           const rootIndex = indexByRow.get(thread.root) ?? "missing-" + thread.root.message_id;
           return \`<section class="thread-card">
             \${threadNode(thread.root, "thread-root", rootIndex)}
+            <div class="thread-link-row">
+              <a class="details-button" href="/main/threads/\${esc(thread.uuid)}">لینک ترد</a>
+              <span class="thread-muted">\${esc(thread.uuid)}</span>
+            </div>
             <div class="thread-replies">
               \${threadRepliesHtml(thread, indexByRow)}
             </div>
           </section>\`;
-        }).join("") : '<div class="empty">شما به هیچ چیز دسترسی ندارید.</div>';
-        setStatus(token, threads.length + " ترد");
+        }).join("") : '<div class="empty">ترد موردنظر پیدا نشد یا به آن دسترسی ندارید.</div>';
+        setStatus(token, visibleThreads.length + " ترد");
       } catch (error) {
         setStatus(token, "خطا در دریافت تردها");
       }
@@ -2857,7 +2902,7 @@ const HTML = `<!doctype html>
     function showPage(page, options = {}) {
       if (page !== "profile" && !canOpen(page)) return;
       currentPage = page;
-      const nextPath = pagePath(page);
+      const nextPath = options.path || pagePath(page);
       if (window.location.pathname !== nextPath) {
         if (options.replace) window.history.replaceState({ page }, "", nextPath);
         else window.history.pushState({ page }, "", nextPath);
@@ -3174,7 +3219,8 @@ const HTML = `<!doctype html>
     window.addEventListener("popstate", () => {
       const requestedPage = pageFromPath();
       const fallbackPage = firstAccessiblePage();
-      showPage(requestedPage === "profile" || canOpen(requestedPage) ? requestedPage : fallbackPage, { replace: true });
+      const requestedPath = threadUuidFromPath() ? window.location.pathname : undefined;
+      showPage(requestedPage === "profile" || canOpen(requestedPage) ? requestedPage : fallbackPage, { replace: true, path: requestedPath });
     });
     logoutButtonEl.addEventListener("click", async () => {
       userMenuEl.classList.remove("open");
@@ -3920,6 +3966,9 @@ const PLATFORM_LABELS = {
   bale: "بله",
   whatsapp: "واتساپ",
 };
+const THREAD_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const THREAD_PLATFORM_CODES = { telegram: 1, bale: 2, whatsapp: 3 };
+const THREAD_PLATFORM_BY_CODE = { 1: "telegram", 2: "bale", 3: "whatsapp" };
 const API_CACHE_TTL_MS = 60 * 1000;
 const SUPABASE_DEFAULT_TIMEOUT_MS = 10000;
 const SUPABASE_AUTH_TIMEOUT_MS = 5000;
@@ -3990,6 +4039,44 @@ async function fetchWithTimeout(url, init = {}, timeoutMs = SUPABASE_DEFAULT_TIM
 function messageKey(row, messageId = row?.message_id) {
   if (!row?.chat_id || !messageId) return "";
   return `${normalizePlatform(row.platform)}:${row.chat_id}:${messageId}`;
+}
+
+function bytesToUuid(bytes) {
+  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function threadUuidForParts(platform, chatId, messageId) {
+  const code = THREAD_PLATFORM_CODES[normalizePlatform(platform)] || THREAD_PLATFORM_CODES.telegram;
+  let chat = BigInt(String(chatId || "0"));
+  const two64 = 1n << 64n;
+  if (chat < 0) chat = two64 + chat;
+  const message = BigInt(String(messageId || "0"));
+  const bytes = new Uint8Array(16);
+  bytes[0] = code;
+  for (let index = 0; index < 8; index += 1) bytes[1 + index] = Number((chat >> BigInt((7 - index) * 8)) & 255n);
+  for (let index = 0; index < 6; index += 1) bytes[9 + index] = Number((message >> BigInt((5 - index) * 8)) & 255n);
+  bytes[15] = bytes.slice(0, 15).reduce((checksum, byte) => checksum ^ byte, 0);
+  return bytesToUuid(bytes);
+}
+
+function parseThreadUuid(uuid) {
+  const value = String(uuid || "").toLowerCase();
+  if (!THREAD_UUID_PATTERN.test(value)) return null;
+  const hex = value.replace(/-/g, "");
+  const bytes = new Uint8Array(16);
+  for (let index = 0; index < 16; index += 1) bytes[index] = Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16);
+  const checksum = bytes.slice(0, 15).reduce((current, byte) => current ^ byte, 0);
+  if (checksum !== bytes[15]) return null;
+  const platform = THREAD_PLATFORM_BY_CODE[bytes[0]];
+  if (!platform) return null;
+  let chat = 0n;
+  for (let index = 0; index < 8; index += 1) chat = (chat << 8n) | BigInt(bytes[1 + index]);
+  if (chat & (1n << 63n)) chat -= 1n << 64n;
+  let message = 0n;
+  for (let index = 0; index < 6; index += 1) message = (message << 8n) | BigInt(bytes[9 + index]);
+  if (message <= 0n) return null;
+  return { platform, chatId: chat.toString(), messageId: message.toString(), uuid: value };
 }
 
 function chatKey(row, chatId = row?.chat_id) {
@@ -5206,6 +5293,29 @@ function latestMessageMap(rows) {
   return byKey;
 }
 
+function threadRootKeyForRow(row, byKey) {
+  let current = row;
+  const seen = new Set();
+  while (current) {
+    const currentKey = messageKey(current);
+    if (!currentKey || seen.has(currentKey)) return currentKey;
+    seen.add(currentKey);
+    const parentKey = threadParentKey(current);
+    if (!parentKey) return currentKey;
+    const parent = byKey.get(parentKey);
+    if (!parent) return currentKey;
+    current = parent;
+  }
+  return messageKey(row);
+}
+
+function filterRowsForThread(messages, threadTarget) {
+  if (!threadTarget) return messages;
+  const rootKey = messageKey({ platform: threadTarget.platform, chat_id: threadTarget.chatId }, threadTarget.messageId);
+  const byKey = latestMessageMap(messages);
+  return messages.filter((row) => messageKey(row) === rootKey || threadRootKeyForRow(row, byKey) === rootKey);
+}
+
 function enrichMessageRows(rows, topicByThread) {
   return rows.map((row) => {
     const date = row.sent_at_utc ? new Date(row.sent_at_utc) : null;
@@ -6411,6 +6521,10 @@ async function fetchMessages(request, env, authUser) {
   const chatId = url.searchParams.get("chat_id");
   const senderId = url.searchParams.get("sender_id");
   const view = url.searchParams.get("view");
+  const threadTarget = parseThreadUuid(url.searchParams.get("thread_uuid"));
+  if (url.searchParams.has("thread_uuid") && !threadTarget) {
+    return json({ error: "شناسه ترد نامعتبر است" }, 400);
+  }
   if (q) {
     const pattern = `*${q.replace(/[%*]/g, "")}*`;
     filters.push(`body.ilike.${pattern},caption.ilike.${pattern},chat_title.ilike.${pattern},topic_name.ilike.${pattern},sender_username.ilike.${pattern}`);
@@ -6420,6 +6534,11 @@ async function fetchMessages(request, env, authUser) {
   else if (platforms.length > 1) params.set("platform", `in.(${platforms.join(",")})`);
   if (chatId) params.set("chat_id", `eq.${chatId}`);
   if (senderId) params.set("sender_id", `eq.${senderId}`);
+  if (threadTarget) {
+    params.set("platform", `eq.${threadTarget.platform}`);
+    params.set("chat_id", `eq.${threadTarget.chatId}`);
+    params.set("limit", "10000");
+  }
 
   const headers = supabaseHeaders(env);
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, {
@@ -6457,6 +6576,7 @@ async function fetchMessages(request, env, authUser) {
   if (view === "threads") {
     try {
       messages = await withThreadAncestors(env, headers, messages, topicByThread);
+      if (threadTarget) messages = filterRowsForThread(messages, threadTarget);
     } catch (error) {
       return json({ error: "درخواست پیام‌های اصلی ترد از دیتابیس انجام نشد", detail: String(error?.message || error) }, 500);
     }
