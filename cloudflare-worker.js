@@ -21,7 +21,7 @@ const HTML = `<!doctype html>
     main { padding: 18px 24px; }
     .page[hidden] { display:none; }
     .filters { position:sticky; top:var(--header-h); z-index:45; display:grid; grid-template-columns: 1fr 150px 170px 170px 110px; gap:10px; min-height:var(--filters-h); align-items:center; width:calc(100% + 48px); margin:0 -24px 18px; padding:10px 24px; background:var(--bg); border-bottom:1px solid var(--line); box-shadow:0 8px 16px rgba(22,22,22,.06); }
-    .thread-filters { grid-template-columns: minmax(170px, .8fr) minmax(200px, 1fr) minmax(170px, .8fr) 105px 105px 105px minmax(150px, .7fr) 110px; max-width:none; margin:0 -24px 18px; }
+    .thread-filters { grid-template-columns: minmax(170px, .8fr) minmax(190px, .9fr) minmax(190px, 1fr) minmax(165px, .8fr) 98px 98px 98px minmax(150px, .7fr) 110px; max-width:none; margin:0 -24px 18px; }
     .mobile-filter-toggle { display:none; }
     input, select, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
@@ -30,6 +30,7 @@ const HTML = `<!doctype html>
     .password-toggle { position:absolute; left:6px; top:5px; width:34px; height:28px; margin:0; padding:0; display:grid; place-items:center; border:1px solid var(--line); background:#fff; color:var(--muted); }
     .password-toggle svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; }
     .multi-filter { position:relative; min-width:0; }
+    .uuid-filter { width:100%; min-width:0; text-align:left; direction:ltr; }
     .multi-control { position:relative; }
     .multi-button { width:100%; display:grid; grid-template-columns:minmax(0, 1fr) 18px; align-items:center; gap:8px; background:#fff; color:var(--ink); border-color:var(--line); text-align:right; direction:rtl; padding-inline:10px 12px; }
     .multi-button::before { content:"⌄"; grid-column:2; color:var(--muted); font-size:14px; justify-self:center; }
@@ -728,6 +729,7 @@ const HTML = `<!doctype html>
       <section class="filters thread-filters">
         <button class="mobile-filter-toggle" id="threadFilterToggle" type="button">نمایش فیلترها</button>
         <div id="threadPlatform" class="multi-filter"></div>
+        <input id="threadUuid" class="uuid-filter" type="search" placeholder="UUID" autocomplete="off" />
         <div id="threadLabel" class="multi-filter"></div>
         <div id="threadGroup" class="multi-filter"></div>
         <div id="threadTopic" class="multi-filter"></div>
@@ -970,6 +972,7 @@ const HTML = `<!doctype html>
     const refreshEl = document.getElementById("refresh");
     const threadFilterToggleEl = document.getElementById("threadFilterToggle");
     const threadPlatformEl = document.getElementById("threadPlatform");
+    const threadUuidEl = document.getElementById("threadUuid");
     const threadLabelEl = document.getElementById("threadLabel");
     const threadGroupEl = document.getElementById("threadGroup");
     const threadTopicEl = document.getElementById("threadTopic");
@@ -1100,6 +1103,10 @@ const HTML = `<!doctype html>
       const match = window.location.pathname.match(/^\\/main\\/threads\\/([0-9a-f-]{36})$/i);
       const uuid = match?.[1]?.toLowerCase() || "";
       return THREAD_UUID_PATTERN.test(uuid) ? uuid : "";
+    }
+    function normalizeThreadUuidInput(value) {
+      const match = String(value || "").match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+      return match?.[0]?.toLowerCase() || "";
     }
     function telegramUsernameLocal(value) {
       return String(value || "").trim().replace(/^@+/, "");
@@ -1689,13 +1696,13 @@ const HTML = `<!doctype html>
       return Boolean(searchEl.value.trim() || messagePlatformFilter.values().length || messageGroupFilter.values().length || messageTopicFilter.values().length);
     }
     function threadFiltersActive() {
-      return Boolean(threadPlatformFilter.values().length || threadLabelFilter.values().length || threadGroupFilter.values().length || threadTopicFilter.values().length || selectedThreadJalaliDate());
+      return Boolean(threadUuidEl.value.trim() || threadPlatformFilter.values().length || threadLabelFilter.values().length || threadGroupFilter.values().length || threadTopicFilter.values().length || selectedThreadJalaliDate());
     }
     function activeMessageFilterCount() {
       return (searchEl.value.trim() ? 1 : 0) + messagePlatformFilter.values().length + messageGroupFilter.values().length + messageTopicFilter.values().length;
     }
     function activeThreadFilterCount() {
-      return threadPlatformFilter.values().length + threadLabelFilter.values().length + threadGroupFilter.values().length + threadTopicFilter.values().length + (selectedThreadJalaliDate() ? 1 : 0);
+      return (threadUuidEl.value.trim() ? 1 : 0) + threadPlatformFilter.values().length + threadLabelFilter.values().length + threadGroupFilter.values().length + threadTopicFilter.values().length + (selectedThreadJalaliDate() ? 1 : 0);
     }
     function syncMobileFilterToggle(toggle, filtersRoot, count) {
       if (!toggle || !filtersRoot) return;
@@ -1721,6 +1728,7 @@ const HTML = `<!doctype html>
       updateFilterButtons();
     }
     function resetThreadFilters() {
+      threadUuidEl.value = "";
       threadPlatformFilter.clear();
       threadLabelFilter.clear();
       threadGroupFilter.clear();
@@ -2104,9 +2112,19 @@ const HTML = `<!doctype html>
       if (!canReplyToRow(row)) return "";
       return '<button class="details-button thread-reply-toggle" type="button" data-reply-toggle>پاسخ</button>';
     }
-    function threadDirectLinkButton(uuid) {
+    function messageUuid(row) {
+      if (!row?.chat_id || !row?.message_id) return "";
+      return threadUuidForParts(row.platform || "telegram", row.chat_id, row.message_id);
+    }
+    function threadDirectLinkButton(row, uuid) {
+      uuid = uuid || messageUuid(row);
       if (!uuid) return "";
       return \`<a class="details-button" href="/main/threads/\${esc(uuid)}">لینک</a>\`;
+    }
+    function threadContainsUuid(thread, uuid) {
+      if (!uuid) return true;
+      if (thread.uuid === uuid) return true;
+      return [thread.root, ...(thread.replies || [])].some((row) => messageUuid(row) === uuid);
     }
     function threadReplyForm(row) {
       if (!canReplyToRow(row)) return "";
@@ -2143,7 +2161,7 @@ const HTML = `<!doctype html>
               \${row.reply_to_message_id ? \`<span class="thread-pill">ریپلای به: \${esc(row.reply_to_message_id)}</span>\` : ""}
               <span class="thread-muted">\${esc(row.sent_jalali_date || "")} \${esc(row.sent_time || "")}</span>
               \${options.showDetails ? \`<button class="details-button" type="button" data-detail-key="thread-detail-\${index}">جزئیات</button>\` : ""}
-              \${threadDirectLinkButton(options.threadUuid)}
+              \${threadDirectLinkButton(row, options.threadUuid)}
               \${threadReplyButton(row)}
             </div>
             <div class="thread-message">\${messageWithBadge(row)}</div>
@@ -2866,18 +2884,31 @@ const HTML = `<!doctype html>
       const token = showLoading("در حال دریافت تردها...");
       try {
         const threadUuid = threadUuidFromPath();
+        let requestedThreadUuid = threadUuid;
         if (!threadUuid) await loadThreadFilterOptions();
         const params = new URLSearchParams();
         params.set("view", "threads");
         if (threadUuid) {
           params.set("thread_uuid", threadUuid);
         } else {
-          appendFilterValues(params, "platform", selectedPlatformValues(threadPlatformFilter));
-          appendFilterValues(params, "label", threadLabelFilter.values());
-          appendFilterValues(params, "group", threadGroupFilter.values());
-          appendFilterValues(params, "topic", threadTopicFilter.values());
-          const jalaliDate = selectedThreadJalaliDate();
-          if (jalaliDate) params.set("jalali_date", jalaliDate);
+          const uuidRaw = threadUuidEl.value.trim();
+          const uuidFilter = normalizeThreadUuidInput(uuidRaw);
+          if (uuidRaw && !uuidFilter) {
+            threadRowsEl.innerHTML = "";
+            setStatus(token, "UUID نامعتبر است");
+            return;
+          }
+          if (uuidFilter) {
+            requestedThreadUuid = uuidFilter;
+            params.set("thread_uuid", uuidFilter);
+          } else {
+            appendFilterValues(params, "platform", selectedPlatformValues(threadPlatformFilter));
+            appendFilterValues(params, "label", threadLabelFilter.values());
+            appendFilterValues(params, "group", threadGroupFilter.values());
+            appendFilterValues(params, "topic", threadTopicFilter.values());
+            const jalaliDate = selectedThreadJalaliDate();
+            if (jalaliDate) params.set("jalali_date", jalaliDate);
+          }
         }
         const res = await fetch("/api/messages?" + params);
         const data = await res.json();
@@ -2891,12 +2922,12 @@ const HTML = `<!doctype html>
         data.messages.forEach((row, index) => detailByKey.set("thread-detail-" + index, detailHtml(row)));
         const indexByRow = new Map(data.messages.map((row, index) => [row, index]));
         const threads = buildThreads(data.messages);
-        if (threadUuid) expandedThreadKeys.add(threadUuid);
-        const visibleThreads = threadUuid ? threads.filter((thread) => thread.uuid === threadUuid) : threads;
+        const visibleThreads = requestedThreadUuid ? threads.filter((thread) => threadContainsUuid(thread, requestedThreadUuid)) : threads;
+        if (requestedThreadUuid) visibleThreads.forEach((thread) => expandedThreadKeys.add(thread.uuid));
         threadRowsEl.innerHTML = visibleThreads.length ? visibleThreads.map((thread) => {
           const rootIndex = indexByRow.get(thread.root) ?? "missing-" + thread.root.message_id;
           return \`<section class="thread-card">
-            \${threadNode(thread.root, "thread-root", rootIndex, { showDetails: Boolean(threadUuid), threadUuid: threadUuid ? "" : thread.uuid })}
+            \${threadNode(thread.root, "thread-root", rootIndex, { showDetails: Boolean(threadUuid), threadUuid: thread.uuid })}
             <div class="thread-replies">
               \${threadRepliesHtml(thread, indexByRow, { showDetails: Boolean(threadUuid) })}
             </div>
@@ -3450,6 +3481,18 @@ const HTML = `<!doctype html>
     });
     searchEl.addEventListener("input", updateFilterButtons);
     searchEl.addEventListener("keydown", e => { if (e.key === "Enter") load(); });
+    let threadUuidFilterTimer = null;
+    threadUuidEl.addEventListener("input", () => {
+      updateFilterButtons();
+      clearTimeout(threadUuidFilterTimer);
+      threadUuidFilterTimer = setTimeout(() => loadThreads(), 450);
+    });
+    threadUuidEl.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        clearTimeout(threadUuidFilterTimer);
+        loadThreads();
+      }
+    });
     document.addEventListener("click", (event) => {
       if (!event.target.closest(".user-menu")) userMenuEl.classList.remove("open");
       if (!event.target.closest(".multi-filter")) {
@@ -4080,7 +4123,8 @@ function threadUuidForParts(platform, chatId, messageId) {
 }
 
 function parseThreadUuid(uuid) {
-  const value = String(uuid || "").toLowerCase();
+  const match = String(uuid || "").match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+  const value = (match?.[0] || String(uuid || "")).toLowerCase();
   if (!THREAD_UUID_PATTERN.test(value)) return null;
   const hex = value.replace(/-/g, "");
   const bytes = new Uint8Array(16);
@@ -5330,15 +5374,48 @@ function threadRootKeyForRow(row, byKey) {
 
 function filterRowsForThread(messages, threadTarget) {
   if (!threadTarget) return messages;
-  const rootKey = messageKey({ platform: threadTarget.platform, chat_id: threadTarget.chatId }, threadTarget.messageId);
   const byKey = latestMessageMap(messages);
+  const targetKey = messageKey({ platform: threadTarget.platform, chat_id: threadTarget.chatId }, threadTarget.messageId);
+  const targetRow = byKey.get(targetKey);
+  const rootKey = targetRow ? threadRootKeyForRow(targetRow, byKey) : targetKey;
   return messages.filter((row) => messageKey(row) === rootKey || threadRootKeyForRow(row, byKey) === rootKey);
 }
 
 async function fetchThreadRowsByTarget(env, headers, threadTarget) {
-  const rows = [];
+  const rowsByKey = new Map();
+  const addRows = (batch) => {
+    for (const row of batch) {
+      const key = messageKey(row);
+      if (key) rowsByKey.set(key, row);
+    }
+  };
+  async function fetchMessageId(messageId) {
+    const params = new URLSearchParams();
+    params.set("select", TELEGRAM_MESSAGE_SELECT);
+    params.set("platform", `eq.${threadTarget.platform}`);
+    params.set("chat_id", `eq.${threadTarget.chatId}`);
+    params.set("message_id", `eq.${messageId}`);
+    params.set("limit", "20");
+    params.set("order", "sent_at_utc.desc.nullslast,update_id.desc");
+    const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers });
+    if (!response.ok) throw new Error(await response.text());
+    return await response.json();
+  }
+
+  const targetRows = await fetchMessageId(threadTarget.messageId);
+  addRows(targetRows);
+  let rootMessageId = threadTarget.messageId;
+  let current = targetRows[0] || null;
+  for (let depth = 0; depth < 12 && current?.reply_to_message_id && !isTopicRootReplyRow(current); depth += 1) {
+    const parentRows = await fetchMessageId(current.reply_to_message_id);
+    if (!parentRows.length) break;
+    addRows(parentRows);
+    current = parentRows[0];
+    rootMessageId = current.message_id || rootMessageId;
+  }
+
   const seenMessageIds = new Set();
-  let frontier = [threadTarget.messageId];
+  let frontier = [rootMessageId];
   for (let depth = 0; depth < 12 && frontier.length; depth += 1) {
     const params = new URLSearchParams();
     params.set("select", TELEGRAM_MESSAGE_SELECT);
@@ -5347,24 +5424,24 @@ async function fetchThreadRowsByTarget(env, headers, threadTarget) {
     params.set("limit", "10000");
     params.set("order", "sent_at_utc.asc.nullslast,message_id.asc,update_id.asc");
     if (depth === 0) {
-      params.set("or", `(message_id.eq.${threadTarget.messageId},reply_to_message_id.eq.${threadTarget.messageId})`);
+      params.set("or", `(message_id.eq.${rootMessageId},reply_to_message_id.eq.${rootMessageId})`);
     } else {
       params.set("reply_to_message_id", `in.(${frontier.join(",")})`);
     }
     const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers });
     if (!response.ok) throw new Error(await response.text());
     const batch = await response.json();
-    rows.push(...batch);
+    addRows(batch);
     const next = [];
     for (const row of batch) {
       const messageId = String(row.message_id || "");
       if (!messageId || seenMessageIds.has(messageId)) continue;
       seenMessageIds.add(messageId);
-      if (messageId !== String(threadTarget.messageId)) next.push(messageId);
+      if (messageId !== String(rootMessageId)) next.push(messageId);
     }
     frontier = next;
   }
-  return rows;
+  return [...rowsByKey.values()];
 }
 
 function messageMatchesSearch(row, query) {
