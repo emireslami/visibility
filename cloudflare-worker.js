@@ -21,7 +21,7 @@ const HTML = `<!doctype html>
     main { padding: 18px 24px; }
     .page[hidden] { display:none; }
     .filters { position:sticky; top:var(--header-h); z-index:45; display:grid; grid-template-columns: 1fr 150px 170px 170px 110px; gap:10px; min-height:var(--filters-h); align-items:center; width:calc(100% + 48px); margin:0 -24px 18px; padding:10px 24px; background:var(--bg); border-bottom:1px solid var(--line); box-shadow:0 8px 16px rgba(22,22,22,.06); }
-    .thread-filters { grid-template-columns: minmax(200px, 1fr) minmax(170px, .8fr) 105px 105px 105px minmax(150px, .7fr) 110px; max-width:none; margin:0 -24px 18px; }
+    .thread-filters { grid-template-columns: minmax(170px, .8fr) minmax(200px, 1fr) minmax(170px, .8fr) 105px 105px 105px minmax(150px, .7fr) 110px; max-width:none; margin:0 -24px 18px; }
     .mobile-filter-toggle { display:none; }
     input, select, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
@@ -730,6 +730,7 @@ const HTML = `<!doctype html>
       <section class="filters thread-filters">
         <button class="mobile-filter-toggle" id="threadFilterToggle" type="button">نمایش فیلترها</button>
         <div id="threadPlatform" class="multi-filter"></div>
+        <div id="threadLabel" class="multi-filter"></div>
         <div id="threadGroup" class="multi-filter"></div>
         <div id="threadTopic" class="multi-filter"></div>
         <div id="threadYear" class="multi-filter single-filter"></div>
@@ -971,6 +972,7 @@ const HTML = `<!doctype html>
     const refreshEl = document.getElementById("refresh");
     const threadFilterToggleEl = document.getElementById("threadFilterToggle");
     const threadPlatformEl = document.getElementById("threadPlatform");
+    const threadLabelEl = document.getElementById("threadLabel");
     const threadGroupEl = document.getElementById("threadGroup");
     const threadTopicEl = document.getElementById("threadTopic");
     const threadYearEl = document.getElementById("threadYear");
@@ -1653,6 +1655,7 @@ const HTML = `<!doctype html>
       load();
     });
     const threadPlatformFilter = createMultiFilter(threadPlatformEl, "همه پلتفرم‌ها", () => { updateGroupOptions(); updateThreadTopicOptions(); updateFilterButtons(); loadThreads(); });
+    const threadLabelFilter = createMultiFilter(threadLabelEl, "همه نوع گروه‌ها", () => { updateGroupOptions(); updateThreadTopicOptions(); updateFilterButtons(); loadThreads(); });
     const threadGroupFilter = createMultiFilter(threadGroupEl, "همه گروه‌ها", () => { updateThreadTopicOptions(); updateFilterButtons(); loadThreads(); });
     const threadTopicFilter = createMultiFilter(threadTopicEl, "همه تاپیک‌ها", () => {
       syncGroupsFromSelectedTopics(threadGroupFilter, threadTopicFilter);
@@ -1688,13 +1691,13 @@ const HTML = `<!doctype html>
       return Boolean(searchEl.value.trim() || messagePlatformFilter.values().length || messageGroupFilter.values().length || messageTopicFilter.values().length);
     }
     function threadFiltersActive() {
-      return Boolean(threadPlatformFilter.values().length || threadGroupFilter.values().length || threadTopicFilter.values().length || selectedThreadJalaliDate());
+      return Boolean(threadPlatformFilter.values().length || threadLabelFilter.values().length || threadGroupFilter.values().length || threadTopicFilter.values().length || selectedThreadJalaliDate());
     }
     function activeMessageFilterCount() {
       return (searchEl.value.trim() ? 1 : 0) + messagePlatformFilter.values().length + messageGroupFilter.values().length + messageTopicFilter.values().length;
     }
     function activeThreadFilterCount() {
-      return threadPlatformFilter.values().length + threadGroupFilter.values().length + threadTopicFilter.values().length + (selectedThreadJalaliDate() ? 1 : 0);
+      return threadPlatformFilter.values().length + threadLabelFilter.values().length + threadGroupFilter.values().length + threadTopicFilter.values().length + (selectedThreadJalaliDate() ? 1 : 0);
     }
     function syncMobileFilterToggle(toggle, filtersRoot, count) {
       if (!toggle || !filtersRoot) return;
@@ -1721,6 +1724,7 @@ const HTML = `<!doctype html>
     }
     function resetThreadFilters() {
       threadPlatformFilter.clear();
+      threadLabelFilter.clear();
       threadGroupFilter.clear();
       threadTopicFilter.clear();
       threadYearFilter.clear();
@@ -1755,8 +1759,10 @@ const HTML = `<!doctype html>
       threadDayFilter.setOptions(days);
     }
     function updateThreadTopicOptions() {
+      const selectedLabels = new Set(threadLabelFilter.values());
       const topics = (threadFilterOptions?.topics || [])
         .filter((topic) => platformMatchesFilter(topic, threadPlatformFilter))
+        .filter((topic) => !selectedLabels.size || selectedLabels.has(topic.group_label_text || groupLabelText(topic.group_label)))
         .filter((topic) => !threadGroupFilter.values().length || threadGroupFilter.values().includes(topic.chat_title))
         .map((topic) => topic.topic_name)
         .filter(Boolean);
@@ -1778,6 +1784,7 @@ const HTML = `<!doctype html>
         .filter(Boolean);
       const threadGroups = groups
         .filter((group) => platformMatchesFilter(group, threadPlatformFilter))
+        .filter((group) => !threadLabelFilter.values().length || threadLabelFilter.values().includes(group.group_label_text || groupLabelText(group.group_label)))
         .map((group) => group.chat_title)
         .filter(Boolean);
       messageGroupFilter.setOptions(messageGroups);
@@ -1799,6 +1806,7 @@ const HTML = `<!doctype html>
       const platforms = (data.platforms || []).map(platformText).filter(Boolean);
       threadPlatformFilter.setOptions(platforms);
       messagePlatformFilter.setOptions(platforms);
+      threadLabelFilter.setOptions(groupLabelOptions.filter(([value]) => value).map(([, label]) => label));
       updateGroupOptions();
       updateThreadTopicOptions();
       updateMessageTopicOptions();
@@ -2862,6 +2870,7 @@ const HTML = `<!doctype html>
           params.set("thread_uuid", threadUuid);
         } else {
           appendFilterValues(params, "platform", selectedPlatformValues(threadPlatformFilter));
+          appendFilterValues(params, "label", threadLabelFilter.values());
           appendFilterValues(params, "group", threadGroupFilter.values());
           appendFilterValues(params, "topic", threadTopicFilter.values());
           const jalaliDate = selectedThreadJalaliDate();
@@ -3935,6 +3944,17 @@ function validTelegramUsername(value) {
 function normalizeGroupLabel(value) {
   const label = String(value || "").trim();
   return GROUP_LABELS.includes(label) ? label : null;
+}
+
+function groupLabelValueFromText(value) {
+  const label = String(value || "").trim();
+  if (GROUP_LABELS.includes(label)) return label;
+  const byText = {
+    "گروه‌های داخلی شرکت": "internal_team",
+    "گروه‌های مشتریان": "customer",
+    "گروه‌های پروایدرهای ما": "provider",
+  };
+  return byText[label] || null;
 }
 
 function groupLabelTextServer(value) {
@@ -6515,6 +6535,7 @@ async function fetchMessages(request, env, authUser) {
   const filters = [];
   const q = url.searchParams.get("q");
   const platforms = [...new Set(url.searchParams.getAll("platform").map(normalizePlatform).filter(Boolean))];
+  const labels = url.searchParams.getAll("label").map(groupLabelValueFromText).filter(Boolean);
   const groups = url.searchParams.getAll("group").map((value) => value.trim()).filter(Boolean);
   const topicsFilter = url.searchParams.getAll("topic").map((value) => value.trim()).filter(Boolean);
   const jalaliDateFilter = url.searchParams.get("jalali_date");
@@ -6569,6 +6590,9 @@ async function fetchMessages(request, env, authUser) {
   if (groups.length) {
     const normalizedGroups = groups.map((value) => value.toLowerCase());
     messages = messages.filter((row) => normalizedGroups.includes(String(row.chat_title || "").toLowerCase()));
+  }
+  if (labels.length) {
+    messages = messages.filter((row) => labels.includes(String(row.group_label || "")));
   }
   if (jalaliDateFilter) {
     messages = messages.filter((row) => String(row.sent_jalali_date || "") === jalaliDateFilter);
@@ -7414,9 +7438,16 @@ async function fetchThreadFilterOptions(request, env, authUser) {
     return json({ error: "درخواست تاپیک‌ها از دیتابیس انجام نشد", detail: await topicsResponse.text() }, 500);
   }
   const groupAccess = groupAccessForUser(authUser);
-  const groups = (await groupsResponse.json()).filter((group) => group.chat_title && groupRowAllowedByAccess(group, groupAccess));
+  const groups = (await groupsResponse.json())
+    .filter((group) => group.chat_title && groupRowAllowedByAccess(group, groupAccess))
+    .map((group) => ({
+      ...group,
+      group_label: group.group_label || "",
+      group_label_text: groupLabelTextServer(group.group_label),
+    }));
   const platforms = [...new Set(groups.map((group) => normalizePlatform(group.platform)))];
   const groupTitleById = new Map(groups.map((group) => [chatKey(group), group.chat_title]));
+  const groupLabelById = new Map(groups.map((group) => [chatKey(group), group.group_label || ""]));
   const topicsByKey = new Map();
   for (const topic of await topicsResponse.json()) {
     const topicName = realTopicName(topic.topic_name);
@@ -7426,6 +7457,8 @@ async function fetchThreadFilterOptions(request, env, authUser) {
       platform: normalizePlatform(topic.platform),
       chat_id: topic.chat_id,
       chat_title: chatTitle,
+      group_label: groupLabelById.get(chatKey(topic)) || "",
+      group_label_text: groupLabelTextServer(groupLabelById.get(chatKey(topic))),
       topic_name: topicName,
     });
   }
