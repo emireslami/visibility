@@ -87,7 +87,7 @@ const HTML = `<!doctype html>
     .badge { display:inline-flex; align-items:center; height:22px; margin-inline:4px 8px; padding:0 8px; border-radius:999px; background:#fff4d6; color:#7a4a00; border:1px solid #f1cf75; font-size:11px; font-weight:700; direction:ltr; vertical-align:middle; white-space:nowrap; }
     .message-inner .badge { margin-inline:0; }
     .more { flex:0 0 auto; width:24px; height:24px; padding:0; display:inline-grid; place-items:center; border-radius:50%; font-size:16px; font-weight:700; line-height:1; }
-    .details-button { height: 28px; padding: 0 8px; font-size: 12px; }
+    .details-button { height: 28px; padding: 0 8px; font-size: 12px; display:inline-flex; align-items:center; justify-content:center; text-decoration:none; }
     .thread-list { display:grid; gap:14px; max-width:980px; margin:0 auto; direction:rtl; }
     .thread-card { background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
     .thread-root, .thread-reply, .thread-missing { padding:16px; }
@@ -96,8 +96,6 @@ const HTML = `<!doctype html>
     .thread-reply + .thread-reply { border-top:1px solid var(--line); }
     .thread-expand { padding:10px 16px; margin-right:28px; border-right:2px dashed var(--line); background:#fbfcfd; }
     .thread-expand-button { min-height:30px; padding:0 10px; font-size:12px; }
-    .thread-link-row { padding:0 16px 12px; display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:8px; }
-    .thread-link-row .thread-muted { direction:ltr; }
     .thread-missing { color:var(--muted); background:#fbfcfd; }
     .thread-item { display:grid; grid-template-columns:42px minmax(0, 1fr); gap:10px; align-items:start; }
     .thread-content { min-width:0; }
@@ -2106,6 +2104,10 @@ const HTML = `<!doctype html>
       if (!canReplyToRow(row)) return "";
       return '<button class="details-button thread-reply-toggle" type="button" data-reply-toggle>پاسخ</button>';
     }
+    function threadDirectLinkButton(uuid) {
+      if (!uuid) return "";
+      return \`<a class="details-button" href="/main/threads/\${esc(uuid)}">لینک</a>\`;
+    }
     function threadReplyForm(row) {
       if (!canReplyToRow(row)) return "";
       return \`<div class="thread-reply-actions">
@@ -2141,6 +2143,7 @@ const HTML = `<!doctype html>
               \${row.reply_to_message_id ? \`<span class="thread-pill">ریپلای به: \${esc(row.reply_to_message_id)}</span>\` : ""}
               <span class="thread-muted">\${esc(row.sent_jalali_date || "")} \${esc(row.sent_time || "")}</span>
               \${options.showDetails ? \`<button class="details-button" type="button" data-detail-key="thread-detail-\${index}">جزئیات</button>\` : ""}
+              \${threadDirectLinkButton(options.threadUuid)}
               \${threadReplyButton(row)}
             </div>
             <div class="thread-message">\${messageWithBadge(row)}</div>
@@ -2893,11 +2896,7 @@ const HTML = `<!doctype html>
         threadRowsEl.innerHTML = visibleThreads.length ? visibleThreads.map((thread) => {
           const rootIndex = indexByRow.get(thread.root) ?? "missing-" + thread.root.message_id;
           return \`<section class="thread-card">
-            \${threadNode(thread.root, "thread-root", rootIndex, { showDetails: Boolean(threadUuid) })}
-            \${threadUuid ? "" : \`<div class="thread-link-row">
-              <a class="details-button" href="/main/threads/\${esc(thread.uuid)}">لینک ترد</a>
-              <span class="thread-muted">\${esc(thread.uuid)}</span>
-            </div>\`}
+            \${threadNode(thread.root, "thread-root", rootIndex, { showDetails: Boolean(threadUuid), threadUuid: threadUuid ? "" : thread.uuid })}
             <div class="thread-replies">
               \${threadRepliesHtml(thread, indexByRow, { showDetails: Boolean(threadUuid) })}
             </div>
