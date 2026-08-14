@@ -5336,6 +5336,38 @@ function filterRowsForThread(messages, threadTarget) {
   return messages.filter((row) => messageKey(row) === rootKey || threadRootKeyForRow(row, byKey) === rootKey);
 }
 
+async function fetchThreadRowsByTarget(env, headers, threadTarget) {
+  const rows = [];
+  const seenMessageIds = new Set();
+  let frontier = [threadTarget.messageId];
+  for (let depth = 0; depth < 12 && frontier.length; depth += 1) {
+    const params = new URLSearchParams();
+    params.set("select", TELEGRAM_MESSAGE_SELECT);
+    params.set("platform", `eq.${threadTarget.platform}`);
+    params.set("chat_id", `eq.${threadTarget.chatId}`);
+    params.set("limit", "10000");
+    params.set("order", "sent_at_utc.asc.nullslast,message_id.asc,update_id.asc");
+    if (depth === 0) {
+      params.set("or", `(message_id.eq.${threadTarget.messageId},reply_to_message_id.eq.${threadTarget.messageId})`);
+    } else {
+      params.set("reply_to_message_id", `in.(${frontier.join(",")})`);
+    }
+    const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, { headers });
+    if (!response.ok) throw new Error(await response.text());
+    const batch = await response.json();
+    rows.push(...batch);
+    const next = [];
+    for (const row of batch) {
+      const messageId = String(row.message_id || "");
+      if (!messageId || seenMessageIds.has(messageId)) continue;
+      seenMessageIds.add(messageId);
+      if (messageId !== String(threadTarget.messageId)) next.push(messageId);
+    }
+    frontier = next;
+  }
+  return rows;
+}
+
 function enrichMessageRows(rows, topicByThread) {
   return rows.map((row) => {
     const date = row.sent_at_utc ? new Date(row.sent_at_utc) : null;
@@ -6581,7 +6613,8 @@ async function fetchMessages(request, env, authUser) {
     topics.map((topicRow) => [topicThreadKey(topicRow), topicRow.topic_name])
   );
   const allowedSet = await allowedChatKeySet(env, authUser);
-  const rows = (await response.json()).filter((row) => rowAllowedByChatSet(row, allowedSet));
+  const sourceRows = threadTarget ? await fetchThreadRowsByTarget(env, headers, threadTarget) : await response.json();
+  const rows = sourceRows.filter((row) => rowAllowedByChatSet(row, allowedSet));
   let messages = enrichMessageRows(rows, topicByThread);
   if (topicsFilter.length) {
     const normalizedTopics = topicsFilter.map((value) => value.toLowerCase());
