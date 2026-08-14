@@ -2116,7 +2116,7 @@ const HTML = `<!doctype html>
         </form>
       </div>\`;
     }
-    function threadNode(row, kind, index) {
+    function threadNode(row, kind, index, options = {}) {
       if (row.missing) {
         return \`<article class="thread-missing">
           <div class="thread-head">
@@ -2140,7 +2140,7 @@ const HTML = `<!doctype html>
               <span class="thread-pill">شناسه پیام: \${esc(row.message_id)}</span>
               \${row.reply_to_message_id ? \`<span class="thread-pill">ریپلای به: \${esc(row.reply_to_message_id)}</span>\` : ""}
               <span class="thread-muted">\${esc(row.sent_jalali_date || "")} \${esc(row.sent_time || "")}</span>
-              <button class="details-button" type="button" data-detail-key="thread-detail-\${index}">جزئیات</button>
+              \${options.showDetails ? \`<button class="details-button" type="button" data-detail-key="thread-detail-\${index}">جزئیات</button>\` : ""}
               \${threadReplyButton(row)}
             </div>
             <div class="thread-message">\${messageWithBadge(row)}</div>
@@ -2240,17 +2240,17 @@ const HTML = `<!doctype html>
         return b.activityTime - a.activityTime;
       });
     }
-    function threadRepliesHtml(thread, indexByRow) {
+    function threadRepliesHtml(thread, indexByRow, options = {}) {
       const replies = thread.replies || [];
       const expanded = expandedThreadKeys.has(thread.uuid) || threadUuidFromPath() === thread.uuid;
       if (replies.length <= 2 || expanded) {
-        return replies.map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply))).join("");
+        return replies.map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply), options)).join("");
       }
       const hiddenCount = replies.length - 2;
       const expandButton = \`<div class="thread-expand">
         <button class="secondary-button thread-expand-button" type="button" data-thread-expand="\${esc(thread.uuid)}">نمایش \${numberFmt.format(hiddenCount)} پاسخ قدیمی‌تر</button>
       </div>\`;
-      return expandButton + replies.slice(-2).map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply))).join("");
+      return expandButton + replies.slice(-2).map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply), options)).join("");
     }
     function openModal(text) {
       modalTitleEl.textContent = "متن کامل پیام";
@@ -2893,13 +2893,13 @@ const HTML = `<!doctype html>
         threadRowsEl.innerHTML = visibleThreads.length ? visibleThreads.map((thread) => {
           const rootIndex = indexByRow.get(thread.root) ?? "missing-" + thread.root.message_id;
           return \`<section class="thread-card">
-            \${threadNode(thread.root, "thread-root", rootIndex)}
-            <div class="thread-link-row">
+            \${threadNode(thread.root, "thread-root", rootIndex, { showDetails: Boolean(threadUuid) })}
+            \${threadUuid ? "" : \`<div class="thread-link-row">
               <a class="details-button" href="/main/threads/\${esc(thread.uuid)}">لینک ترد</a>
               <span class="thread-muted">\${esc(thread.uuid)}</span>
-            </div>
+            </div>\`}
             <div class="thread-replies">
-              \${threadRepliesHtml(thread, indexByRow)}
+              \${threadRepliesHtml(thread, indexByRow, { showDetails: Boolean(threadUuid) })}
             </div>
           </section>\`;
         }).join("") : '<div class="empty">ترد موردنظر پیدا نشد یا به آن دسترسی ندارید.</div>';
