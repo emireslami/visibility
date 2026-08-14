@@ -2187,11 +2187,12 @@ const HTML = `<!doctype html>
         const keyParts = key.split(":");
         const root = latestByMessage.get(key) || { missing: true, platform: keyParts[0], chat_id: keyParts[1], message_id: keyParts[2] };
         const replies = (repliesByRoot.get(key) || []).sort((a, b) => Number(a.message_id || 0) - Number(b.message_id || 0));
-        return { root, replies };
+        const activityTime = [root, ...replies]
+          .map((row) => Date.parse(row.edited_at_utc || row.sent_at_utc || 0) || 0)
+          .reduce((latest, time) => Math.max(latest, time), 0);
+        return { root, replies, activityTime };
       }).sort((a, b) => {
-        const aTime = Date.parse(a.root.sent_at_utc || a.replies[0]?.sent_at_utc || 0);
-        const bTime = Date.parse(b.root.sent_at_utc || b.replies[0]?.sent_at_utc || 0);
-        return bTime - aTime;
+        return b.activityTime - a.activityTime;
       });
     }
     function openModal(text) {
