@@ -238,8 +238,9 @@ const HTML = `<!doctype html>
     .roadmap-dependency-head { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--muted); font-size:12px; font-weight:800; }
     .roadmap-dependency-add { width:38px; height:32px; padding:0; font-size:20px; line-height:1; }
     .roadmap-dependency-list { display:grid; gap:8px; }
-    .roadmap-dependency-row { display:grid; grid-template-columns:minmax(140px, .9fr) minmax(120px, .7fr) minmax(120px, .7fr) minmax(120px, .7fr) minmax(120px, .7fr) minmax(160px, 1fr) 34px; gap:8px; align-items:center; }
+    .roadmap-dependency-row { display:grid; grid-template-columns:minmax(150px, 1fr) minmax(130px, .7fr) minmax(130px, .75fr) minmax(130px, .75fr) minmax(130px, .75fr) 34px; gap:8px; align-items:center; }
     .roadmap-dependency-row > * { min-width:0; }
+    .roadmap-dependency-description { grid-column:1 / -1; min-height:96px; padding:10px; border:1px solid var(--line); resize:vertical; font:inherit; direction:rtl; text-align:right; }
     .roadmap-dependency-remove { height:32px; padding:0; color:var(--danger); border-color:#fa4d56; background:#fff; }
     .roadmap-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
     .roadmap-table th, .roadmap-table td { text-align:right; direction:rtl; }
@@ -3317,8 +3318,8 @@ const HTML = `<!doctype html>
         <select data-dependency-product>\${roadmapProductOptions(roadmapProducts, value.product_id)}</select>
         <select data-dependency-subproduct>\${roadmapSubproductOptions(roadmapProducts, value.product_id, value.subproduct_id)}</select>
         <select data-dependency-team>\${roadmapTeamOptions(roadmapTeams, value.team_id)}</select>
-        <input data-dependency-description type="text" maxlength="1200" placeholder="شرح جزئیات وابستگی" value="\${esc(value.description || "")}" />
         <button class="roadmap-dependency-remove" type="button" aria-label="حذف وابستگی">×</button>
+        <textarea class="roadmap-dependency-description" data-dependency-description maxlength="1200" placeholder="شرح جزئیات وابستگی">\${esc(value.description || "")}</textarea>
       \`;
       roadmapDependencyListEl.appendChild(row);
     }
