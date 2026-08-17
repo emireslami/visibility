@@ -916,7 +916,7 @@ const HTML = `<!doctype html>
               <th>زمان تحویل</th>
               <th>توضیحات</th>
               <th>وابستگی‌ها</th>
-              <th>جزئیات</th>
+              <th>عملیات</th>
             </tr>
           </thead>
           <tbody id="roadmapRows"></tbody>
@@ -3437,7 +3437,10 @@ const HTML = `<!doctype html>
           <td data-label="زمان تحویل">\${esc(roadmapDeliveryText(item))}</td>
           <td class="roadmap-description-cell" data-label="توضیحات">\${esc(item.description || "-")}</td>
           <td data-label="وابستگی‌ها"><div class="roadmap-dependency-summary">\${dependencySummary(item.dependencies, products, teams)}</div></td>
-          <td data-label="جزئیات"><button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button></td>
+          <td data-label="عملیات">
+            <button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button>
+            \${isOwnerEmail(currentUser.email) ? \`<button class="revoke-button" type="button" data-roadmap-archive="\${esc(item.id)}">آرشیو</button>\` : ""}
+          </td>
         </tr>\`;
       }).join("") || '<tr><td colspan="8" class="empty">هنوز تحویل‌دادنی در نقشه راه ثبت نشده است</td></tr>';
     }
@@ -3825,6 +3828,35 @@ const HTML = `<!doctype html>
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات بات");
     });
     roadmapRowsEl.addEventListener("click", event => {
+      const archiveButton = event.target.closest("[data-roadmap-archive]");
+      if (archiveButton && !archiveButton.disabled) {
+        const id = archiveButton.dataset.roadmapArchive;
+        openConfirmModal({
+          title: "آرشیو تحویل‌دادنی",
+          message: "این مورد از نقشه‌راه آرشیو شود؟",
+          confirmText: "آرشیو",
+          cancelText: "انصراف",
+        }).then(async (confirmed) => {
+          if (!confirmed) return;
+          archiveButton.disabled = true;
+          roadmapMessageEl.textContent = "در حال آرشیو...";
+          try {
+            const res = await fetch("/api/roadmap?id=" + encodeURIComponent(id), { method: "DELETE" });
+            const data = await res.json();
+            if (!res.ok) {
+              roadmapMessageEl.textContent = data.error || "آرشیو نقشه راه انجام نشد";
+              archiveButton.disabled = false;
+              return;
+            }
+            roadmapMessageEl.textContent = "مورد نقشه‌راه آرشیو شد.";
+            await loadRoadmap();
+          } catch (error) {
+            roadmapMessageEl.textContent = "آرشیو نقشه راه انجام نشد";
+            archiveButton.disabled = false;
+          }
+        });
+        return;
+      }
       const detailsButton = event.target.closest("[data-detail-key]");
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات نقشه راه");
     });
@@ -8721,6 +8753,7 @@ function roadmapItemForClient(row) {
 async function fetchRoadmapItems(env) {
   const params = new URLSearchParams({
     select: "id,title,description,owner_email,product_id,subproduct_id,dependencies_json,priority,status,delivery_date,delivery_month,delivery_week,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
+    status: "neq.canceled",
     order: "delivery_month.asc.nullslast,delivery_week.asc.nullslast,delivery_date.asc,status.asc,created_at_utc.desc",
     limit: "1000",
   });
@@ -8851,6 +8884,37 @@ async function updateRoadmapItem(request, env, authUser) {
     oldValues: roadmapItemForClient(existing),
     newValues: roadmapItemForClient(item || { ...existing, ...payload }),
     metadata: { roadmap_id: id, title: item?.title || existing.title },
+  });
+  return json({ item: roadmapItemForClient(item || { ...existing, ...payload }) });
+}
+
+async function archiveRoadmapItem(request, env, authUser) {
+  if (!isAccessOwnerEmail(authUser?.email)) return forbiddenAccess();
+  const url = new URL(request.url);
+  const id = Number.parseInt(String(url.searchParams.get("id") || ""), 10);
+  if (!Number.isFinite(id) || id <= 0) return json({ error: "شناسه نقشه راه نامعتبر است" }, 400);
+  const existing = await fetchRoadmapItemById(env, id);
+  if (!existing) return json({ error: "آیتم نقشه راه پیدا نشد" }, 404);
+  const payload = {
+    status: "canceled",
+    updated_by_email: normalizeEmail(authUser.email),
+    updated_at_utc: new Date().toISOString(),
+  };
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_roadmap_items?id=eq.${id}`, {
+    method: "PATCH",
+    headers: supabaseHeaders(env, "return=representation"),
+    body: JSON.stringify(payload),
+  });
+  const saved = await readSupabaseJson(response);
+  if (!response.ok) return json({ error: "آرشیو نقشه راه انجام نشد", detail: saved?.message || saved || response.status }, 500);
+  const item = Array.isArray(saved) ? saved[0] : saved;
+  await insertAccessAuditLog(env, {
+    actorEmail: authUser.email,
+    targetEmail: item?.owner_email || existing.owner_email,
+    action: "roadmap_update",
+    oldValues: roadmapItemForClient(existing),
+    newValues: roadmapItemForClient(item || { ...existing, ...payload }),
+    metadata: { roadmap_id: id, title: item?.title || existing.title, archived: true },
   });
   return json({ item: roadmapItemForClient(item || { ...existing, ...payload }) });
 }
@@ -9800,6 +9864,10 @@ async function handleRequest(request, env) {
     if (url.pathname === "/api/roadmap" && request.method === "PATCH") {
       if (!hasAccessPermission(authUser, "roadmap")) return forbiddenAccess();
       return updateRoadmapItem(request, env, authUser);
+    }
+    if (url.pathname === "/api/roadmap" && request.method === "DELETE") {
+      if (!hasAccessPermission(authUser, "roadmap")) return forbiddenAccess();
+      return archiveRoadmapItem(request, env, authUser);
     }
     if (url.pathname === "/api/products" && request.method === "GET") {
       if (!hasAccessPermission(authUser, "products")) return forbiddenAccess();
