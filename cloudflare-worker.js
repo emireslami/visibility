@@ -243,6 +243,21 @@ const HTML = `<!doctype html>
     .roadmap-dependency-description { grid-column:1 / -1; min-height:96px; padding:10px; border:1px solid var(--line); resize:vertical; font:inherit; direction:rtl; text-align:right; }
     .roadmap-dependency-remove { height:32px; padding:0; color:var(--danger); border-color:#fa4d56; background:#fff; }
     .roadmap-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
+    .roadmap-path { margin:16px 0 18px; padding:14px; border:1px solid var(--line); background:#fff; overflow:auto; }
+    .roadmap-path-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
+    .roadmap-path-head h3 { margin:0; font-size:16px; }
+    .roadmap-path-note { color:var(--muted); font-size:12px; }
+    .roadmap-timeline { position:relative; min-width:980px; padding:128px 10px 64px; direction:ltr; }
+    .roadmap-axis { position:relative; height:4px; background:#c6c6c6; }
+    .roadmap-week-dot { position:absolute; top:50%; width:10px; height:10px; border-radius:50%; background:#fff; border:2px solid var(--muted); transform:translate(-50%, -50%); }
+    .roadmap-week-dot.has-items { width:14px; height:14px; border-color:var(--accent); background:var(--accent); }
+    .roadmap-month-label { position:absolute; top:24px; transform:translateX(-50%); color:var(--muted); font-size:12px; white-space:nowrap; }
+    .roadmap-pin { position:absolute; bottom:8px; width:1px; min-height:82px; background:var(--accent); transform:translateX(-50%); }
+    .roadmap-pin-card { position:absolute; left:50%; bottom:74px; width:170px; transform:translateX(-50%); padding:8px; border:1px solid var(--line); background:#fbfcfd; color:var(--ink); font-size:11px; line-height:1.5; direction:rtl; text-align:right; box-shadow:0 1px 2px rgba(22,22,22,.08); }
+    .roadmap-pin-card strong { display:block; font-size:12px; margin-bottom:4px; }
+    .roadmap-pin:nth-child(even) .roadmap-pin-card { bottom:102px; }
+    .roadmap-pin.is-outside { background:#8d8d8d; }
+    .roadmap-pin.is-outside .roadmap-pin-card { border-color:#8d8d8d; }
     .roadmap-table th, .roadmap-table td { text-align:right; direction:rtl; }
     .roadmap-table .roadmap-title-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.5; font-weight:700; }
     .roadmap-table .roadmap-description-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.6; color:var(--muted); }
@@ -855,6 +870,13 @@ const HTML = `<!doctype html>
           </div>
         </form>
         <div class="roadmap-message" id="roadmapMessage"></div>
+        <section class="roadmap-path" aria-label="نمای مسیر راه">
+          <div class="roadmap-path-head">
+            <h3>نمای مسیر راه</h3>
+            <span class="roadmap-path-note">شهریور تا اسفند، ۲۸ نقطه هفتگی</span>
+          </div>
+          <div class="roadmap-timeline" id="roadmapTimeline"></div>
+        </section>
         <table class="roadmap-table">
           <colgroup>
             <col style="width:20%" />
@@ -1242,6 +1264,7 @@ const HTML = `<!doctype html>
     const roadmapDependencyAddEl = document.getElementById("roadmapDependencyAdd");
     const roadmapDependencyListEl = document.getElementById("roadmapDependencyList");
     const roadmapMessageEl = document.getElementById("roadmapMessage");
+    const roadmapTimelineEl = document.getElementById("roadmapTimeline");
     const productFormEl = document.getElementById("productForm");
     const productNameEl = document.getElementById("productName");
     const productKeyEl = document.getElementById("productKey");
@@ -3251,6 +3274,73 @@ const HTML = `<!doctype html>
         </div></div>\`;
       }).join("");
     }
+    const roadmapPathMonths = [
+      { index: 6, label: "شهریور" },
+      { index: 7, label: "مهر" },
+      { index: 8, label: "آبان" },
+      { index: 9, label: "آذر" },
+      { index: 10, label: "دی" },
+      { index: 11, label: "بهمن" },
+      { index: 12, label: "اسفند" },
+    ];
+    function asciiNumber(value) {
+      return Number(String(value || "").replace(/[۰-۹]/g, (digit) => "۰۱۲۳۴۵۶۷۸۹".indexOf(digit)).replace(/[٠-٩]/g, (digit) => "٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
+    }
+    function persianMonthDay(dateValue) {
+      const date = new Date(String(dateValue || "") + "T12:00:00Z");
+      if (Number.isNaN(date.getTime())) return null;
+      const parts = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { month:"numeric", day:"numeric" }).formatToParts(date);
+      return {
+        month: asciiNumber(parts.find((part) => part.type === "month")?.value),
+        day: asciiNumber(parts.find((part) => part.type === "day")?.value),
+      };
+    }
+    function roadmapTimelineIndex(deliveryDate) {
+      const parts = persianMonthDay(deliveryDate);
+      if (!parts) return null;
+      const monthOffset = parts.month - 6;
+      if (monthOffset < 0 || monthOffset > 6) return null;
+      const weekOffset = Math.min(3, Math.max(0, Math.ceil(parts.day / 7) - 1));
+      return monthOffset * 4 + weekOffset;
+    }
+    function renderRoadmapTimeline(items, products) {
+      const totalPoints = 28;
+      const pinsByIndex = new Map();
+      const outside = [];
+      items.forEach((item) => {
+        const index = roadmapTimelineIndex(item.delivery_date);
+        if (index === null) outside.push(item);
+        else {
+          if (!pinsByIndex.has(index)) pinsByIndex.set(index, []);
+          pinsByIndex.get(index).push(item);
+        }
+      });
+      const dotHtml = Array.from({ length: totalPoints }, (_, index) => {
+        const left = (index / (totalPoints - 1)) * 100;
+        return \`<span class="roadmap-week-dot \${pinsByIndex.has(index) ? "has-items" : ""}" style="left:\${left}%"></span>\`;
+      }).join("");
+      const monthHtml = roadmapPathMonths.map((month, index) => {
+        const left = (((index * 4) + 1.5) / (totalPoints - 1)) * 100;
+        return \`<span class="roadmap-month-label" style="left:\${left}%">\${esc(month.label)}</span>\`;
+      }).join("");
+      const pinHtml = [...pinsByIndex.entries()].flatMap(([index, list]) => {
+        const left = (index / (totalPoints - 1)) * 100;
+        return list.map((item, itemIndex) => {
+          const productName = productNameById(products, item.subproduct_id || item.product_id);
+          return \`<div class="roadmap-pin" style="left:\${left}%; min-height:\${82 + itemIndex * 34}px">
+            <div class="roadmap-pin-card">
+              <strong>\${esc(item.title || "-")}</strong>
+              <span>\${esc(item.delivery_date || "-")}</span><br>
+              <span>\${esc(productName || "-")}</span>
+            </div>
+          </div>\`;
+        });
+      }).join("");
+      const outsideHtml = outside.length ? \`<div class="roadmap-pin is-outside" style="left:100%">
+        <div class="roadmap-pin-card"><strong>خارج از بازه</strong>\${outside.map((item) => \`<br>\${esc(item.title || "-")} · \${esc(item.delivery_date || "-")}\`).join("")}</div>
+      </div>\` : "";
+      roadmapTimelineEl.innerHTML = \`<div class="roadmap-axis">\${dotHtml}\${monthHtml}\${pinHtml}\${outsideHtml}</div>\`;
+    }
     function roadmapItemDetailsHtml(item) {
       return \`<div class="details-grid">
         \${detailRow("عنوان تحویل‌دادنی", item.title || "-")}
@@ -3270,6 +3360,7 @@ const HTML = `<!doctype html>
       roadmapTeams = teams;
       roadmapProductEl.innerHTML = roadmapProductOptions(products, roadmapProductEl.value);
       syncRoadmapSubproductOptions();
+      renderRoadmapTimeline(items, products);
       detailByKey.clear();
       roadmapRowsEl.innerHTML = items.map((item, index) => {
         const key = "roadmap-" + index;
