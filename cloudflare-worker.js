@@ -8,19 +8,24 @@ const HTML = `<!doctype html>
     @font-face { font-family:"IRANSans"; src:url("/fonts/IRANSansWeb-FaNum.ttf") format("truetype"); font-weight:400; font-style:normal; font-display:swap; }
     @font-face { font-family:"IRANSans"; src:url("/fonts/IRANSansWeb-FaNum-Medium.ttf") format("truetype"); font-weight:600; font-style:normal; font-display:swap; }
     @font-face { font-family:"IRANSans"; src:url("/fonts/IRANSansWeb-FaNum-Bold.ttf") format("truetype"); font-weight:700; font-style:normal; font-display:swap; }
-    :root { color-scheme: light; --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; --header-h:69px; --filters-h:62px; }
+    :root { color-scheme: light; --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; --header-h:69px; --filters-h:62px; --sidebar-w:260px; }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: "IRANSans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
+    .app-shell { min-height:100vh; display:grid; grid-template-columns:minmax(0, 1fr) var(--sidebar-w); direction:ltr; }
+    .app-sidebar { grid-column:2; position:sticky; top:0; height:100vh; overflow:auto; padding:18px 14px; background:var(--panel); border-left:1px solid var(--line); direction:rtl; }
+    .app-main { grid-column:1; min-width:0; direction:rtl; }
+    .sidebar-brand { padding:4px 8px 18px; border-bottom:1px solid var(--line); margin-bottom:14px; }
     header { position:sticky; top:0; z-index:50; min-height:var(--header-h); padding: 18px 24px; background: var(--panel); border-bottom: 1px solid var(--line); display:flex; gap:16px; align-items:center; justify-content:space-between; }
     .brand { display:flex; gap:14px; align-items:center; }
     .header-tools { display:flex; align-items:center; gap:12px; }
     h1 { margin: 0; font-size: 20px; }
-    nav { display:flex; flex-wrap:wrap; gap:8px; direction:rtl; align-items:stretch; }
-    .nav-section { display:flex; align-items:stretch; gap:6px; padding:4px; border:1px solid var(--line); background:#fbfcfd; }
-    .nav-section-title { min-height:32px; display:inline-flex; align-items:center; padding:0 10px; color:var(--muted); background:#eef3f4; font-weight:800; white-space:nowrap; }
+    .page-title { font-size:18px; font-weight:800; color:var(--ink); }
+    nav { display:grid; gap:14px; direction:rtl; align-items:stretch; }
+    .nav-section { display:grid; gap:6px; padding:0; border:0; background:transparent; }
+    .nav-section-title { min-height:28px; display:inline-flex; align-items:center; padding:0 8px; color:var(--muted); background:transparent; font-weight:800; white-space:nowrap; font-size:12px; }
     .nav-section.active .nav-section-title { color:var(--accent); background:#eefbfc; }
-    .nav-section-items { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
-    .nav-button { height:32px; padding:0 12px; background:#fff; color:var(--ink); border-color:var(--line); }
+    .nav-section-items { display:grid; gap:4px; align-items:stretch; }
+    .nav-button { width:100%; height:36px; padding:0 12px; background:#fff; color:var(--ink); border-color:transparent; text-align:right; justify-content:flex-start; }
     .nav-button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
     main { padding: 18px 24px; }
     .page[hidden] { display:none; }
@@ -338,18 +343,25 @@ const HTML = `<!doctype html>
       --shadow:0 8px 24px rgba(22,22,22,.08);
       --header-h:64px;
       --filters-h:64px;
+      --sidebar-w:268px;
     }
     body { color:var(--ink); background:var(--bg); font-size:13px; line-height:1.5; }
+    .app-shell { grid-template-columns:minmax(0, 1fr) var(--sidebar-w); }
+    .app-sidebar { padding:20px 14px; background:#fff; border-left:1px solid var(--line); box-shadow:-1px 0 0 rgba(22,22,22,.02); }
+    .sidebar-brand { padding:2px 10px 18px; margin-bottom:16px; border-bottom:1px solid var(--line); }
+    .sidebar-brand h1 { font-size:26px; line-height:1.3; }
     header { min-height:var(--header-h); padding:12px 24px; background:#fff; border-bottom:1px solid var(--line); box-shadow:0 1px 0 rgba(22,22,22,.02); }
     h1 { font-size:22px; font-weight:800; letter-spacing:0; }
+    .page-title { min-height:38px; display:flex; align-items:center; color:#393939; font-size:20px; font-weight:800; }
     .brand { gap:18px; }
-    nav { gap:6px; }
-    .nav-section { border-radius:0; border-color:#c6c6c6; background:#f4f4f4; }
-    .nav-section-title { background:#e0e0e0; color:#525252; }
-    .nav-section.active .nav-section-title { color:#0f62fe; background:#edf5ff; }
-    .nav-button { height:34px; border-radius:0; border-color:#c6c6c6; background:#fff; color:#393939; font-weight:600; }
-    .nav-button:hover { background:#e8e8e8; }
-    .nav-button.active { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:inset 0 -2px 0 rgba(0,0,0,.18); }
+    nav { gap:18px; }
+    .nav-section { border-radius:0; border:0; background:transparent; }
+    .nav-section-title { height:28px; padding:0 10px; background:transparent; color:#6f6f6f; font-size:12px; letter-spacing:0; }
+    .nav-section.active .nav-section-title { color:#0f62fe; background:transparent; }
+    .nav-section-items { gap:4px; }
+    .nav-button { height:38px; border-radius:0; border-color:transparent; background:#fff; color:#393939; font-weight:700; justify-content:flex-start; text-align:right; }
+    .nav-button:hover { background:#f4f4f4; border-color:#f4f4f4; }
+    .nav-button.active { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:inset -3px 0 0 rgba(0,0,0,.18); }
     main { padding:18px 24px 28px; }
     .filters { padding:10px 24px; border-bottom:1px solid var(--line); background:var(--bg); }
     input, select, button { border-radius:0; border-color:#c6c6c6; color:var(--ink); }
@@ -413,14 +425,19 @@ const HTML = `<!doctype html>
     .spinner { border-color:#d0e2ff; border-top-color:var(--accent); }
     @media (max-width: 900px) {
       :root { --header-h:0px; --filters-h:58px; }
+      .app-shell { display:block; min-height:100vh; }
+      .app-sidebar { position:sticky; top:0; z-index:60; height:auto; max-height:45vh; overflow:auto; padding:10px 14px; border-left:0; border-bottom:1px solid var(--line); box-shadow:0 6px 18px rgba(22,22,22,.08); }
+      .sidebar-brand { display:flex; align-items:center; justify-content:space-between; padding:0 2px 10px; margin-bottom:10px; border-bottom:1px solid var(--line); }
+      .sidebar-brand h1 { font-size:20px; }
       header { position:static; display:grid; grid-template-columns:1fr auto; align-items:start; gap:10px; padding:12px 14px; }
       .brand { min-width:0; display:grid; gap:10px; }
+      .page-title { min-height:34px; font-size:18px; }
       h1 { font-size:20px; }
-      nav { width:100%; display:grid; grid-template-columns:1fr; gap:6px; direction:rtl; }
-      .nav-section { min-width:0; display:grid; grid-template-columns:84px minmax(0, 1fr); align-items:stretch; }
-      .nav-section-title { justify-content:center; padding:0 6px; font-size:12px; }
-      .nav-section-items { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px; }
-      .nav-button { min-width:0; width:100%; padding:0 6px; font-size:12px; }
+      nav { width:100%; display:flex; gap:10px; direction:rtl; overflow:auto; padding-bottom:2px; }
+      .nav-section { min-width:170px; display:grid; gap:4px; align-items:stretch; }
+      .nav-section-title { padding:0 4px; font-size:11px; }
+      .nav-section-items { display:grid; grid-template-columns:1fr; gap:4px; }
+      .nav-button { min-width:0; width:100%; padding:0 8px; font-size:12px; }
       .header-tools { align-items:start; gap:8px; }
       .meta { max-width:80px; min-height:38px; justify-content:flex-end; font-size:11px; text-align:left; }
       main { padding:12px 14px 22px; }
@@ -524,9 +541,11 @@ const HTML = `<!doctype html>
   </style>
 </head>
 <body>
-  <header>
-    <div class="brand">
+  <div class="app-shell">
+    <aside class="app-sidebar" aria-label="ناوبری اصلی">
+      <div class="sidebar-brand">
       <h1>دیدپذیری</h1>
+      </div>
       <nav aria-label="صفحه‌های داشبورد">
         <div class="nav-section" id="communicationsNavGroup">
           <span class="nav-section-title">ارتباطات</span>
@@ -555,6 +574,11 @@ const HTML = `<!doctype html>
           </div>
         </div>
       </nav>
+    </aside>
+    <div class="app-main">
+  <header>
+    <div class="brand">
+      <div class="page-title" id="pageTitle">پیام‌ها</div>
     </div>
     <div class="header-tools">
       <div class="meta" id="status">در حال دریافت...</div>
@@ -1042,6 +1066,8 @@ const HTML = `<!doctype html>
       </section>
     </section>
   </main>
+    </div>
+  </div>
   <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
       <div class="modal-head">
@@ -1061,6 +1087,7 @@ const HTML = `<!doctype html>
     const userDailyChartEl = document.getElementById("userDailyChart");
     const userChartLegendEl = document.getElementById("userChartLegend");
     const statusEl = document.getElementById("status");
+    const pageTitleEl = document.getElementById("pageTitle");
     const dashboardNavEl = document.getElementById("dashboardNav");
     const analyticsNavEl = document.getElementById("analyticsNav");
     const messagesNavEl = document.getElementById("messagesNav");
@@ -1587,6 +1614,20 @@ const HTML = `<!doctype html>
       else loadAccessUsers();
     }
     const routablePages = ["dashboard", "analytics", "threads", "messages", "roadmap", "user-groups", "groups", "senders", "broadcast", "bots", "access", "profile"];
+    const pageTitles = {
+      dashboard: "داشبورد",
+      analytics: "تحلیل",
+      threads: "تردها",
+      messages: "پیام‌ها",
+      roadmap: "نقشه راه",
+      "user-groups": "گروه‌بندی کاربران",
+      groups: "گروه‌ها",
+      senders: "ارسال‌کننده‌ها",
+      broadcast: "اطلاع‌رسانی",
+      bots: "بات‌ها",
+      access: "دسترسی",
+      profile: "پروفایل",
+    };
     function pagePath(page) {
       return "/main/" + page;
     }
@@ -3312,6 +3353,7 @@ const HTML = `<!doctype html>
       botsNavEl.classList.toggle("active", isBots);
       accessNavEl.classList.toggle("active", isAccess);
       syncNavGroupActive(page);
+      if (pageTitleEl) pageTitleEl.textContent = pageTitles[page] || "دیدپذیری";
       if (isDashboard) loadDashboard();
       else if (isAnalytics) loadAnalytics();
       else if (isGroups) loadGroups();
