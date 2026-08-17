@@ -215,13 +215,20 @@ const HTML = `<!doctype html>
     .analytics-detail-note { margin:0 0 12px; color:var(--muted); font-size:12px; white-space:normal; }
     .access-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
     .access-panel h2 { margin:0 0 6px; font-size:18px; }
-    .bots-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1180px; margin:0 auto; }
-    .bots-panel h2 { margin:0 0 6px; font-size:18px; }
-    .bots-panel p { margin:0 0 16px; }
+    .bots-panel, .roadmap-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1180px; margin:0 auto; }
+    .bots-panel h2, .roadmap-panel h2 { margin:0 0 6px; font-size:18px; }
+    .bots-panel p, .roadmap-panel p { margin:0 0 16px; }
     .bot-form { display:grid; grid-template-columns:130px minmax(150px, 1fr) minmax(150px, 1fr) minmax(220px, 1.3fr) 110px; gap:10px; align-items:center; margin:14px 0 16px; }
     .bot-form .password-wrap { margin:0; }
     .bot-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
     .bots-table td:last-child, .bots-table th:last-child { padding-left:12px; }
+    .roadmap-form { display:grid; grid-template-columns:minmax(180px, 1.2fr) minmax(160px, .9fr) 150px 130px 150px 110px; gap:10px; align-items:center; margin:14px 0 16px; }
+    .roadmap-form textarea { grid-column:1 / -2; min-height:76px; padding:10px; border:1px solid var(--line); border-radius:6px; resize:vertical; font:inherit; direction:rtl; text-align:right; }
+    .roadmap-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
+    .roadmap-table th, .roadmap-table td { text-align:right; direction:rtl; }
+    .roadmap-table .roadmap-title-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.5; font-weight:700; }
+    .roadmap-table .roadmap-description-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.6; color:var(--muted); }
+    .roadmap-table select { width:100%; min-width:118px; height:32px; font-size:12px; }
     .broadcast-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
     .broadcast-panel h2 { margin:0 0 6px; font-size:18px; }
     .broadcast-form { display:grid; gap:12px; margin-top:16px; }
@@ -368,8 +375,8 @@ const HTML = `<!doctype html>
     .modal-close { border-radius:0; }
     .detail-row { border-radius:0; border-color:var(--line); background:#fff; }
     .detail-label { color:#525252; }
-    .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel { border-radius:0; border-color:var(--line); box-shadow:0 1px 0 rgba(22,22,22,.04); }
-    .chart-head h2, .access-panel h2, .profile-panel h2, .bots-panel h2, .broadcast-panel h2 { font-size:20px; font-weight:800; }
+    .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel, .roadmap-panel { border-radius:0; border-color:var(--line); box-shadow:0 1px 0 rgba(22,22,22,.04); }
+    .chart-head h2, .access-panel h2, .profile-panel h2, .bots-panel h2, .broadcast-panel h2, .roadmap-panel h2 { font-size:20px; font-weight:800; }
     .broadcast-message-input, .broadcast-option { border-radius:0; border-color:#dfe1e6; }
     .bar-stack { border-radius:0; border-color:#c6c6c6; }
     .bar-segment { transition:filter .12s ease; }
@@ -407,11 +414,11 @@ const HTML = `<!doctype html>
       .thread-filters button { grid-column:1 / -1; }
       .multi-panel { width:min(var(--dropdown-w, 100%), calc(100vw - 28px)); max-height:45vh; z-index:1200; }
       .analytics-summary { grid-template-columns:repeat(2, minmax(120px, 1fr)); }
-      .messages-table, .groups-table, .senders-table, .bots-table, .access-log-table, .broadcast-log-table, .access-users-table, .analytics-table { display:block; border:0; background:transparent; box-shadow:none; }
-      .messages-table colgroup, .groups-table colgroup, .senders-table colgroup, .bots-table colgroup, .access-log-table colgroup, .broadcast-log-table colgroup, .access-users-table colgroup, .analytics-table colgroup,
-      .messages-table thead, .groups-table thead, .senders-table thead, .bots-table thead, .access-log-table thead, .broadcast-log-table thead, .access-users-table thead, .analytics-table thead { display:none; }
-      .messages-table tbody, .groups-table tbody, .senders-table tbody, .bots-table tbody, .access-log-table tbody, .broadcast-log-table tbody, .access-users-table tbody, .analytics-table tbody { display:grid; gap:10px; }
-      .messages-table tr, .groups-table tr, .senders-table tr, .bots-table tr, .access-log-table tr, .broadcast-log-table tr, .access-users-table tr, .analytics-table tr {
+      .messages-table, .groups-table, .senders-table, .bots-table, .roadmap-table, .access-log-table, .broadcast-log-table, .access-users-table, .analytics-table { display:block; border:0; background:transparent; box-shadow:none; }
+      .messages-table colgroup, .groups-table colgroup, .senders-table colgroup, .bots-table colgroup, .roadmap-table colgroup, .access-log-table colgroup, .broadcast-log-table colgroup, .access-users-table colgroup, .analytics-table colgroup,
+      .messages-table thead, .groups-table thead, .senders-table thead, .bots-table thead, .roadmap-table thead, .access-log-table thead, .broadcast-log-table thead, .access-users-table thead, .analytics-table thead { display:none; }
+      .messages-table tbody, .groups-table tbody, .senders-table tbody, .bots-table tbody, .roadmap-table tbody, .access-log-table tbody, .broadcast-log-table tbody, .access-users-table tbody, .analytics-table tbody { display:grid; gap:10px; }
+      .messages-table tr, .groups-table tr, .senders-table tr, .bots-table tr, .roadmap-table tr, .access-log-table tr, .broadcast-log-table tr, .access-users-table tr, .analytics-table tr {
         display:grid;
         gap:8px;
         padding:12px;
@@ -419,7 +426,7 @@ const HTML = `<!doctype html>
         background:#fff;
         box-shadow:0 1px 2px rgba(9,30,66,.08);
       }
-      .messages-table td, .groups-table td, .senders-table td, .bots-table td, .access-log-table td, .broadcast-log-table td, .access-users-table td, .analytics-table td {
+      .messages-table td, .groups-table td, .senders-table td, .bots-table td, .roadmap-table td, .access-log-table td, .broadcast-log-table td, .access-users-table td, .analytics-table td {
         min-height:0;
         height:auto;
         display:grid;
@@ -436,7 +443,7 @@ const HTML = `<!doctype html>
         font-size:12px;
         text-align:right;
       }
-      .messages-table td::before, .groups-table td::before, .senders-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before, .access-users-table td::before, .analytics-table td::before {
+      .messages-table td::before, .groups-table td::before, .senders-table td::before, .bots-table td::before, .roadmap-table td::before, .access-log-table td::before, .broadcast-log-table td::before, .access-users-table td::before, .analytics-table td::before {
         content:attr(data-label);
         color:#525252;
         font-weight:800;
@@ -456,10 +463,11 @@ const HTML = `<!doctype html>
       .access-log-table { margin-top:10px; direction:rtl; }
       .access-log-table th, .access-log-table td { direction:rtl; text-align:right; }
       .broadcast-log-table { margin-top:10px; direction:rtl; }
-      .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel { padding:14px; }
+      .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel, .roadmap-panel { padding:14px; }
       .chart-head { align-items:flex-start; flex-direction:column; }
       .legend-grid { grid-template-columns:1fr; }
-      .bot-form { grid-template-columns:1fr; }
+      .bot-form, .roadmap-form { grid-template-columns:1fr; }
+      .roadmap-form textarea { grid-column:1; }
       .access-form, .access-main { grid-template-columns:1fr; }
       .access-row { direction:rtl; }
       .access-email { white-space:normal; overflow-wrap:anywhere; text-align:left; direction:ltr; }
@@ -491,8 +499,8 @@ const HTML = `<!doctype html>
       .thread-filters { grid-template-columns:1fr; }
       .signals { grid-template-columns:1fr; }
       .analytics-summary { grid-template-columns:1fr; }
-      .messages-table td, .groups-table td, .senders-table td, .bots-table td, .access-log-table td, .broadcast-log-table td, .access-users-table td, .analytics-table td { grid-template-columns:1fr; gap:4px; }
-      .messages-table td::before, .groups-table td::before, .senders-table td::before, .bots-table td::before, .access-log-table td::before, .broadcast-log-table td::before, .access-users-table td::before, .analytics-table td::before { font-size:10px; }
+      .messages-table td, .groups-table td, .senders-table td, .bots-table td, .roadmap-table td, .access-log-table td, .broadcast-log-table td, .access-users-table td, .analytics-table td { grid-template-columns:1fr; gap:4px; }
+      .messages-table td::before, .groups-table td::before, .senders-table td::before, .bots-table td::before, .roadmap-table td::before, .access-log-table td::before, .broadcast-log-table td::before, .access-users-table td::before, .analytics-table td::before { font-size:10px; }
     }
   </style>
 </head>
@@ -505,6 +513,7 @@ const HTML = `<!doctype html>
         <button class="nav-button" id="analyticsNav" type="button">تحلیل</button>
         <button class="nav-button" id="threadsNav" type="button">تردها</button>
         <button class="nav-button active" id="messagesNav" type="button">پیام‌ها</button>
+        <button class="nav-button" id="roadmapNav" type="button">نقشه راه</button>
         <button class="nav-button" id="groupsNav" type="button">گروه‌ها</button>
         <button class="nav-button" id="sendersNav" type="button">ارسال‌کننده‌ها</button>
         <button class="nav-button" id="broadcastNav" type="button">اطلاع‌رسانی</button>
@@ -744,6 +753,56 @@ const HTML = `<!doctype html>
       </section>
       <div class="thread-list" id="threadRows"></div>
     </section>
+    <section class="page" id="roadmapPage" hidden>
+      <section class="roadmap-panel">
+        <h2>نقشه راه محصول</h2>
+        <p class="thread-muted">ثبت فیچرهای جدید محصول، مالک محصول و زمان تحویل.</p>
+        <form class="roadmap-form" id="roadmapForm">
+          <input id="roadmapTitle" type="text" maxlength="180" placeholder="عنوان فیچر" autocomplete="off" required />
+          <input id="roadmapOwner" type="email" placeholder="ایمیل مدیر محصول" autocomplete="off" dir="ltr" />
+          <input id="roadmapDelivery" type="date" required />
+          <select id="roadmapPriority" aria-label="اولویت">
+            <option value="medium">اولویت متوسط</option>
+            <option value="high">اولویت بالا</option>
+            <option value="critical">فوری</option>
+            <option value="low">اولویت پایین</option>
+          </select>
+          <select id="roadmapStatus" aria-label="وضعیت">
+            <option value="planned">برنامه‌ریزی‌شده</option>
+            <option value="in_progress">در حال انجام</option>
+            <option value="delivered">تحویل‌شده</option>
+            <option value="blocked">مسدود</option>
+            <option value="canceled">لغو‌شده</option>
+          </select>
+          <button type="submit">ثبت فیچر</button>
+          <textarea id="roadmapDescription" maxlength="4000" placeholder="توضیحات، محدوده و معیار تحویل"></textarea>
+        </form>
+        <div class="roadmap-message" id="roadmapMessage"></div>
+        <table class="roadmap-table">
+          <colgroup>
+            <col style="width:22%" />
+            <col style="width:13%" />
+            <col style="width:11%" />
+            <col style="width:13%" />
+            <col style="width:11%" />
+            <col style="width:20%" />
+            <col style="width:10%" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>فیچر</th>
+              <th>مدیر محصول</th>
+              <th>اولویت</th>
+              <th>وضعیت</th>
+              <th>زمان تحویل</th>
+              <th>توضیحات</th>
+              <th>جزئیات</th>
+            </tr>
+          </thead>
+          <tbody id="roadmapRows"></tbody>
+        </table>
+      </section>
+    </section>
     <section class="page" id="botsPage" hidden>
       <section class="bots-panel">
         <h2>مدیریت بات‌ها</h2>
@@ -953,6 +1012,7 @@ const HTML = `<!doctype html>
     const dashboardNavEl = document.getElementById("dashboardNav");
     const analyticsNavEl = document.getElementById("analyticsNav");
     const messagesNavEl = document.getElementById("messagesNav");
+    const roadmapNavEl = document.getElementById("roadmapNav");
     const groupsNavEl = document.getElementById("groupsNav");
     const sendersNavEl = document.getElementById("sendersNav");
     const threadsNavEl = document.getElementById("threadsNav");
@@ -965,6 +1025,7 @@ const HTML = `<!doctype html>
     const groupsPageEl = document.getElementById("groupsPage");
     const sendersPageEl = document.getElementById("sendersPage");
     const threadsPageEl = document.getElementById("threadsPage");
+    const roadmapPageEl = document.getElementById("roadmapPage");
     const broadcastPageEl = document.getElementById("broadcastPage");
     const botsPageEl = document.getElementById("botsPage");
     const accessPageEl = document.getElementById("accessPage");
@@ -1045,6 +1106,15 @@ const HTML = `<!doctype html>
     const broadcastLogRefreshEl = document.getElementById("broadcastLogRefresh");
     const broadcastLogMessageEl = document.getElementById("broadcastLogMessage");
     const broadcastLogRowsEl = document.getElementById("broadcastLogRows");
+    const roadmapRowsEl = document.getElementById("roadmapRows");
+    const roadmapFormEl = document.getElementById("roadmapForm");
+    const roadmapTitleEl = document.getElementById("roadmapTitle");
+    const roadmapOwnerEl = document.getElementById("roadmapOwner");
+    const roadmapDeliveryEl = document.getElementById("roadmapDelivery");
+    const roadmapPriorityEl = document.getElementById("roadmapPriority");
+    const roadmapStatusEl = document.getElementById("roadmapStatus");
+    const roadmapDescriptionEl = document.getElementById("roadmapDescription");
+    const roadmapMessageEl = document.getElementById("roadmapMessage");
     const currentUserPermissions = new Set(__CURRENT_USER_PERMISSIONS__);
     const currentUser = __CURRENT_USER__;
     const permissionOptions = [
@@ -1052,6 +1122,7 @@ const HTML = `<!doctype html>
       { key:"analytics", label:"تحلیل" },
       { key:"threads", label:"تردها" },
       { key:"messages", label:"پیام‌ها" },
+      { key:"roadmap", label:"نقشه راه" },
       { key:"senders", label:"ارسال‌کننده‌ها" },
       { key:"groups", label:"گروه‌ها" },
       { key:"broadcast", label:"اطلاع‌رسانی" },
@@ -1367,6 +1438,8 @@ const HTML = `<!doctype html>
         profile_update: "به‌روزرسانی پروفایل",
         bot_create: "ثبت بات",
         bot_rotate: "تغییر توکن بات",
+        roadmap_create: "ثبت نقشه راه",
+        roadmap_update: "به‌روزرسانی نقشه راه",
         thread_reply: "ارسال پاسخ",
         group_broadcast: "ارسال اطلاع‌رسانی گروهی",
       };
@@ -1376,6 +1449,7 @@ const HTML = `<!doctype html>
       headerEmailEl.textContent = currentUser.email;
       profileEmailEl.textContent = currentUser.email;
       profileTelegramUsernameEl.value = telegramUsernameLocal(currentUser.telegram_username);
+      if (roadmapOwnerEl && !roadmapOwnerEl.value) roadmapOwnerEl.value = currentUser.email || "";
       profileAvatarHintEl.textContent = currentUser.telegram_avatar_url
         ? "عکس از پروفایل تلگرام نمایش داده می‌شود."
         : "برای نمایش عکس، یوزرنیم تلگرام را ثبت کنید و حداقل یک پیام از همان کاربر در گروه‌ها دریافت شده باشد.";
@@ -1442,7 +1516,7 @@ const HTML = `<!doctype html>
       else if (isGroups) loadAccessGroupView();
       else loadAccessUsers();
     }
-    const routablePages = ["dashboard", "analytics", "threads", "messages", "groups", "senders", "broadcast", "bots", "access", "profile"];
+    const routablePages = ["dashboard", "analytics", "threads", "messages", "roadmap", "groups", "senders", "broadcast", "bots", "access", "profile"];
     function pagePath(page) {
       return "/main/" + page;
     }
@@ -1452,11 +1526,11 @@ const HTML = `<!doctype html>
       return routablePages.includes(page) ? page : "messages";
     }
     function firstAccessiblePage() {
-      return ["dashboard", "analytics", "threads", "messages", "groups", "senders", "broadcast", "bots", "access"].find(canOpen);
+      return ["dashboard", "analytics", "threads", "messages", "roadmap", "groups", "senders", "broadcast", "bots", "access"].find(canOpen);
     }
     function setupAccessShell() {
       accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
-      const navByPage = { dashboard:dashboardNavEl, analytics:analyticsNavEl, threads:threadsNavEl, messages:messagesNavEl, groups:groupsNavEl, senders:sendersNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
+      const navByPage = { dashboard:dashboardNavEl, analytics:analyticsNavEl, threads:threadsNavEl, messages:messagesNavEl, roadmap:roadmapNavEl, groups:groupsNavEl, senders:sendersNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
       Object.entries(navByPage).forEach(([page, element]) => { element.hidden = !canOpen(page); });
       const firstPage = firstAccessiblePage();
       if (!firstPage) {
@@ -2941,6 +3015,66 @@ const HTML = `<!doctype html>
         setStatus(token, "خطا در دریافت بات‌ها");
       }
     }
+    const roadmapPriorityLabels = { low:"پایین", medium:"متوسط", high:"بالا", critical:"فوری" };
+    const roadmapStatusLabels = { planned:"برنامه‌ریزی‌شده", in_progress:"در حال انجام", delivered:"تحویل‌شده", blocked:"مسدود", canceled:"لغو‌شده" };
+    function roadmapStatusOptions(selected) {
+      return Object.entries(roadmapStatusLabels).map(([value, label]) => \`<option value="\${esc(value)}" \${value === selected ? "selected" : ""}>\${esc(label)}</option>\`).join("");
+    }
+    function roadmapPriorityText(value) {
+      return roadmapPriorityLabels[String(value || "")] || String(value || "-");
+    }
+    function roadmapStatusText(value) {
+      return roadmapStatusLabels[String(value || "")] || String(value || "-");
+    }
+    function roadmapItemDetailsHtml(item) {
+      return \`<div class="details-grid">
+        \${detailRow("عنوان", item.title || "-")}
+        \${detailRow("مدیر محصول", item.owner_email || "-")}
+        \${detailRow("اولویت", roadmapPriorityText(item.priority))}
+        \${detailRow("وضعیت", roadmapStatusText(item.status))}
+        \${detailRow("زمان تحویل", item.delivery_date || "-")}
+        \${detailRow("ثبت‌کننده", item.created_by_email || "-")}
+        \${detailRow("به‌روزرسانی‌کننده", item.updated_by_email || "-")}
+        \${detailRow("آخرین به‌روزرسانی", item.updated_at_utc ? tehranDisplay(item.updated_at_utc) : "-")}
+        \${detailRow("توضیحات", item.description || "-")}
+      </div>\`;
+    }
+    function renderRoadmapRows(items) {
+      detailByKey.clear();
+      roadmapRowsEl.innerHTML = items.map((item, index) => {
+        const key = "roadmap-" + index;
+        detailByKey.set(key, roadmapItemDetailsHtml(item));
+        return \`<tr>
+          <td class="roadmap-title-cell" data-label="فیچر">\${esc(item.title || "-")}</td>
+          <td class="full-cell" data-label="مدیر محصول">\${esc(item.owner_email || "-")}</td>
+          <td data-label="اولویت">\${esc(roadmapPriorityText(item.priority))}</td>
+          <td data-label="وضعیت"><select data-roadmap-status data-roadmap-id="\${esc(item.id)}" aria-label="وضعیت">\${roadmapStatusOptions(item.status)}</select></td>
+          <td data-label="زمان تحویل">\${esc(item.delivery_date || "-")}</td>
+          <td class="roadmap-description-cell" data-label="توضیحات">\${esc(item.description || "-")}</td>
+          <td data-label="جزئیات"><button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button></td>
+        </tr>\`;
+      }).join("") || '<tr><td colspan="7" class="empty">هنوز فیچری در نقشه راه ثبت نشده است</td></tr>';
+    }
+    async function loadRoadmap() {
+      const token = showLoading("در حال دریافت نقشه راه...");
+      try {
+        const res = await fetch("/api/roadmap");
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.items)) {
+          roadmapRowsEl.innerHTML = "";
+          roadmapMessageEl.textContent = data.detail || data.error || "خطا در دریافت نقشه راه";
+          setStatus(token, data.detail || data.error || "خطا در دریافت نقشه راه");
+          return;
+        }
+        renderRoadmapRows(data.items);
+        roadmapMessageEl.textContent = "";
+        setStatus(token, data.items.length + " فیچر");
+      } catch (error) {
+        roadmapRowsEl.innerHTML = "";
+        roadmapMessageEl.textContent = "خطا در دریافت نقشه راه";
+        setStatus(token, "خطا در دریافت نقشه راه");
+      }
+    }
     async function loadThreads() {
       updateFilterButtons();
       const token = showLoading("در حال دریافت تردها...");
@@ -3016,26 +3150,29 @@ const HTML = `<!doctype html>
       const isGroups = page === "groups";
       const isSenders = page === "senders";
       const isThreads = page === "threads";
+      const isRoadmap = page === "roadmap";
       const isBroadcast = page === "broadcast";
       const isBots = page === "bots";
       const isAccess = page === "access";
       const isProfile = page === "profile";
       dashboardPageEl.hidden = !isDashboard;
       analyticsPageEl.hidden = !isAnalytics;
-      messagesPageEl.hidden = isDashboard || isAnalytics || isGroups || isSenders || isThreads || isBroadcast || isBots || isAccess || isProfile;
+      messagesPageEl.hidden = isDashboard || isAnalytics || isGroups || isSenders || isThreads || isRoadmap || isBroadcast || isBots || isAccess || isProfile;
       groupsPageEl.hidden = !isGroups;
       sendersPageEl.hidden = !isSenders;
       threadsPageEl.hidden = !isThreads;
+      roadmapPageEl.hidden = !isRoadmap;
       broadcastPageEl.hidden = !isBroadcast;
       botsPageEl.hidden = !isBots;
       accessPageEl.hidden = !isAccess;
       profilePageEl.hidden = !isProfile;
       dashboardNavEl.classList.toggle("active", isDashboard);
       analyticsNavEl.classList.toggle("active", isAnalytics);
-      messagesNavEl.classList.toggle("active", !isDashboard && !isAnalytics && !isGroups && !isSenders && !isThreads && !isBroadcast && !isBots && !isAccess && !isProfile);
+      messagesNavEl.classList.toggle("active", !isDashboard && !isAnalytics && !isGroups && !isSenders && !isThreads && !isRoadmap && !isBroadcast && !isBots && !isAccess && !isProfile);
       groupsNavEl.classList.toggle("active", isGroups);
       sendersNavEl.classList.toggle("active", isSenders);
       threadsNavEl.classList.toggle("active", isThreads);
+      roadmapNavEl.classList.toggle("active", isRoadmap);
       broadcastNavEl.classList.toggle("active", isBroadcast);
       botsNavEl.classList.toggle("active", isBots);
       accessNavEl.classList.toggle("active", isAccess);
@@ -3044,6 +3181,7 @@ const HTML = `<!doctype html>
       else if (isGroups) loadGroups();
       else if (isSenders) loadSenders();
       else if (isThreads) loadThreadFilterOptions().then(loadThreads);
+      else if (isRoadmap) loadRoadmap();
       else if (isBroadcast) loadBroadcast();
       else if (isBots) loadBots();
       else if (isAccess) showAccessSection(accessLogsSectionEl.hidden ? "users" : "logs");
@@ -3079,6 +3217,34 @@ const HTML = `<!doctype html>
     botRowsEl.addEventListener("click", event => {
       const detailsButton = event.target.closest("[data-detail-key]");
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات بات");
+    });
+    roadmapRowsEl.addEventListener("click", event => {
+      const detailsButton = event.target.closest("[data-detail-key]");
+      if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات نقشه راه");
+    });
+    roadmapRowsEl.addEventListener("change", async event => {
+      const select = event.target.closest("[data-roadmap-status]");
+      if (!select) return;
+      select.disabled = true;
+      roadmapMessageEl.textContent = "در حال به‌روزرسانی وضعیت...";
+      try {
+        const res = await fetch("/api/roadmap", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ id: select.dataset.roadmapId, status: select.value }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          roadmapMessageEl.textContent = data.error || "به‌روزرسانی وضعیت انجام نشد";
+          select.disabled = false;
+          return;
+        }
+        roadmapMessageEl.textContent = "وضعیت به‌روزرسانی شد.";
+        await loadRoadmap();
+      } catch (error) {
+        roadmapMessageEl.textContent = "به‌روزرسانی وضعیت انجام نشد";
+        select.disabled = false;
+      }
     });
     broadcastLogRowsEl.addEventListener("click", event => {
       const fullButton = event.target.closest("[data-full-key]");
@@ -3153,6 +3319,38 @@ const HTML = `<!doctype html>
         await loadBots();
       } catch (error) {
         botMessageEl.textContent = "ثبت بات انجام نشد";
+      }
+    });
+    roadmapFormEl.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      roadmapMessageEl.textContent = "در حال ثبت فیچر...";
+      const payload = {
+        title: roadmapTitleEl.value.trim(),
+        owner_email: roadmapOwnerEl.value.trim(),
+        delivery_date: roadmapDeliveryEl.value,
+        priority: roadmapPriorityEl.value,
+        status: roadmapStatusEl.value,
+        description: roadmapDescriptionEl.value.trim(),
+      };
+      try {
+        const res = await fetch("/api/roadmap", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          roadmapMessageEl.textContent = data.error || "ثبت فیچر انجام نشد";
+          return;
+        }
+        roadmapMessageEl.textContent = "فیچر در نقشه راه ثبت شد.";
+        roadmapTitleEl.value = "";
+        roadmapDescriptionEl.value = "";
+        roadmapStatusEl.value = "planned";
+        roadmapPriorityEl.value = "medium";
+        await loadRoadmap();
+      } catch (error) {
+        roadmapMessageEl.textContent = "ثبت فیچر انجام نشد";
       }
     });
     accessLogRowsEl.addEventListener("click", event => {
@@ -3307,6 +3505,7 @@ const HTML = `<!doctype html>
     dashboardNavEl.addEventListener("click", () => showPage("dashboard"));
     analyticsNavEl.addEventListener("click", () => showPage("analytics"));
     messagesNavEl.addEventListener("click", () => showPage("messages"));
+    roadmapNavEl.addEventListener("click", () => showPage("roadmap"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     sendersNavEl.addEventListener("click", () => showPage("senders"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
@@ -3585,7 +3784,7 @@ const HTML = `<!doctype html>
     window.addEventListener("scroll", positionOpenFilterPanels, true);
     syncProfileUi();
     setupAccessShell();
-    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "analytics" && canOpen("analytics")) loadAnalytics(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "senders" && canOpen("senders")) loadSenders(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
+    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "analytics" && canOpen("analytics")) loadAnalytics(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "senders" && canOpen("senders")) loadSenders(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "roadmap" && canOpen("roadmap")) loadRoadmap(); else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
   </script>
 </body>
 </html>`;
@@ -4099,7 +4298,7 @@ function senderLabelTextServer(value) {
   return labels[String(value || "")] || "بدون لیبل";
 }
 
-const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "senders", "dashboard", "analytics", "bots"];
+const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "senders", "dashboard", "analytics", "bots", "roadmap"];
 const EXTRA_ACCESS_PERMISSIONS = ["reply", "broadcast"];
 const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS, ...EXTRA_ACCESS_PERMISSIONS];
 const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
@@ -4312,7 +4511,7 @@ function hasAnyAccessPermission(user, permissions) {
 }
 
 function defaultMainPathForUser(user) {
-  const firstPage = ["dashboard", "threads", "messages", "senders", "groups", "broadcast", "bots", "access", "analytics"].find((permission) => hasAccessPermission(user, permission));
+  const firstPage = ["dashboard", "threads", "messages", "roadmap", "senders", "groups", "broadcast", "bots", "access", "analytics"].find((permission) => hasAccessPermission(user, permission));
   return `/main/${firstPage || "messages"}`;
 }
 
@@ -7503,6 +7702,173 @@ async function updateSenderLabel(request, env, authUser) {
   return json({ sender_label: rows?.[0]?.sender_label || "" });
 }
 
+const ROADMAP_STATUSES = ["planned", "in_progress", "delivered", "blocked", "canceled"];
+const ROADMAP_PRIORITIES = ["low", "medium", "high", "critical"];
+
+function normalizeRoadmapStatus(value) {
+  const status = String(value || "").trim().toLowerCase();
+  return ROADMAP_STATUSES.includes(status) ? status : "planned";
+}
+
+function normalizeRoadmapPriority(value) {
+  const priority = String(value || "").trim().toLowerCase();
+  return ROADMAP_PRIORITIES.includes(priority) ? priority : "medium";
+}
+
+function normalizeRoadmapDate(value) {
+  const date = String(value || "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "";
+}
+
+function roadmapItemForClient(row) {
+  return {
+    id: row.id,
+    title: row.title || "",
+    description: row.description || "",
+    owner_email: row.owner_email || "",
+    priority: row.priority || "medium",
+    status: row.status || "planned",
+    delivery_date: row.delivery_date || "",
+    created_by_email: row.created_by_email || "",
+    updated_by_email: row.updated_by_email || "",
+    created_at_utc: row.created_at_utc || "",
+    updated_at_utc: row.updated_at_utc || "",
+  };
+}
+
+async function fetchRoadmapItems(env) {
+  const params = new URLSearchParams({
+    select: "id,title,description,owner_email,priority,status,delivery_date,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
+    order: "delivery_date.asc,status.asc,created_at_utc.desc",
+    limit: "1000",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_roadmap_items?${params}`, { headers: supabaseHeaders(env) });
+  const body = await readSupabaseJson(response);
+  if (!response.ok) return json({ error: "دریافت نقشه راه انجام نشد", detail: body?.message || body || response.status }, 500);
+  return json({ items: (Array.isArray(body) ? body : []).map(roadmapItemForClient) });
+}
+
+async function fetchRoadmapItemById(env, id) {
+  const params = new URLSearchParams({
+    select: "id,title,description,owner_email,priority,status,delivery_date,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
+    id: `eq.${id}`,
+    limit: "1",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_roadmap_items?${params}`, { headers: supabaseHeaders(env) });
+  if (!response.ok) return null;
+  const rows = await response.json();
+  return rows[0] || null;
+}
+
+function roadmapPayloadFromBody(body, authUser, partial = false) {
+  const payload = {};
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "title")) {
+    const title = String(body.title || "").trim().replace(/\s+/g, " ");
+    if (title.length < 2 || title.length > 180) throw new Error("عنوان فیچر باید بین ۲ تا ۱۸۰ کاراکتر باشد");
+    payload.title = title;
+  }
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "description")) {
+    const description = String(body.description || "").trim();
+    if (description.length > 4000) throw new Error("توضیحات بیش از حد طولانی است");
+    payload.description = description;
+  }
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "owner_email")) {
+    const ownerEmail = normalizeEmail(body.owner_email || authUser?.email);
+    if (!validAccessEmail(ownerEmail)) throw new Error("ایمیل مدیر محصول باید از دامنه toman.ir باشد");
+    payload.owner_email = ownerEmail;
+  }
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "delivery_date")) {
+    const deliveryDate = normalizeRoadmapDate(body.delivery_date);
+    if (!deliveryDate) throw new Error("زمان تحویل نامعتبر است");
+    payload.delivery_date = deliveryDate;
+  }
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "priority")) {
+    payload.priority = normalizeRoadmapPriority(body.priority);
+  }
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "status")) {
+    payload.status = normalizeRoadmapStatus(body.status);
+  }
+  return payload;
+}
+
+async function createRoadmapItem(request, env, authUser) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  let payload;
+  try {
+    payload = roadmapPayloadFromBody(body, authUser);
+  } catch (error) {
+    return json({ error: error.message || "داده نقشه راه نامعتبر است" }, 400);
+  }
+  const now = new Date().toISOString();
+  const row = {
+    ...payload,
+    created_by_email: normalizeEmail(authUser.email),
+    updated_by_email: normalizeEmail(authUser.email),
+    created_at_utc: now,
+    updated_at_utc: now,
+  };
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_roadmap_items`, {
+    method: "POST",
+    headers: supabaseHeaders(env, "return=representation"),
+    body: JSON.stringify(row),
+  });
+  const saved = await readSupabaseJson(response);
+  if (!response.ok) return json({ error: "ثبت فیچر انجام نشد", detail: saved?.message || saved || response.status }, 500);
+  const item = Array.isArray(saved) ? saved[0] : saved;
+  await insertAccessAuditLog(env, {
+    actorEmail: authUser.email,
+    targetEmail: row.owner_email,
+    action: "roadmap_create",
+    newValues: roadmapItemForClient(item || row),
+    metadata: { roadmap_id: item?.id || null, title: row.title },
+  });
+  return json({ item: roadmapItemForClient(item || row) }, 201);
+}
+
+async function updateRoadmapItem(request, env, authUser) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const id = Number.parseInt(String(body.id || ""), 10);
+  if (!Number.isFinite(id) || id <= 0) return json({ error: "شناسه نقشه راه نامعتبر است" }, 400);
+  const existing = await fetchRoadmapItemById(env, id);
+  if (!existing) return json({ error: "آیتم نقشه راه پیدا نشد" }, 404);
+  let payload;
+  try {
+    payload = roadmapPayloadFromBody(body, authUser, true);
+  } catch (error) {
+    return json({ error: error.message || "داده نقشه راه نامعتبر است" }, 400);
+  }
+  if (!Object.keys(payload).length) return json({ error: "چیزی برای به‌روزرسانی ارسال نشده است" }, 400);
+  payload.updated_by_email = normalizeEmail(authUser.email);
+  payload.updated_at_utc = new Date().toISOString();
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_roadmap_items?id=eq.${id}`, {
+    method: "PATCH",
+    headers: supabaseHeaders(env, "return=representation"),
+    body: JSON.stringify(payload),
+  });
+  const saved = await readSupabaseJson(response);
+  if (!response.ok) return json({ error: "به‌روزرسانی نقشه راه انجام نشد", detail: saved?.message || saved || response.status }, 500);
+  const item = Array.isArray(saved) ? saved[0] : saved;
+  await insertAccessAuditLog(env, {
+    actorEmail: authUser.email,
+    targetEmail: item?.owner_email || existing.owner_email,
+    action: "roadmap_update",
+    oldValues: roadmapItemForClient(existing),
+    newValues: roadmapItemForClient(item || { ...existing, ...payload }),
+    metadata: { roadmap_id: id, title: item?.title || existing.title },
+  });
+  return json({ item: roadmapItemForClient(item || { ...existing, ...payload }) });
+}
+
 async function fetchBots(env) {
   const params = new URLSearchParams();
   params.set("select", "platform,bot_id,bot_username,bot_name,webhook_path,is_active,first_seen_at_utc,last_seen_at_utc,last_update_at_utc,credential_last4,credential_updated_at_utc,created_by_email,message_count,group_count,last_message_at_utc");
@@ -7927,6 +8293,18 @@ async function handleRequest(request, env) {
     if (url.pathname === "/api/bots" && request.method === "POST") {
       if (!hasAccessPermission(authUser, "bots")) return forbiddenAccess();
       return addBotFromDashboard(request, env, authUser);
+    }
+    if (url.pathname === "/api/roadmap" && request.method === "GET") {
+      if (!hasAccessPermission(authUser, "roadmap")) return forbiddenAccess();
+      return fetchRoadmapItems(env);
+    }
+    if (url.pathname === "/api/roadmap" && request.method === "POST") {
+      if (!hasAccessPermission(authUser, "roadmap")) return forbiddenAccess();
+      return createRoadmapItem(request, env, authUser);
+    }
+    if (url.pathname === "/api/roadmap" && request.method === "PATCH") {
+      if (!hasAccessPermission(authUser, "roadmap")) return forbiddenAccess();
+      return updateRoadmapItem(request, env, authUser);
     }
     if (url.pathname === "/api/dashboard") {
       if (!hasAccessPermission(authUser, "dashboard")) return forbiddenAccess();
