@@ -256,9 +256,9 @@ const HTML = `<!doctype html>
     .roadmap-week-dot { position:absolute; top:50%; width:10px; height:10px; border-radius:50%; background:#fff; border:2px solid var(--muted); transform:translate(-50%, -50%); }
     .roadmap-week-dot.has-items { width:14px; height:14px; border-color:var(--accent); background:var(--accent); }
     .roadmap-month-label { position:absolute; top:24px; transform:translateX(-50%); color:var(--muted); font-size:12px; white-space:nowrap; }
-    .roadmap-pin { position:absolute; bottom:8px; width:2px; min-height:82px; background:var(--pin-color, var(--accent)); transform:translateX(-50%); }
-    .roadmap-pin.is-dependency { bottom:auto; top:8px; min-height:72px; background:repeating-linear-gradient(to bottom, var(--pin-color, var(--accent)) 0 6px, transparent 6px 10px); }
-    .roadmap-pin-card { position:absolute; left:50%; bottom:calc(74px + var(--stack-offset, 0px)); width:178px; transform:translateX(-50%); padding:8px; border:1px solid var(--pin-color, var(--line)); border-right:4px solid var(--pin-color, var(--accent)); background:#fbfcfd; color:var(--ink); font-size:11px; line-height:1.5; direction:rtl; text-align:right; box-shadow:0 1px 2px rgba(22,22,22,.08); }
+    .roadmap-pin { position:absolute; bottom:8px; width:2px; height:82px; background:var(--pin-color, var(--accent)); transform:translateX(-50%); }
+    .roadmap-pin.is-dependency { bottom:auto; top:8px; height:72px; background:repeating-linear-gradient(to bottom, var(--pin-color, var(--accent)) 0 6px, transparent 6px 10px); }
+    .roadmap-pin-card { position:absolute; z-index:2; left:50%; bottom:calc(74px + var(--stack-offset, 0px)); width:178px; transform:translateX(-50%); padding:8px; border:1px solid var(--pin-color, var(--line)); border-right:4px solid var(--pin-color, var(--accent)); background:#fbfcfd; color:var(--ink); font-size:11px; line-height:1.5; direction:rtl; text-align:right; box-shadow:0 1px 2px rgba(22,22,22,.08); }
     .roadmap-pin.edge-start .roadmap-pin-card { left:0; transform:none; }
     .roadmap-pin.edge-end .roadmap-pin-card { left:auto; right:0; transform:none; }
     .roadmap-pin.is-dependency .roadmap-pin-card { top:calc(64px + var(--stack-offset, 0px)); bottom:auto; border-style:dashed; background:#fff; }
@@ -3543,7 +3543,7 @@ const HTML = `<!doctype html>
         maxDeliveryStack = Math.max(maxDeliveryStack, list.filter((pin) => pin.kind !== "dependency").length);
         maxDependencyStack = Math.max(maxDependencyStack, list.filter((pin) => pin.kind === "dependency").length);
       });
-      const stackStep = 156;
+      const stackStep = 124;
       const isFullTimeline = Boolean(targetEl.closest(".roadmap-path-page"));
       const baseTopPadding = isFullTimeline ? 280 : 240;
       const baseBottomPadding = isFullTimeline ? 118 : 102;
@@ -3568,7 +3568,7 @@ const HTML = `<!doctype html>
           const stackOffset = stackIndex * stackStep;
           const colorKey = pin.kind === "dependency" && pin.team_id ? "team:" + pin.team_id : "product:" + (pin.product_id || pin.title);
           const color = stableColor(colorKey);
-          return \`<div class="roadmap-pin \${pin.kind === "dependency" ? "is-dependency" : ""}\${edgeClass}" style="left:\${left}%; min-height:\${pin.kind === "dependency" ? 72 + stackOffset : 82 + stackOffset}px; --stack-offset:\${stackOffset}px; --pin-color:\${esc(color)}">
+          return \`<div class="roadmap-pin \${pin.kind === "dependency" ? "is-dependency" : ""}\${edgeClass}" style="left:\${left}%; --stack-offset:\${stackOffset}px; --pin-color:\${esc(color)}">
             <div class="roadmap-pin-card">
               <span class="roadmap-pin-kind">\${pin.kind === "dependency" ? "وابستگی" : "تحویل‌دادنی"}</span>
               <strong>\${esc(pin.title || "-")}</strong>
