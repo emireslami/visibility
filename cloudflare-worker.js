@@ -20,8 +20,8 @@ const HTML = `<!doctype html>
     .nav-button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
     main { padding: 18px 24px; }
     .page[hidden] { display:none; }
-    .filters { position:sticky; top:var(--header-h); z-index:45; display:grid; grid-template-columns: 1fr 150px 170px 170px 110px; gap:10px; min-height:var(--filters-h); align-items:center; width:calc(100% + 48px); margin:0 -24px 18px; padding:10px 24px; background:var(--bg); border-bottom:1px solid var(--line); box-shadow:0 8px 16px rgba(22,22,22,.06); }
-    .thread-filters { grid-template-columns: minmax(170px, .8fr) minmax(190px, .9fr) minmax(190px, 1fr) minmax(165px, .8fr) 98px 98px 98px minmax(150px, .7fr) 110px; max-width:none; margin:0 -24px 18px; }
+    .filters { position:sticky; top:var(--header-h); z-index:45; display:grid; grid-template-columns: minmax(220px, 1fr) minmax(130px, .5fr) 145px 165px 165px 110px; gap:10px; min-height:var(--filters-h); align-items:center; width:calc(100% + 48px); margin:0 -24px 18px; padding:10px 24px; background:var(--bg); border-bottom:1px solid var(--line); box-shadow:0 8px 16px rgba(22,22,22,.06); }
+    .thread-filters { grid-template-columns: minmax(150px, .65fr) minmax(150px, .65fr) minmax(160px, .7fr) minmax(180px, .9fr) minmax(150px, .7fr) 90px 90px 90px minmax(140px, .65fr) 110px; max-width:none; margin:0 -24px 18px; }
     .mobile-filter-toggle { display:none; }
     input, select, button { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }
     button { background: var(--accent); color: #fff; border-color: var(--accent); cursor:pointer; }
@@ -30,7 +30,9 @@ const HTML = `<!doctype html>
     .password-toggle { position:absolute; left:6px; top:5px; width:34px; height:28px; margin:0; padding:0; display:grid; place-items:center; border:1px solid var(--line); background:#fff; color:var(--muted); }
     .password-toggle svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; }
     .multi-filter { position:relative; min-width:0; }
-    .uuid-filter { width:100%; min-width:0; text-align:left; direction:ltr; }
+    .uuid-filter, .hashtag-filter { width:100%; min-width:0; text-align:left; direction:ltr; }
+    .hashtag-link { color:#087f8c; font-weight:800; text-decoration:none; cursor:pointer; }
+    .hashtag-link:hover { text-decoration:underline; }
     .multi-control { position:relative; }
     .multi-button { width:100%; display:grid; grid-template-columns:minmax(0, 1fr) 18px; align-items:center; gap:8px; background:#fff; color:var(--ink); border-color:var(--line); text-align:right; direction:rtl; padding-inline:10px 12px; }
     .multi-button::before { content:"⌄"; grid-column:2; color:var(--muted); font-size:14px; justify-self:center; }
@@ -626,6 +628,7 @@ const HTML = `<!doctype html>
       <section class="filters">
         <button class="mobile-filter-toggle" id="messageFilterToggle" type="button">نمایش فیلترها</button>
         <input id="search" placeholder="جست‌وجو در متن پیام، گروه، یوزرنیم..." />
+        <input id="hashtagSearch" class="hashtag-filter" type="search" placeholder="# هشتگ" autocomplete="off" />
         <div id="platform" class="multi-filter"></div>
         <div id="group" class="multi-filter"></div>
         <div id="topic" class="multi-filter"></div>
@@ -730,6 +733,7 @@ const HTML = `<!doctype html>
         <button class="mobile-filter-toggle" id="threadFilterToggle" type="button">نمایش فیلترها</button>
         <div id="threadPlatform" class="multi-filter"></div>
         <input id="threadUuid" class="uuid-filter" type="search" placeholder="UUID" autocomplete="off" />
+        <input id="threadHashtag" class="hashtag-filter" type="search" placeholder="# هشتگ" autocomplete="off" />
         <div id="threadLabel" class="multi-filter"></div>
         <div id="threadGroup" class="multi-filter"></div>
         <div id="threadTopic" class="multi-filter"></div>
@@ -965,6 +969,7 @@ const HTML = `<!doctype html>
     const botsPageEl = document.getElementById("botsPage");
     const accessPageEl = document.getElementById("accessPage");
     const searchEl = document.getElementById("search");
+    const hashtagSearchEl = document.getElementById("hashtagSearch");
     const messageFilterToggleEl = document.getElementById("messageFilterToggle");
     const platformEl = document.getElementById("platform");
     const groupEl = document.getElementById("group");
@@ -973,6 +978,7 @@ const HTML = `<!doctype html>
     const threadFilterToggleEl = document.getElementById("threadFilterToggle");
     const threadPlatformEl = document.getElementById("threadPlatform");
     const threadUuidEl = document.getElementById("threadUuid");
+    const threadHashtagEl = document.getElementById("threadHashtag");
     const threadLabelEl = document.getElementById("threadLabel");
     const threadGroupEl = document.getElementById("threadGroup");
     const threadTopicEl = document.getElementById("threadTopic");
@@ -1107,6 +1113,13 @@ const HTML = `<!doctype html>
     function normalizeThreadUuidInput(value) {
       const match = String(value || "").match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
       return match?.[0]?.toLowerCase() || "";
+    }
+    function normalizeHashtagInput(value) {
+      return String(value || "")
+        .split(/[,\s]+/)
+        .map((item) => item.trim().replace(/^#+/, "").toLowerCase())
+        .filter(Boolean)
+        .join(" ");
     }
     function telegramUsernameLocal(value) {
       return String(value || "").trim().replace(/^@+/, "");
@@ -1693,16 +1706,16 @@ const HTML = `<!doctype html>
       return !selected.length || selected.includes(row.platform || "telegram");
     }
     function messageFiltersActive() {
-      return Boolean(searchEl.value.trim() || messagePlatformFilter.values().length || messageGroupFilter.values().length || messageTopicFilter.values().length);
+      return Boolean(searchEl.value.trim() || hashtagSearchEl.value.trim() || messagePlatformFilter.values().length || messageGroupFilter.values().length || messageTopicFilter.values().length);
     }
     function threadFiltersActive() {
-      return Boolean(threadUuidEl.value.trim() || threadPlatformFilter.values().length || threadLabelFilter.values().length || threadGroupFilter.values().length || threadTopicFilter.values().length || selectedThreadJalaliDate());
+      return Boolean(threadUuidEl.value.trim() || threadHashtagEl.value.trim() || threadPlatformFilter.values().length || threadLabelFilter.values().length || threadGroupFilter.values().length || threadTopicFilter.values().length || selectedThreadJalaliDate());
     }
     function activeMessageFilterCount() {
-      return (searchEl.value.trim() ? 1 : 0) + messagePlatformFilter.values().length + messageGroupFilter.values().length + messageTopicFilter.values().length;
+      return (searchEl.value.trim() ? 1 : 0) + (hashtagSearchEl.value.trim() ? 1 : 0) + messagePlatformFilter.values().length + messageGroupFilter.values().length + messageTopicFilter.values().length;
     }
     function activeThreadFilterCount() {
-      return (threadUuidEl.value.trim() ? 1 : 0) + threadPlatformFilter.values().length + threadLabelFilter.values().length + threadGroupFilter.values().length + threadTopicFilter.values().length + (selectedThreadJalaliDate() ? 1 : 0);
+      return (threadUuidEl.value.trim() ? 1 : 0) + (threadHashtagEl.value.trim() ? 1 : 0) + threadPlatformFilter.values().length + threadLabelFilter.values().length + threadGroupFilter.values().length + threadTopicFilter.values().length + (selectedThreadJalaliDate() ? 1 : 0);
     }
     function syncMobileFilterToggle(toggle, filtersRoot, count) {
       if (!toggle || !filtersRoot) return;
@@ -1721,6 +1734,7 @@ const HTML = `<!doctype html>
     }
     function resetMessageFilters() {
       searchEl.value = "";
+      hashtagSearchEl.value = "";
       messagePlatformFilter.clear();
       messageGroupFilter.clear();
       messageTopicFilter.clear();
@@ -1729,6 +1743,7 @@ const HTML = `<!doctype html>
     }
     function resetThreadFilters() {
       threadUuidEl.value = "";
+      threadHashtagEl.value = "";
       threadPlatformFilter.clear();
       threadLabelFilter.clear();
       threadGroupFilter.clear();
@@ -1820,12 +1835,22 @@ const HTML = `<!doctype html>
       updateFilterButtons();
     }
     function linkify(value) {
-      const escaped = esc(value);
-      return escaped.replace(/(https?:\\/\\/[^\\s<]+)/g, (url) => {
+      const source = String(value ?? "");
+      const hashtagify = (text) => esc(text).replace(/(^|[^\\p{L}\\p{N}_])#([\\p{L}\\p{N}_][\\p{L}\\p{N}_]*)/gu, (match, prefix, tag) => {
+        return \`\${prefix}<a class="hashtag-link" href="#" data-hashtag="\${esc(tag)}">#\${esc(tag)}</a>\`;
+      });
+      let html = "";
+      let cursor = 0;
+      source.replace(/https?:\\/\\/[^\\s<]+/g, (url, offset) => {
+        html += hashtagify(source.slice(cursor, offset));
         const cleanUrl = url.replace(/[),.;:!?]+$/g, "");
         const suffix = url.slice(cleanUrl.length);
-        return \`<a href="\${cleanUrl}" target="_blank" rel="noopener noreferrer">\${cleanUrl}</a>\${suffix}\`;
+        html += \`<a href="\${esc(cleanUrl)}" target="_blank" rel="noopener noreferrer">\${esc(cleanUrl)}</a>\${hashtagify(suffix)}\`;
+        cursor = offset + url.length;
+        return url;
       });
+      html += hashtagify(source.slice(cursor));
+      return html;
     }
     function jsonText(value) {
       if (value == null) return "";
@@ -2634,6 +2659,7 @@ const HTML = `<!doctype html>
         await loadThreadFilterOptions();
         const params = new URLSearchParams();
         if (searchEl.value.trim()) params.set("q", searchEl.value.trim());
+        if (normalizeHashtagInput(hashtagSearchEl.value)) params.set("hashtag", normalizeHashtagInput(hashtagSearchEl.value));
         appendFilterValues(params, "platform", selectedPlatformValues(messagePlatformFilter));
         appendFilterValues(params, "group", messageGroupFilter.values());
         appendFilterValues(params, "topic", messageTopicFilter.values());
@@ -2938,6 +2964,7 @@ const HTML = `<!doctype html>
             requestedThreadUuid = uuidFilter;
             params.set("thread_uuid", uuidFilter);
           } else {
+            if (normalizeHashtagInput(threadHashtagEl.value)) params.set("hashtag", normalizeHashtagInput(threadHashtagEl.value));
             appendFilterValues(params, "platform", selectedPlatformValues(threadPlatformFilter));
             appendFilterValues(params, "label", threadLabelFilter.values());
             appendFilterValues(params, "group", threadGroupFilter.values());
@@ -3517,6 +3544,8 @@ const HTML = `<!doctype html>
     });
     searchEl.addEventListener("input", updateFilterButtons);
     searchEl.addEventListener("keydown", e => { if (e.key === "Enter") load(); });
+    hashtagSearchEl.addEventListener("input", updateFilterButtons);
+    hashtagSearchEl.addEventListener("keydown", e => { if (e.key === "Enter") load(); });
     let threadUuidFilterTimer = null;
     threadUuidEl.addEventListener("input", () => {
       updateFilterButtons();
@@ -3529,7 +3558,24 @@ const HTML = `<!doctype html>
         loadThreads();
       }
     });
+    threadHashtagEl.addEventListener("input", updateFilterButtons);
+    threadHashtagEl.addEventListener("keydown", e => { if (e.key === "Enter") loadThreads(); });
     document.addEventListener("click", (event) => {
+      const hashtag = event.target.closest("[data-hashtag]");
+      if (hashtag) {
+        event.preventDefault();
+        const value = "#" + (hashtag.dataset.hashtag || "");
+        if (currentPage === "threads") {
+          threadHashtagEl.value = value;
+          loadThreads();
+        } else {
+          hashtagSearchEl.value = value;
+          showPage("messages");
+          load();
+        }
+        updateFilterButtons();
+        return;
+      }
       if (!event.target.closest(".user-menu")) userMenuEl.classList.remove("open");
       if (!event.target.closest(".multi-filter")) {
         document.querySelectorAll(".multi-filter.open").forEach((filter) => filter.classList.remove("open"));
@@ -5308,6 +5354,35 @@ function rowContent(row) {
   return row.body || row.caption || (row.message_type ? `[${row.message_type}]` : "");
 }
 
+function normalizeHashtagTerms(value) {
+  return String(value || "")
+    .split(/[,\s]+/)
+    .map((item) => item.trim().replace(/^#+/, "").toLowerCase())
+    .filter(Boolean);
+}
+
+function extractHashtags(value) {
+  const tags = [];
+  const pattern = /(^|[^\p{L}\p{N}_])#([\p{L}\p{N}_][\p{L}\p{N}_]*)/gu;
+  for (const match of String(value || "").matchAll(pattern)) {
+    tags.push(String(match[2] || "").toLowerCase());
+  }
+  return tags;
+}
+
+function rowHashtags(row) {
+  return new Set([
+    ...extractHashtags(row.body),
+    ...extractHashtags(row.caption),
+  ]);
+}
+
+function rowMatchesHashtags(row, hashtags) {
+  if (!hashtags.length) return true;
+  const existing = rowHashtags(row);
+  return hashtags.some((tag) => existing.has(tag));
+}
+
 function withEditHistory(messages, historyRows = messages) {
   const byMessage = new Map();
   for (const row of historyRows) {
@@ -6736,6 +6811,7 @@ async function fetchMessages(request, env, authUser) {
 
   const filters = [];
   const q = url.searchParams.get("q");
+  const hashtags = [...new Set(url.searchParams.getAll("hashtag").flatMap(normalizeHashtagTerms))];
   const platforms = [...new Set(url.searchParams.getAll("platform").map(normalizePlatform).filter(Boolean))];
   const labels = url.searchParams.getAll("label").map(groupLabelValueFromText).filter(Boolean);
   const groups = url.searchParams.getAll("group").map((value) => value.trim()).filter(Boolean);
@@ -6751,6 +6827,13 @@ async function fetchMessages(request, env, authUser) {
   if (q) {
     const pattern = `*${q.replace(/[%*]/g, "")}*`;
     filters.push(`body.ilike.${pattern},caption.ilike.${pattern},chat_title.ilike.${pattern},topic_name.ilike.${pattern},sender_username.ilike.${pattern}`);
+  }
+  if (hashtags.length) {
+    for (const hashtag of hashtags) {
+      const pattern = `*#${hashtag.replace(/[%*]/g, "")}*`;
+      filters.push(`body.ilike.${pattern},caption.ilike.${pattern}`);
+    }
+    params.set("limit", "2000");
   }
   if (filters.length) params.set("or", `(${filters.join(",")})`);
   if (platforms.length === 1) params.set("platform", `eq.${platforms[0]}`);
@@ -6802,8 +6885,11 @@ async function fetchMessages(request, env, authUser) {
   }
   const rows = sourceRows.filter((row) => rowAllowedByChatSet(row, allowedSet));
   let messages = enrichMessageRows(rows, topicByThread);
-  if (q && labels.length) {
+  if (q && (labels.length || hashtags.length)) {
     messages = messages.filter((row) => messageMatchesSearch(row, q));
+  }
+  if (hashtags.length) {
+    messages = messages.filter((row) => rowMatchesHashtags(row, hashtags));
   }
   if (topicsFilter.length) {
     const normalizedTopics = topicsFilter.map((value) => value.toLowerCase());
