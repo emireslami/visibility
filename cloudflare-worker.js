@@ -93,7 +93,7 @@ const HTML = `<!doctype html>
     .thread-card { background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
     .thread-root, .thread-reply, .thread-missing { padding:16px; }
     .thread-replies { border-top:1px solid var(--line); }
-    .thread-reply { position:relative; margin-right:28px; border-right:2px solid var(--line); background:#fff; }
+    .thread-reply { position:relative; margin-right:var(--thread-reply-indent, 28px); border-right:2px solid var(--line); background:#fff; }
     .thread-reply + .thread-reply { border-top:1px solid var(--line); }
     .thread-expand { padding:10px 16px; margin-right:28px; border-right:2px dashed var(--line); background:#fbfcfd; }
     .thread-expand-button { min-height:30px; padding:0 10px; font-size:12px; }
@@ -350,7 +350,7 @@ const HTML = `<!doctype html>
     .thread-card { border-color:#dfe1e6; border-radius:8px; box-shadow:0 1px 2px rgba(9,30,66,.08); overflow:hidden; }
     .thread-root, .thread-reply, .thread-missing { padding:14px 16px; }
     .thread-replies { border-top:1px solid #dfe1e6; }
-    .thread-reply { margin-right:24px; border-right:2px solid #dfe1e6; background:#fff; }
+    .thread-reply { margin-right:var(--thread-reply-indent, 24px); border-right:2px solid #dfe1e6; background:#fff; }
     .thread-avatar, .reaction-avatar, .user-avatar, .profile-avatar-large { background:#deebff; color:#0747a6; border-color:#b3d4ff; }
     .thread-head { gap:7px; margin-bottom:6px; }
     .thread-author { font-weight:800; }
@@ -468,7 +468,7 @@ const HTML = `<!doctype html>
       .revoke-button, .reactivate-button, .secondary-button { width:100%; }
       .thread-list { max-width:none; }
       .thread-root, .thread-reply, .thread-missing { padding:12px; }
-      .thread-reply { margin-right:10px; }
+      .thread-reply { margin-right:min(var(--thread-reply-indent, 10px), 56px); }
       .thread-item { grid-template-columns:34px minmax(0, 1fr); gap:8px; }
       .thread-head { gap:6px; }
       .thread-pill { max-width:100%; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -2146,7 +2146,9 @@ const HTML = `<!doctype html>
         </article>\`;
       }
       const author = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "نامشخص";
-      return \`<article class="\${kind}">
+      const depth = Math.max(1, Number(options.depth || 1));
+      const indentStyle = kind === "thread-reply" ? \` style="--thread-reply-indent:\${Math.min(depth, 5) * 24}px"\` : "";
+      return \`<article class="\${kind}"\${indentStyle}>
         <div class="thread-item">
           \${avatar(row)}
           <div class="thread-content">
@@ -2234,7 +2236,8 @@ const HTML = `<!doctype html>
         }
         return rowMessageKey(row);
       }
-      const repliesByRoot = new Map();
+      const childrenByParent = new Map();
+      const replyCountByRoot = new Map();
       const rootKeys = new Set();
       const uniqueRows = [...new Set(latestByMessage.values())];
       for (const row of uniqueRows) rootKeyFor(row);
@@ -2243,20 +2246,46 @@ const HTML = `<!doctype html>
         const rootKey = rootKeyFor(row);
         rootKeys.add(rootKey);
         if (rootKey !== rowKey) {
-          const list = repliesByRoot.get(rootKey) || [];
+          const parentKey = parentKeyFor(row);
+          const treeParentKey = parentKey && latestByMessage.has(parentKey) && rootKeyFor(latestByMessage.get(parentKey)) === rootKey
+            ? parentKey
+            : rootKey;
+          const list = childrenByParent.get(treeParentKey) || [];
           list.push(row);
-          repliesByRoot.set(rootKey, list);
+          childrenByParent.set(treeParentKey, list);
+          replyCountByRoot.set(rootKey, (replyCountByRoot.get(rootKey) || 0) + 1);
         }
+      }
+      for (const list of childrenByParent.values()) {
+        list.sort((a, b) => {
+          const aTime = Date.parse(a.sent_at_utc || 0) || 0;
+          const bTime = Date.parse(b.sent_at_utc || 0) || 0;
+          if (aTime !== bTime) return aTime - bTime;
+          return Number(a.message_id || 0) - Number(b.message_id || 0);
+        });
+      }
+      function descendantsFor(rootKey) {
+        const result = [];
+        const depthByKey = new Map();
+        const walk = (parentKey, depth) => {
+          for (const child of childrenByParent.get(parentKey) || []) {
+            depthByKey.set(rowMessageKey(child), depth);
+            result.push(child);
+            walk(rowMessageKey(child), depth + 1);
+          }
+        };
+        walk(rootKey, 1);
+        return { replies: result, depthByKey };
       }
       return [...rootKeys].map((key) => {
         const keyParts = key.split(":");
         const root = latestByMessage.get(key) || { missing: true, platform: keyParts[0], chat_id: keyParts[1], message_id: keyParts[2] };
-        const replies = (repliesByRoot.get(key) || []).sort((a, b) => Number(a.message_id || 0) - Number(b.message_id || 0));
+        const { replies, depthByKey } = descendantsFor(key);
         const activityTime = [root, ...replies]
           .map((row) => Date.parse(row.edited_at_utc || row.sent_at_utc || 0) || 0)
           .reduce((latest, time) => Math.max(latest, time), 0);
         const uuid = threadUuidForKey(key);
-        return { key, uuid, root, replies, activityTime };
+        return { key, uuid, root, replies, childrenByParent, depthByKey, replyCount: replyCountByRoot.get(key) || 0, activityTime };
       }).sort((a, b) => {
         return b.activityTime - a.activityTime;
       });
@@ -2264,14 +2293,18 @@ const HTML = `<!doctype html>
     function threadRepliesHtml(thread, indexByRow, options = {}) {
       const replies = thread.replies || [];
       const expanded = expandedThreadKeys.has(thread.uuid) || threadUuidFromPath() === thread.uuid;
+      const renderRow = (row, depth) => threadNode(row, "thread-reply", indexByRow.get(row), { ...options, depth });
+      const renderTree = (parentKey, depth = 1) => (thread.childrenByParent.get(parentKey) || [])
+        .map((reply) => renderRow(reply, depth) + renderTree(rowMessageKey(reply), depth + 1))
+        .join("");
       if (replies.length <= 2 || expanded) {
-        return replies.map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply), options)).join("");
+        return renderTree(thread.key);
       }
       const hiddenCount = replies.length - 2;
       const expandButton = \`<div class="thread-expand">
         <button class="secondary-button thread-expand-button" type="button" data-thread-expand="\${esc(thread.uuid)}">نمایش \${numberFmt.format(hiddenCount)} پاسخ قدیمی‌تر</button>
       </div>\`;
-      return expandButton + replies.slice(-2).map((reply) => threadNode(reply, "thread-reply", indexByRow.get(reply), options)).join("");
+      return expandButton + replies.slice(-2).map((reply) => renderRow(reply, thread.depthByKey.get(rowMessageKey(reply)) || 1)).join("");
     }
     function openModal(text) {
       modalTitleEl.textContent = "متن کامل پیام";
