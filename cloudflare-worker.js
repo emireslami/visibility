@@ -858,7 +858,23 @@ const HTML = `<!doctype html>
           <select id="roadmapSubproduct" aria-label="زیرمحصول">
             <option value="">زیرمحصول اختیاری</option>
           </select>
-          <input id="roadmapDelivery" type="date" required />
+          <select id="roadmapDeliveryMonth" aria-label="ماه تحویل" required>
+            <option value="">ماه تحویل</option>
+            <option value="6">شهریور</option>
+            <option value="7">مهر</option>
+            <option value="8">آبان</option>
+            <option value="9">آذر</option>
+            <option value="10">دی</option>
+            <option value="11">بهمن</option>
+            <option value="12">اسفند</option>
+          </select>
+          <select id="roadmapDeliveryWeek" aria-label="هفته تحویل" required>
+            <option value="">هفته تحویل</option>
+            <option value="1">هفته اول</option>
+            <option value="2">هفته دوم</option>
+            <option value="3">هفته سوم</option>
+            <option value="4">هفته چهارم</option>
+          </select>
           <button type="submit">ثبت تحویل‌دادنی</button>
           <textarea id="roadmapDescription" maxlength="4000" placeholder="توضیحات، محدوده و معیار تحویل"></textarea>
           <div class="roadmap-dependencies">
@@ -1259,7 +1275,8 @@ const HTML = `<!doctype html>
     const roadmapTitleEl = document.getElementById("roadmapTitle");
     const roadmapProductEl = document.getElementById("roadmapProduct");
     const roadmapSubproductEl = document.getElementById("roadmapSubproduct");
-    const roadmapDeliveryEl = document.getElementById("roadmapDelivery");
+    const roadmapDeliveryMonthEl = document.getElementById("roadmapDeliveryMonth");
+    const roadmapDeliveryWeekEl = document.getElementById("roadmapDeliveryWeek");
     const roadmapDescriptionEl = document.getElementById("roadmapDescription");
     const roadmapDependencyAddEl = document.getElementById("roadmapDependencyAdd");
     const roadmapDependencyListEl = document.getElementById("roadmapDependencyList");
@@ -3295,8 +3312,16 @@ const HTML = `<!doctype html>
         day: asciiNumber(parts.find((part) => part.type === "day")?.value),
       };
     }
-    function roadmapTimelineIndex(deliveryDate) {
-      const parts = persianMonthDay(deliveryDate);
+    function roadmapDeliveryText(item) {
+      return item.delivery_slot || item.delivery_date || "-";
+    }
+    function roadmapTimelineIndex(item) {
+      const deliveryMonth = Number(item?.delivery_month);
+      const deliveryWeek = Number(item?.delivery_week);
+      if (deliveryMonth >= 6 && deliveryMonth <= 12 && deliveryWeek >= 1 && deliveryWeek <= 4) {
+        return (deliveryMonth - 6) * 4 + deliveryWeek - 1;
+      }
+      const parts = persianMonthDay(item?.delivery_date);
       if (!parts) return null;
       const monthOffset = parts.month - 6;
       if (monthOffset < 0 || monthOffset > 6) return null;
@@ -3308,7 +3333,7 @@ const HTML = `<!doctype html>
       const pinsByIndex = new Map();
       const outside = [];
       items.forEach((item) => {
-        const index = roadmapTimelineIndex(item.delivery_date);
+        const index = roadmapTimelineIndex(item);
         if (index === null) outside.push(item);
         else {
           if (!pinsByIndex.has(index)) pinsByIndex.set(index, []);
@@ -3330,14 +3355,14 @@ const HTML = `<!doctype html>
           return \`<div class="roadmap-pin" style="left:\${left}%; min-height:\${82 + itemIndex * 34}px">
             <div class="roadmap-pin-card">
               <strong>\${esc(item.title || "-")}</strong>
-              <span>\${esc(item.delivery_date || "-")}</span><br>
+              <span>\${esc(roadmapDeliveryText(item))}</span><br>
               <span>\${esc(productName || "-")}</span>
             </div>
           </div>\`;
         });
       }).join("");
       const outsideHtml = outside.length ? \`<div class="roadmap-pin is-outside" style="left:100%">
-        <div class="roadmap-pin-card"><strong>خارج از بازه</strong>\${outside.map((item) => \`<br>\${esc(item.title || "-")} · \${esc(item.delivery_date || "-")}\`).join("")}</div>
+        <div class="roadmap-pin-card"><strong>خارج از بازه</strong>\${outside.map((item) => \`<br>\${esc(item.title || "-")} · \${esc(roadmapDeliveryText(item))}\`).join("")}</div>
       </div>\` : "";
       roadmapTimelineEl.innerHTML = \`<div class="roadmap-axis">\${dotHtml}\${monthHtml}\${pinHtml}\${outsideHtml}</div>\`;
     }
@@ -3347,7 +3372,7 @@ const HTML = `<!doctype html>
         \${detailRow("مدیر محصول", item.owner_email || "-")}
         \${detailRow("محصول", productNameById(roadmapProducts, item.product_id) || "-")}
         \${detailRow("زیرمحصول", productNameById(roadmapProducts, item.subproduct_id) || "-")}
-        \${detailRow("زمان تحویل", item.delivery_date || "-")}
+        \${detailRow("زمان تحویل", roadmapDeliveryText(item))}
         \${detailRow("ثبت‌کننده", item.created_by_email || "-")}
         \${detailRow("به‌روزرسانی‌کننده", item.updated_by_email || "-")}
         \${detailRow("آخرین به‌روزرسانی", item.updated_at_utc ? tehranDisplay(item.updated_at_utc) : "-")}
@@ -3370,7 +3395,7 @@ const HTML = `<!doctype html>
           <td class="full-cell" data-label="مدیر محصول">\${esc(item.owner_email || "-")}</td>
           <td data-label="محصول">\${esc(productNameById(products, item.product_id) || "-")}</td>
           <td data-label="زیرمحصول">\${esc(productNameById(products, item.subproduct_id) || "-")}</td>
-          <td data-label="زمان تحویل">\${esc(item.delivery_date || "-")}</td>
+          <td data-label="زمان تحویل">\${esc(roadmapDeliveryText(item))}</td>
           <td class="roadmap-description-cell" data-label="توضیحات">\${esc(item.description || "-")}</td>
           <td data-label="وابستگی‌ها"><div class="roadmap-dependency-summary">\${dependencySummary(item.dependencies, products, teams)}</div></td>
           <td data-label="جزئیات"><button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button></td>
@@ -3935,7 +3960,8 @@ const HTML = `<!doctype html>
         title: roadmapTitleEl.value.trim(),
         product_id: roadmapProductEl.value || null,
         subproduct_id: roadmapSubproductEl.value || null,
-        delivery_date: roadmapDeliveryEl.value,
+        delivery_month: roadmapDeliveryMonthEl.value,
+        delivery_week: roadmapDeliveryWeekEl.value,
         description: roadmapDescriptionEl.value.trim(),
         dependencies: collectRoadmapDependencies(),
       };
@@ -3954,7 +3980,8 @@ const HTML = `<!doctype html>
         roadmapTitleEl.value = "";
         roadmapProductEl.value = "";
         roadmapSubproductEl.value = "";
-        roadmapDeliveryEl.value = "";
+        roadmapDeliveryMonthEl.value = "";
+        roadmapDeliveryWeekEl.value = "";
         roadmapDescriptionEl.value = "";
         roadmapDependencyListEl.innerHTML = "";
         syncRoadmapSubproductOptions();
@@ -8376,6 +8403,30 @@ async function updateSenderLabel(request, env, authUser) {
 
 const ROADMAP_STATUSES = ["planned", "in_progress", "delivered", "blocked", "canceled"];
 const ROADMAP_PRIORITIES = ["low", "medium", "high", "critical"];
+const ROADMAP_DELIVERY_MONTHS = new Map([
+  [6, "شهریور"],
+  [7, "مهر"],
+  [8, "آبان"],
+  [9, "آذر"],
+  [10, "دی"],
+  [11, "بهمن"],
+  [12, "اسفند"],
+]);
+const ROADMAP_DELIVERY_WEEKS = new Map([
+  [1, "هفته اول"],
+  [2, "هفته دوم"],
+  [3, "هفته سوم"],
+  [4, "هفته چهارم"],
+]);
+const ROADMAP_DELIVERY_FALLBACK_DATES_1405 = {
+  6: "2026-08-23",
+  7: "2026-09-23",
+  8: "2026-10-23",
+  9: "2026-11-22",
+  10: "2026-12-22",
+  11: "2027-01-21",
+  12: "2027-02-20",
+};
 
 function normalizeRoadmapStatus(value) {
   const status = String(value || "").trim().toLowerCase();
@@ -8390,6 +8441,33 @@ function normalizeRoadmapPriority(value) {
 function normalizeRoadmapDate(value) {
   const date = String(value || "").trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "";
+}
+
+function normalizeRoadmapDeliveryMonth(value) {
+  const month = Number.parseInt(String(value || ""), 10);
+  return ROADMAP_DELIVERY_MONTHS.has(month) ? month : null;
+}
+
+function normalizeRoadmapDeliveryWeek(value) {
+  const week = Number.parseInt(String(value || ""), 10);
+  return ROADMAP_DELIVERY_WEEKS.has(week) ? week : null;
+}
+
+function roadmapDeliverySlotText(monthValue, weekValue) {
+  const month = normalizeRoadmapDeliveryMonth(monthValue);
+  const week = normalizeRoadmapDeliveryWeek(weekValue);
+  if (!month || !week) return "";
+  return `${ROADMAP_DELIVERY_MONTHS.get(month)}، ${ROADMAP_DELIVERY_WEEKS.get(week)}`;
+}
+
+function fallbackRoadmapDeliveryDate(monthValue, weekValue) {
+  const month = normalizeRoadmapDeliveryMonth(monthValue);
+  const week = normalizeRoadmapDeliveryWeek(weekValue);
+  const monthStart = ROADMAP_DELIVERY_FALLBACK_DATES_1405[month];
+  if (!monthStart || !week) return "";
+  const date = new Date(`${monthStart}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + (week - 1) * 7);
+  return date.toISOString().slice(0, 10);
 }
 
 function normalizeRoadmapEntityId(value) {
@@ -8460,6 +8538,9 @@ function roadmapItemForClient(row) {
     priority: row.priority || "medium",
     status: row.status || "planned",
     delivery_date: row.delivery_date || "",
+    delivery_month: row.delivery_month || null,
+    delivery_week: row.delivery_week || null,
+    delivery_slot: roadmapDeliverySlotText(row.delivery_month, row.delivery_week),
     created_by_email: row.created_by_email || "",
     updated_by_email: row.updated_by_email || "",
     created_at_utc: row.created_at_utc || "",
@@ -8469,8 +8550,8 @@ function roadmapItemForClient(row) {
 
 async function fetchRoadmapItems(env) {
   const params = new URLSearchParams({
-    select: "id,title,description,owner_email,product_id,subproduct_id,dependencies_json,priority,status,delivery_date,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
-    order: "delivery_date.asc,status.asc,created_at_utc.desc",
+    select: "id,title,description,owner_email,product_id,subproduct_id,dependencies_json,priority,status,delivery_date,delivery_month,delivery_week,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
+    order: "delivery_month.asc.nullslast,delivery_week.asc.nullslast,delivery_date.asc,status.asc,created_at_utc.desc",
     limit: "1000",
   });
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_roadmap_items?${params}`, { headers: supabaseHeaders(env) });
@@ -8486,7 +8567,7 @@ async function fetchRoadmapItems(env) {
 
 async function fetchRoadmapItemById(env, id) {
   const params = new URLSearchParams({
-    select: "id,title,description,owner_email,product_id,subproduct_id,dependencies_json,priority,status,delivery_date,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
+    select: "id,title,description,owner_email,product_id,subproduct_id,dependencies_json,priority,status,delivery_date,delivery_month,delivery_week,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
     id: `eq.${id}`,
     limit: "1",
   });
@@ -8508,10 +8589,13 @@ async function roadmapPayloadFromBody(body, authUser, env, partial = false) {
     if (description.length > 4000) throw new Error("توضیحات بیش از حد طولانی است");
     payload.description = description;
   }
-  if (!partial || Object.prototype.hasOwnProperty.call(body, "delivery_date")) {
-    const deliveryDate = normalizeRoadmapDate(body.delivery_date);
-    if (!deliveryDate) throw new Error("زمان تحویل نامعتبر است");
-    payload.delivery_date = deliveryDate;
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "delivery_month") || Object.prototype.hasOwnProperty.call(body, "delivery_week")) {
+    const deliveryMonth = normalizeRoadmapDeliveryMonth(body.delivery_month);
+    const deliveryWeek = normalizeRoadmapDeliveryWeek(body.delivery_week);
+    if (!deliveryMonth || !deliveryWeek) throw new Error("ماه و هفته تحویل نامعتبر است");
+    payload.delivery_month = deliveryMonth;
+    payload.delivery_week = deliveryWeek;
+    payload.delivery_date = fallbackRoadmapDeliveryDate(deliveryMonth, deliveryWeek);
   }
   if (!partial || Object.prototype.hasOwnProperty.call(body, "product_id") || Object.prototype.hasOwnProperty.call(body, "subproduct_id")) {
     Object.assign(payload, await normalizeRoadmapProducts(env, body.product_id, body.subproduct_id));
