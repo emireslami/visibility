@@ -3593,6 +3593,7 @@ const HTML = `<!doctype html>
     function roadmapItemDetailsHtml(item) {
       const parentItem = roadmapItems.find((candidate) => String(candidate.id) === String(item.parent_roadmap_id));
       return \`<div class="details-grid">
+        \${isOwnerEmail(currentUser.email) ? \`<div class="detail-row"><div class="detail-label">عملیات</div><div class="detail-value"><button class="revoke-button" type="button" data-roadmap-archive="\${esc(item.id)}">آرشیو</button></div></div>\` : ""}
         \${detailRow("عنوان تحویل‌دادنی", item.title || "-")}
         \${detailRow("وابسته به", parentItem?.title || "-")}
         \${detailRow("مدیر محصول", item.owner_email || "-")}
@@ -4058,31 +4059,7 @@ const HTML = `<!doctype html>
     roadmapRowsEl.addEventListener("click", event => {
       const archiveButton = event.target.closest("[data-roadmap-archive]");
       if (archiveButton && !archiveButton.disabled) {
-        const id = archiveButton.dataset.roadmapArchive;
-        openConfirmModal({
-          title: "آرشیو تحویل‌دادنی",
-          message: "این مورد از نقشه‌راه آرشیو شود؟",
-          confirmText: "آرشیو",
-          cancelText: "انصراف",
-        }).then(async (confirmed) => {
-          if (!confirmed) return;
-          archiveButton.disabled = true;
-          roadmapMessageEl.textContent = "در حال آرشیو...";
-          try {
-            const res = await fetch("/api/roadmap?id=" + encodeURIComponent(id), { method: "DELETE" });
-            const data = await res.json();
-            if (!res.ok) {
-              roadmapMessageEl.textContent = data.error || "آرشیو نقشه راه انجام نشد";
-              archiveButton.disabled = false;
-              return;
-            }
-            roadmapMessageEl.textContent = "مورد نقشه‌راه آرشیو شد.";
-            await loadRoadmap();
-          } catch (error) {
-            roadmapMessageEl.textContent = "آرشیو نقشه راه انجام نشد";
-            archiveButton.disabled = false;
-          }
-        });
+        archiveRoadmapFromButton(archiveButton);
         return;
       }
       const detailsButton = event.target.closest("[data-detail-key]");
@@ -4239,6 +4216,34 @@ const HTML = `<!doctype html>
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات اطلاع‌رسانی");
     });
     broadcastLogRefreshEl.addEventListener("click", () => loadBroadcastLogs(true));
+    async function archiveRoadmapFromButton(archiveButton) {
+      if (!archiveButton || archiveButton.disabled) return;
+      const id = archiveButton.dataset.roadmapArchive;
+      const confirmed = await openConfirmModal({
+        title: "آرشیو تحویل‌دادنی",
+        message: "این مورد از نقشه‌راه آرشیو شود؟",
+        confirmText: "آرشیو",
+        cancelText: "انصراف",
+      });
+      if (!confirmed) return;
+      archiveButton.disabled = true;
+      roadmapMessageEl.textContent = "در حال آرشیو...";
+      try {
+        const res = await fetch("/api/roadmap?id=" + encodeURIComponent(id), { method: "DELETE" });
+        const data = await res.json();
+        if (!res.ok) {
+          roadmapMessageEl.textContent = data.error || "آرشیو نقشه راه انجام نشد";
+          archiveButton.disabled = false;
+          return;
+        }
+        roadmapMessageEl.textContent = "مورد نقشه‌راه آرشیو شد.";
+        closeModal();
+        await loadRoadmap();
+      } catch (error) {
+        roadmapMessageEl.textContent = "آرشیو نقشه راه انجام نشد";
+        archiveButton.disabled = false;
+      }
+    }
     botTokenToggleEl.addEventListener("click", () => {
       botTokenEl.type = botTokenEl.type === "password" ? "text" : "password";
     });
@@ -4423,6 +4428,11 @@ const HTML = `<!doctype html>
     modalBackdropEl.addEventListener("click", event => { if (event.target === modalBackdropEl) closeModal(); });
     document.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
     modalBodyEl.addEventListener("click", async event => {
+      const archiveButton = event.target.closest("[data-roadmap-archive]");
+      if (archiveButton && !archiveButton.disabled) {
+        await archiveRoadmapFromButton(archiveButton);
+        return;
+      }
       const passwordToggle = event.target.closest("[data-confirm-password-toggle]");
       if (passwordToggle) {
         const input = modalBodyEl.querySelector("[data-confirm-password]");
