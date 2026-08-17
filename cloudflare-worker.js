@@ -314,6 +314,7 @@ const HTML = `<!doctype html>
     .access-list { display:grid; gap:10px; margin-top:12px; }
     .access-row { display:grid; gap:10px; padding:12px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; direction:ltr; }
     .access-row.focused { border-color:var(--accent); box-shadow:0 0 0 3px rgba(8,127,140,.14); background:#f0fbfc; }
+    .access-row.permissions-dirty { border-color:#78a9ff; box-shadow:0 0 0 2px rgba(15,98,254,.12); }
     .access-main { display:grid; grid-template-columns:minmax(220px, 1fr) minmax(180px, auto) auto; align-items:center; gap:12px; }
     .access-email { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
     .access-state { min-width:0; color:var(--muted); font-size:12px; line-height:1.6; text-align:right; direction:rtl; }
@@ -333,6 +334,8 @@ const HTML = `<!doctype html>
     .group-access-option .group-label-chip { margin-inline-start:auto; padding:2px 6px; border:1px solid var(--line); border-radius:999px; background:#eef4f8; color:var(--muted); font-size:10px; font-weight:700; white-space:nowrap; }
     .group-access-option input { width:14px; height:14px; flex:0 0 auto; }
     .group-access-option:has(input:disabled) { opacity:.68; background:#f7f8fa; }
+    .save-permissions-button { height:30px; padding:0 12px; background:var(--accent); color:#fff; border-color:var(--accent); }
+    .save-permissions-button:disabled { cursor:not-allowed; color:var(--muted); border-color:var(--line); background:#f3f5f6; }
     .revoke-button { height:30px; padding:0 10px; background:#fff; color:#b42318; border-color:#f0b8b2; }
     .revoke-button:disabled { cursor:not-allowed; color:var(--muted); border-color:var(--line); background:#f3f5f6; }
     .reactivate-button { height:30px; padding:0 10px; background:#fff; color:var(--accent); border-color:#9bd6dd; }
@@ -544,7 +547,7 @@ const HTML = `<!doctype html>
       .broadcast-labels, .broadcast-group-grid { grid-template-columns:1fr; }
       .permission-option { justify-content:flex-start; direction:ltr; }
       .access-actions { justify-content:stretch; display:grid; grid-template-columns:1fr; }
-      .revoke-button, .reactivate-button, .secondary-button { width:100%; }
+      .revoke-button, .reactivate-button, .secondary-button, .save-permissions-button { width:100%; }
       .thread-list { max-width:none; }
       .thread-root, .thread-reply, .thread-missing { padding:12px; }
       .thread-reply { margin-right:min(var(--thread-reply-indent, 10px), 56px); }
@@ -3094,6 +3097,9 @@ const HTML = `<!doctype html>
               <span class="access-actions">
                 <button class="secondary-button" type="button" data-resend-email="\${esc(user.email)}">ارسال دوباره دعوت</button>
                 \${user.is_owner
+                  ? ""
+                  : \`<button class="save-permissions-button" type="button" data-save-permissions-email="\${esc(user.email)}" disabled>ذخیره تغییرات</button>\`}
+                \${user.is_owner
                   ? '<span class="owner-badge">مالک</span>'
                   : user.is_active
                   ? \`<button class="revoke-button" type="button" data-revoke-email="\${esc(user.email)}">لغو دسترسی</button>\`
@@ -4303,6 +4309,44 @@ const HTML = `<!doctype html>
       }
     });
     accessRowsEl.addEventListener("click", async (event) => {
+      const savePermissionsButton = event.target.closest("[data-save-permissions-email]");
+      if (savePermissionsButton && !savePermissionsButton.disabled) {
+        const email = savePermissionsButton.dataset.savePermissionsEmail;
+        const card = savePermissionsButton.closest("[data-access-card-email]");
+        const grid = card?.querySelector("[data-permission-email]");
+        if (!grid) return;
+        if (grid.dataset.owner === "true" || isOwnerEmail(email)) {
+          accessMessageEl.textContent = "دسترسی owner قابل تغییر نیست.";
+          loadAccessUsers();
+          return;
+        }
+        const permissions = selectedPermissions(grid);
+        savePermissionsButton.disabled = true;
+        savePermissionsButton.textContent = "در حال ذخیره...";
+        accessMessageEl.textContent = "در حال ذخیره دسترسی‌ها...";
+        try {
+          const res = await fetch("/api/access-users/permissions", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ email, permissions }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            accessMessageEl.textContent = data.error || "ذخیره دسترسی انجام نشد";
+            savePermissionsButton.textContent = "ذخیره تغییرات";
+            savePermissionsButton.disabled = false;
+            return;
+          }
+          card?.classList.remove("permissions-dirty");
+          accessMessageEl.textContent = "دسترسی‌ها ذخیره شد.";
+          loadAccessUsers();
+        } catch (error) {
+          accessMessageEl.textContent = "ذخیره دسترسی انجام نشد";
+          savePermissionsButton.textContent = "ذخیره تغییرات";
+          savePermissionsButton.disabled = false;
+        }
+        return;
+      }
       const resendButton = event.target.closest("[data-resend-email]");
       if (resendButton && !resendButton.disabled) {
         const email = resendButton.dataset.resendEmail;
@@ -4418,25 +4462,14 @@ const HTML = `<!doctype html>
         loadAccessUsers();
         return;
       }
-      const permissions = selectedPermissions(grid);
-      accessMessageEl.textContent = "در حال ذخیره دسترسی‌ها...";
-      try {
-        const res = await fetch("/api/access-users/permissions", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email, permissions }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          accessMessageEl.textContent = data.error || "ذخیره دسترسی انجام نشد";
-          loadAccessUsers();
-          return;
-        }
-        accessMessageEl.textContent = "دسترسی‌ها ذخیره شد.";
-      } catch (error) {
-        accessMessageEl.textContent = "ذخیره دسترسی انجام نشد";
-        loadAccessUsers();
+      const card = grid.closest("[data-access-card-email]");
+      const saveButton = card?.querySelector("[data-save-permissions-email]");
+      card?.classList.add("permissions-dirty");
+      if (saveButton) {
+        saveButton.disabled = false;
+        saveButton.textContent = "ذخیره تغییرات";
       }
+      accessMessageEl.textContent = "برای ثبت تغییرات دسترسی، دکمه ذخیره تغییرات را بزنید.";
     });
     searchEl.addEventListener("input", updateFilterButtons);
     searchEl.addEventListener("keydown", e => { if (e.key === "Enter") load(); });
