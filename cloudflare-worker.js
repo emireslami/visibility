@@ -238,7 +238,7 @@ const HTML = `<!doctype html>
     .roadmap-dependency-head { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--muted); font-size:12px; font-weight:800; }
     .roadmap-dependency-add { width:38px; height:32px; padding:0; font-size:20px; line-height:1; }
     .roadmap-dependency-list { display:grid; gap:8px; }
-    .roadmap-dependency-row { display:grid; grid-template-columns:minmax(150px, 1fr) minmax(130px, .7fr) minmax(130px, .75fr) minmax(130px, .75fr) minmax(130px, .75fr) 34px; gap:8px; align-items:center; }
+    .roadmap-dependency-row { display:grid; grid-template-columns:minmax(150px, 1fr) minmax(120px, .65fr) minmax(120px, .65fr) minmax(130px, .75fr) minmax(130px, .75fr) minmax(130px, .75fr) 34px; gap:8px; align-items:center; }
     .roadmap-dependency-row > * { min-width:0; }
     .roadmap-dependency-description { grid-column:1 / -1; min-height:96px; padding:10px; border:1px solid var(--line); resize:vertical; font:inherit; direction:rtl; text-align:right; }
     .roadmap-dependency-remove { height:32px; padding:0; color:var(--danger); border-color:#fa4d56; background:#fff; }
@@ -3283,15 +3283,22 @@ const HTML = `<!doctype html>
     function syncRoadmapSubproductOptions() {
       roadmapSubproductEl.innerHTML = roadmapSubproductOptions(roadmapProducts, roadmapProductEl.value, roadmapSubproductEl.value);
     }
+    function dependencyResolutionText(dep) {
+      const month = roadmapPathMonths.find((item) => Number(item.index) === Number(dep?.expected_resolution_month));
+      const week = Number(dep?.expected_resolution_week);
+      if (month && week >= 1 && week <= 4) return month.label + "، هفته " + numberFmt.format(week);
+      return dep?.expected_resolution_date || "-";
+    }
     function dependencySummary(dependencies, products, teams) {
       const list = Array.isArray(dependencies) ? dependencies : [];
       if (!list.length) return '<span>-</span>';
       return list.map((dep) => {
+        const resolutionText = dependencyResolutionText(dep);
         const parts = [
           dep.product_id ? productNameById(products, dep.product_id) : "",
           dep.subproduct_id ? productNameById(products, dep.subproduct_id) : "",
           dep.team_id ? (teams.find((team) => String(team.id) === String(dep.team_id))?.name || "") : "",
-          dep.expected_resolution_date ? "تا " + dep.expected_resolution_date : "",
+          resolutionText !== "-" ? "تا " + resolutionText : "",
         ].filter(Boolean).join(" · ");
         return \`<span>\${esc(dep.title || "وابستگی")}\${parts ? " - " + esc(parts) : ""}</span>\`;
       }).join("");
@@ -3306,7 +3313,7 @@ const HTML = `<!doctype html>
           محصول: \${esc(productNameById(products, dep.product_id) || "-")}<br>
           زیرمحصول: \${esc(productNameById(products, dep.subproduct_id) || "-")}<br>
           تیم: \${esc(teamName || "-")}<br>
-          تاریخ انتظار حل: \${esc(dep.expected_resolution_date || "-")}<br>
+          تاریخ انتظار حل: \${esc(dependencyResolutionText(dep))}<br>
           \${esc(dep.description || "-")}
         </div></div>\`;
       }).join("");
@@ -3331,6 +3338,18 @@ const HTML = `<!doctype html>
         month: asciiNumber(parts.find((part) => part.type === "month")?.value),
         day: asciiNumber(parts.find((part) => part.type === "day")?.value),
       };
+    }
+    function roadmapDeliveryMonthOptions(selectedValue) {
+      const selected = String(selectedValue || "");
+      return '<option value="">ماه حل</option>' + roadmapPathMonths
+        .map((month) => \`<option value="\${esc(month.index)}" \${String(month.index) === selected ? "selected" : ""}>\${esc(month.label)}</option>\`)
+        .join("");
+    }
+    function roadmapDeliveryWeekOptions(selectedValue) {
+      const selected = String(selectedValue || "");
+      return '<option value="">هفته حل</option>' + [1, 2, 3, 4]
+        .map((week) => \`<option value="\${week}" \${String(week) === selected ? "selected" : ""}>هفته \${numberFmt.format(week)}</option>\`)
+        .join("");
     }
     function roadmapDeliveryText(item) {
       return item.delivery_slot || item.delivery_date || "-";
@@ -3447,7 +3466,8 @@ const HTML = `<!doctype html>
       row.className = "roadmap-dependency-row";
       row.innerHTML = \`
         <input data-dependency-title type="text" maxlength="180" placeholder="عنوان وابستگی" value="\${esc(value.title || "")}" />
-        <input data-dependency-date type="date" value="\${esc(value.expected_resolution_date || "")}" />
+        <select data-dependency-month>\${roadmapDeliveryMonthOptions(value.expected_resolution_month)}</select>
+        <select data-dependency-week>\${roadmapDeliveryWeekOptions(value.expected_resolution_week)}</select>
         <select data-dependency-product>\${roadmapProductOptions(roadmapProducts, value.product_id)}</select>
         <select data-dependency-subproduct>\${roadmapSubproductOptions(roadmapProducts, value.product_id, value.subproduct_id)}</select>
         <select data-dependency-team>\${roadmapTeamOptions(roadmapTeams, value.team_id)}</select>
@@ -3459,12 +3479,13 @@ const HTML = `<!doctype html>
     function collectRoadmapDependencies() {
       return [...roadmapDependencyListEl.querySelectorAll(".roadmap-dependency-row")].map((row) => ({
         title: row.querySelector("[data-dependency-title]")?.value.trim() || "",
-        expected_resolution_date: row.querySelector("[data-dependency-date]")?.value || "",
+        expected_resolution_month: row.querySelector("[data-dependency-month]")?.value || "",
+        expected_resolution_week: row.querySelector("[data-dependency-week]")?.value || "",
         product_id: row.querySelector("[data-dependency-product]")?.value || null,
         subproduct_id: row.querySelector("[data-dependency-subproduct]")?.value || null,
         team_id: row.querySelector("[data-dependency-team]")?.value || null,
         description: row.querySelector("[data-dependency-description]")?.value.trim() || "",
-      })).filter((dep) => dep.title || dep.expected_resolution_date || dep.product_id || dep.subproduct_id || dep.team_id || dep.description);
+      })).filter((dep) => dep.title || dep.expected_resolution_month || dep.expected_resolution_week || dep.product_id || dep.subproduct_id || dep.team_id || dep.description);
     }
     function userGroupMemberOptions(group, users) {
       const memberSet = new Set(Array.isArray(group.member_emails) ? group.member_emails.map((email) => String(email).toLowerCase()) : []);
@@ -8646,21 +8667,28 @@ async function normalizeRoadmapDependencies(env, value) {
   return list.map((item) => {
     const title = String(item?.title || "").trim().replace(/\s+/g, " ");
     const description = String(item?.description || "").trim();
-    const expectedDate = normalizeRoadmapDate(item?.expected_resolution_date || "");
+    const expectedMonth = normalizeRoadmapDeliveryMonth(item?.expected_resolution_month);
+    const expectedWeek = normalizeRoadmapDeliveryWeek(item?.expected_resolution_week);
+    const hasExpectedSlot = item?.expected_resolution_month || item?.expected_resolution_week;
+    const legacyExpectedDate = normalizeRoadmapDate(item?.expected_resolution_date || "");
     const productId = normalizeRoadmapEntityId(item?.product_id);
     const subproductId = normalizeRoadmapEntityId(item?.subproduct_id);
     const teamId = normalizeRoadmapEntityId(item?.team_id);
     if (!title) throw new Error("عنوان وابستگی الزامی است");
     if (title.length > 180) throw new Error("عنوان وابستگی بیش از حد طولانی است");
     if (description.length > 1200) throw new Error("شرح وابستگی بیش از حد طولانی است");
-    if (item?.expected_resolution_date && !expectedDate) throw new Error("تاریخ انتظار حل وابستگی نامعتبر است");
+    if (hasExpectedSlot && (!expectedMonth || !expectedWeek)) throw new Error("ماه و هفته انتظار حل وابستگی نامعتبر است");
+    if (!hasExpectedSlot && item?.expected_resolution_date && !legacyExpectedDate) throw new Error("تاریخ انتظار حل وابستگی نامعتبر است");
     if (productId && !productIds.has(productId)) throw new Error("محصول وابستگی نامعتبر است");
     if (subproductId && (!productId || !subproductsByParent.get(productId)?.has(subproductId))) throw new Error("زیرمحصول وابستگی نامعتبر است");
     if (teamId && !teamIds.has(teamId)) throw new Error("تیم وابستگی نامعتبر است");
+    const expectedDate = hasExpectedSlot ? fallbackRoadmapDeliveryDate(expectedMonth, expectedWeek) : legacyExpectedDate;
     return {
       title,
       description,
       expected_resolution_date: expectedDate || "",
+      expected_resolution_month: expectedMonth,
+      expected_resolution_week: expectedWeek,
       product_id: productId,
       subproduct_id: subproductId,
       team_id: teamId,
