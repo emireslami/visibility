@@ -834,10 +834,9 @@ const HTML = `<!doctype html>
     <section class="page" id="roadmapPage" hidden>
       <section class="roadmap-panel">
         <h2>نقشه راه محصول</h2>
-        <p class="thread-muted">ثبت تحویل‌دادنی‌های محصول، مدیر محصول و زمان تحویل.</p>
+        <p class="thread-muted">ثبت تحویل‌دادنی‌های محصول، محصول و زمان تحویل.</p>
         <form class="roadmap-form" id="roadmapForm">
           <input id="roadmapTitle" type="text" maxlength="180" placeholder="عنوان تحویل‌دادنی" autocomplete="off" required />
-          <input id="roadmapOwner" type="email" placeholder="ایمیل مدیر محصول" autocomplete="off" dir="ltr" />
           <select id="roadmapProduct" aria-label="محصول">
             <option value="">محصول</option>
           </select>
@@ -1236,7 +1235,6 @@ const HTML = `<!doctype html>
     const roadmapRowsEl = document.getElementById("roadmapRows");
     const roadmapFormEl = document.getElementById("roadmapForm");
     const roadmapTitleEl = document.getElementById("roadmapTitle");
-    const roadmapOwnerEl = document.getElementById("roadmapOwner");
     const roadmapProductEl = document.getElementById("roadmapProduct");
     const roadmapSubproductEl = document.getElementById("roadmapSubproduct");
     const roadmapDeliveryEl = document.getElementById("roadmapDelivery");
@@ -1604,7 +1602,6 @@ const HTML = `<!doctype html>
       headerEmailEl.textContent = currentUser.email;
       profileEmailEl.textContent = currentUser.email;
       profileTelegramUsernameEl.value = telegramUsernameLocal(currentUser.telegram_username);
-      if (roadmapOwnerEl && !roadmapOwnerEl.value) roadmapOwnerEl.value = currentUser.email || "";
       profileAvatarHintEl.textContent = currentUser.telegram_avatar_url
         ? "عکس از پروفایل تلگرام نمایش داده می‌شود."
         : "برای نمایش عکس، یوزرنیم تلگرام را ثبت کنید و حداقل یک پیام از همان کاربر در گروه‌ها دریافت شده باشد.";
@@ -3845,7 +3842,6 @@ const HTML = `<!doctype html>
       roadmapMessageEl.textContent = "در حال ثبت تحویل‌دادنی...";
       const payload = {
         title: roadmapTitleEl.value.trim(),
-        owner_email: roadmapOwnerEl.value.trim(),
         product_id: roadmapProductEl.value || null,
         subproduct_id: roadmapSubproductEl.value || null,
         delivery_date: roadmapDeliveryEl.value,
@@ -8316,9 +8312,12 @@ async function normalizeRoadmapProducts(env, productIdValue, subproductIdValue) 
   const subproductId = normalizeRoadmapEntityId(subproductIdValue);
   if (!productId && subproductId) throw new Error("برای انتخاب زیرمحصول، محصول هم باید انتخاب شود");
   const products = await fetchProductRows(env);
-  if (productId && !products.some((product) => Number(product.id) === productId && !product.parent_id)) throw new Error("محصول نامعتبر است");
-  if (subproductId && !products.some((product) => Number(product.id) === subproductId && Number(product.parent_id) === productId)) throw new Error("زیرمحصول نامعتبر است");
-  return { product_id: productId, subproduct_id: subproductId };
+  const product = productId ? products.find((item) => Number(item.id) === productId && !item.parent_id) : null;
+  if (productId && !product) throw new Error("محصول نامعتبر است");
+  const subproduct = subproductId ? products.find((item) => Number(item.id) === subproductId && Number(item.parent_id) === productId) : null;
+  if (subproductId && !subproduct) throw new Error("زیرمحصول نامعتبر است");
+  const ownerEmail = normalizeEmail(subproduct?.owner_email || product?.owner_email || "");
+  return { product_id: productId, subproduct_id: subproductId, owner_email: ownerEmail || null };
 }
 
 async function normalizeRoadmapDependencies(env, value) {
@@ -8418,11 +8417,6 @@ async function roadmapPayloadFromBody(body, authUser, env, partial = false) {
     if (description.length > 4000) throw new Error("توضیحات بیش از حد طولانی است");
     payload.description = description;
   }
-  if (!partial || Object.prototype.hasOwnProperty.call(body, "owner_email")) {
-    const ownerEmail = normalizeEmail(body.owner_email || authUser?.email);
-    if (!validAccessEmail(ownerEmail)) throw new Error("ایمیل مدیر محصول باید از دامنه toman.ir باشد");
-    payload.owner_email = ownerEmail;
-  }
   if (!partial || Object.prototype.hasOwnProperty.call(body, "delivery_date")) {
     const deliveryDate = normalizeRoadmapDate(body.delivery_date);
     if (!deliveryDate) throw new Error("زمان تحویل نامعتبر است");
@@ -8430,6 +8424,7 @@ async function roadmapPayloadFromBody(body, authUser, env, partial = false) {
   }
   if (!partial || Object.prototype.hasOwnProperty.call(body, "product_id") || Object.prototype.hasOwnProperty.call(body, "subproduct_id")) {
     Object.assign(payload, await normalizeRoadmapProducts(env, body.product_id, body.subproduct_id));
+    if (!payload.owner_email) throw new Error("برای محصول یا زیرمحصول انتخاب‌شده مدیر محصول ثبت نشده است");
   }
   if (!partial || Object.prototype.hasOwnProperty.call(body, "dependencies")) {
     payload.dependencies_json = await normalizeRoadmapDependencies(env, body.dependencies);
