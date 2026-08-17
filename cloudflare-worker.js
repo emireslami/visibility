@@ -266,6 +266,7 @@ const HTML = `<!doctype html>
     .roadmap-pin-card strong { display:block; font-size:12px; margin-bottom:4px; }
     .roadmap-pin.is-outside { background:#8d8d8d; }
     .roadmap-pin.is-outside .roadmap-pin-card { border-color:#8d8d8d; }
+    .roadmap-table-title { margin:18px 0 8px; font-size:15px; }
     .roadmap-table th, .roadmap-table td { text-align:right; direction:rtl; }
     .roadmap-table .roadmap-title-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.5; font-weight:700; }
     .roadmap-table .roadmap-description-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.6; color:var(--muted); }
@@ -914,13 +915,12 @@ const HTML = `<!doctype html>
         </section>
         <table class="roadmap-table">
           <colgroup>
+            <col style="width:22%" />
+            <col style="width:14%" />
+            <col style="width:14%" />
+            <col style="width:14%" />
+            <col style="width:10%" />
             <col style="width:20%" />
-            <col style="width:12%" />
-            <col style="width:13%" />
-            <col style="width:13%" />
-            <col style="width:10%" />
-            <col style="width:16%" />
-            <col style="width:10%" />
             <col style="width:6%" />
           </colgroup>
           <thead>
@@ -931,11 +931,36 @@ const HTML = `<!doctype html>
               <th>زیرمحصول</th>
               <th>زمان تحویل</th>
               <th>توضیحات</th>
-              <th>وابستگی‌ها</th>
               <th>عملیات</th>
             </tr>
           </thead>
           <tbody id="roadmapRows"></tbody>
+        </table>
+        <h3 class="roadmap-table-title">وابستگی‌ها</h3>
+        <table class="roadmap-table roadmap-dependencies-table">
+          <colgroup>
+            <col style="width:19%" />
+            <col style="width:19%" />
+            <col style="width:13%" />
+            <col style="width:13%" />
+            <col style="width:12%" />
+            <col style="width:14%" />
+            <col style="width:6%" />
+            <col style="width:4%" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>وابستگی</th>
+              <th>تحویل‌دادنی بالادستی</th>
+              <th>محصول</th>
+              <th>زیرمحصول</th>
+              <th>تیم</th>
+              <th>زمان حل</th>
+              <th>زیرمجموعه</th>
+              <th>عملیات</th>
+            </tr>
+          </thead>
+          <tbody id="roadmapDependencyRows"></tbody>
         </table>
       </section>
     </section>
@@ -1322,6 +1347,7 @@ const HTML = `<!doctype html>
     const broadcastLogMessageEl = document.getElementById("broadcastLogMessage");
     const broadcastLogRowsEl = document.getElementById("broadcastLogRows");
     const roadmapRowsEl = document.getElementById("roadmapRows");
+    const roadmapDependencyRowsEl = document.getElementById("roadmapDependencyRows");
     const roadmapFormEl = document.getElementById("roadmapForm");
     const roadmapTitleEl = document.getElementById("roadmapTitle");
     const roadmapParentEl = document.getElementById("roadmapParent");
@@ -3581,6 +3607,37 @@ const HTML = `<!doctype html>
         <div class="detail-row"><div class="detail-label">وابستگی‌ها</div><div class="detail-value">\${dependencyDetailsHtml(item.dependencies, roadmapProducts, roadmapTeams)}</div></div>
       </div>\`;
     }
+    function roadmapDependencyDetailsHtml(dep, parentItem) {
+      return \`<div class="details-grid">
+        \${detailRow("عنوان وابستگی", dep.title || "-")}
+        \${detailRow("تحویل‌دادنی بالادستی", parentItem?.title || "-")}
+        \${detailRow("نوع", dep.roadmap_id ? "تحویل‌دادنی وابسته" : "وابستگی ثبت‌شده")}
+        \${detailRow("محصول", productNameById(roadmapProducts, dep.product_id) || "-")}
+        \${detailRow("زیرمحصول", productNameById(roadmapProducts, dep.subproduct_id) || "-")}
+        \${detailRow("تیم", roadmapTeams.find((team) => String(team.id) === String(dep.team_id))?.name || "-")}
+        \${detailRow("زمان حل", dependencyResolutionText(dep))}
+        \${detailRow("وابستگی‌های زیرمجموعه", dep.child_dependency_count ? numberFmt.format(dep.child_dependency_count) : "-")}
+        \${detailRow("شرح", dep.description || "-")}
+      </div>\`;
+    }
+    function renderRoadmapDependencyRows(items, products, teams) {
+      const dependencyRows = items.flatMap((item) => (item.dependencies || []).map((dep) => ({ parent: item, dep })));
+      roadmapDependencyRowsEl.innerHTML = dependencyRows.map(({ parent, dep }, index) => {
+        const key = "roadmap-dependency-" + index;
+        detailByKey.set(key, roadmapDependencyDetailsHtml(dep, parent));
+        const teamName = teams.find((team) => String(team.id) === String(dep.team_id))?.name || "";
+        return \`<tr>
+          <td class="roadmap-title-cell" data-label="وابستگی">\${esc(dep.title || "-")}</td>
+          <td class="roadmap-title-cell" data-label="تحویل‌دادنی بالادستی">\${esc(parent.title || "-")}</td>
+          <td data-label="محصول">\${esc(productNameById(products, dep.product_id) || "-")}</td>
+          <td data-label="زیرمحصول">\${esc(productNameById(products, dep.subproduct_id) || "-")}</td>
+          <td class="full-cell" data-label="تیم">\${esc(teamName || "-")}</td>
+          <td data-label="زمان حل">\${esc(dependencyResolutionText(dep))}</td>
+          <td data-label="زیرمجموعه">\${dep.child_dependency_count ? esc(numberFmt.format(dep.child_dependency_count)) : "-"}</td>
+          <td data-label="عملیات"><button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button></td>
+        </tr>\`;
+      }).join("") || '<tr><td colspan="8" class="empty">وابستگی مستقلی برای تحویل‌دادنی‌ها ثبت نشده است</td></tr>';
+    }
     function renderRoadmapRows(items, products, teams) {
       roadmapProducts = products;
       roadmapTeams = teams;
@@ -3601,13 +3658,13 @@ const HTML = `<!doctype html>
           <td data-label="زیرمحصول">\${esc(productNameById(products, item.subproduct_id) || "-")}</td>
           <td data-label="زمان تحویل">\${esc(roadmapDeliveryText(item))}</td>
           <td class="roadmap-description-cell" data-label="توضیحات">\${esc(item.description || "-")}</td>
-          <td data-label="وابستگی‌ها"><div class="roadmap-dependency-summary">\${dependencySummary(item.dependencies, products, teams)}</div></td>
           <td data-label="عملیات">
             <button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button>
             \${isOwnerEmail(currentUser.email) ? \`<button class="revoke-button" type="button" data-roadmap-archive="\${esc(item.id)}">آرشیو</button>\` : ""}
           </td>
         </tr>\`;
-      }).join("") || '<tr><td colspan="8" class="empty">هنوز تحویل‌دادنی در نقشه راه ثبت نشده است</td></tr>';
+      }).join("") || '<tr><td colspan="7" class="empty">هنوز تحویل‌دادنی در نقشه راه ثبت نشده است</td></tr>';
+      renderRoadmapDependencyRows(items, products, teams);
     }
     async function loadRoadmap() {
       const token = showLoading("در حال دریافت نقشه راه...");
@@ -3616,6 +3673,7 @@ const HTML = `<!doctype html>
         const data = await res.json();
         if (!res.ok || !Array.isArray(data.items) || !Array.isArray(data.products) || !Array.isArray(data.teams)) {
           roadmapRowsEl.innerHTML = "";
+          roadmapDependencyRowsEl.innerHTML = "";
           roadmapMessageEl.textContent = data.detail || data.error || "خطا در دریافت نقشه راه";
           setStatus(token, data.detail || data.error || "خطا در دریافت نقشه راه");
           return;
@@ -3625,6 +3683,7 @@ const HTML = `<!doctype html>
         setStatus(token, data.items.length + " تحویل‌دادنی");
       } catch (error) {
         roadmapRowsEl.innerHTML = "";
+        roadmapDependencyRowsEl.innerHTML = "";
         roadmapMessageEl.textContent = "خطا در دریافت نقشه راه";
         setStatus(token, "خطا در دریافت نقشه راه");
       }
@@ -4028,6 +4087,10 @@ const HTML = `<!doctype html>
       }
       const detailsButton = event.target.closest("[data-detail-key]");
       if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات نقشه راه");
+    });
+    roadmapDependencyRowsEl.addEventListener("click", event => {
+      const detailsButton = event.target.closest("[data-detail-key]");
+      if (detailsButton) openDetails(detailByKey.get(detailsButton.dataset.detailKey) || "", "جزئیات وابستگی");
     });
     roadmapProductEl.addEventListener("change", () => {
       roadmapSubproductEl.value = "";
