@@ -2069,8 +2069,10 @@ const HTML = `<!doctype html>
     function isTopicRootReply(row) {
       if (!row.reply_to_message_id || !row.message_thread_id) return false;
       return Boolean(row.is_topic_message)
-        && String(row.reply_to_message_id) === String(row.message_thread_id)
-        && isSyntheticTopicName(row);
+        && String(row.reply_to_message_id) === String(row.message_thread_id);
+    }
+    function isTopicServiceMessage(row) {
+      return String(row?.message_type || "").startsWith("forum_topic_");
     }
     function initials(row) {
       const source = [row.sender_first_name, row.sender_last_name].filter(Boolean).join(" ") || row.sender_username || "?";
@@ -2239,7 +2241,7 @@ const HTML = `<!doctype html>
       const childrenByParent = new Map();
       const replyCountByRoot = new Map();
       const rootKeys = new Set();
-      const uniqueRows = [...new Set(latestByMessage.values())];
+      const uniqueRows = [...new Set(latestByMessage.values())].filter((row) => !isTopicServiceMessage(row));
       for (const row of uniqueRows) rootKeyFor(row);
       for (const row of uniqueRows) {
         const rowKey = rowMessageKey(row);
@@ -5365,8 +5367,11 @@ function topicNameFromPayload(payload) {
 function isTopicRootReplyRow(row) {
   if (!row?.reply_to_message_id || !row?.message_thread_id) return false;
   return Boolean(row.is_topic_message)
-    && String(row.reply_to_message_id) === String(row.message_thread_id)
-    && /^#\d+$/.test(String(row.topic_name || "").trim());
+    && String(row.reply_to_message_id) === String(row.message_thread_id);
+}
+
+function isTopicServiceMessageRow(row) {
+  return String(row?.message_type || "").startsWith("forum_topic_");
 }
 
 function threadParentKey(row) {
@@ -5411,7 +5416,7 @@ function filterRowsForThread(messages, threadTarget) {
   const targetKey = messageKey({ platform: threadTarget.platform, chat_id: threadTarget.chatId }, threadTarget.messageId);
   const targetRow = byKey.get(targetKey);
   const rootKey = targetRow ? threadRootKeyForRow(targetRow, byKey) : targetKey;
-  return messages.filter((row) => messageKey(row) === rootKey || threadRootKeyForRow(row, byKey) === rootKey);
+  return messages.filter((row) => !isTopicServiceMessageRow(row) && (messageKey(row) === rootKey || threadRootKeyForRow(row, byKey) === rootKey));
 }
 
 async function fetchThreadRowsByTarget(env, headers, threadTarget) {
