@@ -251,7 +251,7 @@ const HTML = `<!doctype html>
     .roadmap-path-filters select { min-width:0; }
     .roadmap-path-page .roadmap-path { margin:0; min-height:620px; }
     .roadmap-path-page .roadmap-timeline { min-width:1180px; padding-top:280px; padding-bottom:118px; }
-    .roadmap-timeline { position:relative; min-width:980px; padding:240px 10px 102px; direction:ltr; }
+    .roadmap-timeline { position:relative; min-width:980px; padding:240px 96px 102px; direction:ltr; }
     .roadmap-axis { position:relative; height:4px; background:#c6c6c6; }
     .roadmap-week-dot { position:absolute; top:50%; width:10px; height:10px; border-radius:50%; background:#fff; border:2px solid var(--muted); transform:translate(-50%, -50%); }
     .roadmap-week-dot.has-items { width:14px; height:14px; border-color:var(--accent); background:var(--accent); }
