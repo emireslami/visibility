@@ -1327,6 +1327,7 @@ const HTML = `<!doctype html>
       return page === "user-groups" ? "user_groups" : page;
     }
     function canOpen(page) {
+      if (page === "products" && currentUserPermissions.has("roadmap")) return true;
       return currentUserPermissions.has(pagePermission(page));
     }
     function selectedPermissions(root) {
@@ -4964,7 +4965,9 @@ function groupAccessForUser(user) {
 }
 
 function hasAccessPermission(user, permission) {
-  return accessPermissionsForUser(user).includes(permission);
+  const permissions = accessPermissionsForUser(user);
+  if (permission === "products" && permissions.includes("roadmap")) return true;
+  return permissions.includes(permission);
 }
 
 function hasAnyAccessPermission(user, permissions) {
