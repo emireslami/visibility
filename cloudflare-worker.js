@@ -2068,8 +2068,7 @@ const HTML = `<!doctype html>
     }
     function isTopicRootReply(row) {
       if (!row.reply_to_message_id || !row.message_thread_id) return false;
-      return Boolean(row.is_topic_message)
-        && String(row.reply_to_message_id) === String(row.message_thread_id);
+      return String(row.reply_to_message_id) === String(row.message_thread_id);
     }
     function isTopicServiceMessage(row) {
       return String(row?.message_type || "").startsWith("forum_topic_");
@@ -2233,6 +2232,7 @@ const HTML = `<!doctype html>
           const parentKey = parentKeyFor(current);
           if (!parentKey) return currentKey;
           const parent = latestByMessage.get(parentKey);
+          if (parent && isTopicServiceMessage(parent)) return currentKey;
           if (!parent) return currentKey;
           current = parent;
         }
@@ -2249,7 +2249,8 @@ const HTML = `<!doctype html>
         rootKeys.add(rootKey);
         if (rootKey !== rowKey) {
           const parentKey = parentKeyFor(row);
-          const treeParentKey = parentKey && latestByMessage.has(parentKey) && rootKeyFor(latestByMessage.get(parentKey)) === rootKey
+          const parentRow = parentKey ? latestByMessage.get(parentKey) : null;
+          const treeParentKey = parentKey && parentRow && !isTopicServiceMessage(parentRow) && rootKeyFor(parentRow) === rootKey
             ? parentKey
             : rootKey;
           const list = childrenByParent.get(treeParentKey) || [];
@@ -5366,8 +5367,7 @@ function topicNameFromPayload(payload) {
 
 function isTopicRootReplyRow(row) {
   if (!row?.reply_to_message_id || !row?.message_thread_id) return false;
-  return Boolean(row.is_topic_message)
-    && String(row.reply_to_message_id) === String(row.message_thread_id);
+  return String(row.reply_to_message_id) === String(row.message_thread_id);
 }
 
 function isTopicServiceMessageRow(row) {
@@ -5404,6 +5404,7 @@ function threadRootKeyForRow(row, byKey) {
     const parentKey = threadParentKey(current);
     if (!parentKey) return currentKey;
     const parent = byKey.get(parentKey);
+    if (parent && isTopicServiceMessageRow(parent)) return currentKey;
     if (!parent) return currentKey;
     current = parent;
   }
@@ -5449,6 +5450,7 @@ async function fetchThreadRowsByTarget(env, headers, threadTarget) {
     if (!parentRows.length) break;
     addRows(parentRows);
     current = parentRows[0];
+    if (isTopicServiceMessageRow(current)) break;
     rootMessageId = current.message_id || rootMessageId;
   }
 
