@@ -4362,6 +4362,7 @@ const HTML = `<!doctype html>
         const email = savePermissionsButton.dataset.savePermissionsEmail;
         const card = savePermissionsButton.closest("[data-access-card-email]");
         const grid = card?.querySelector("[data-permission-email]");
+        const groupGrid = card?.querySelector("[data-group-access-email]");
         if (!grid) return;
         if (grid.dataset.owner === "true" || isOwnerEmail(email)) {
           accessMessageEl.textContent = "دسترسی owner قابل تغییر نیست.";
@@ -4369,21 +4370,39 @@ const HTML = `<!doctype html>
           return;
         }
         const permissions = selectedPermissions(grid);
+        if (!permissions.length) {
+          accessMessageEl.textContent = "حداقل یک دسترسی باید انتخاب شود.";
+          return;
+        }
         savePermissionsButton.disabled = true;
         savePermissionsButton.textContent = "در حال ذخیره...";
         accessMessageEl.textContent = "در حال ذخیره دسترسی‌ها...";
         try {
-          const res = await fetch("/api/access-users/permissions", {
+          const permissionsRes = await fetch("/api/access-users/permissions", {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ email, permissions }),
           });
-          const data = await res.json();
-          if (!res.ok) {
-            accessMessageEl.textContent = data.error || "ذخیره دسترسی انجام نشد";
+          const permissionsData = await permissionsRes.json();
+          if (!permissionsRes.ok) {
+            accessMessageEl.textContent = permissionsData.error || "ذخیره دسترسی انجام نشد";
             savePermissionsButton.textContent = "ذخیره تغییرات";
             savePermissionsButton.disabled = false;
             return;
+          }
+          if (groupGrid) {
+            const groupRes = await fetch("/api/access-users/group-access", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ email, group_access: selectedGroupAccess(groupGrid) }),
+            });
+            const groupData = await groupRes.json();
+            if (!groupRes.ok) {
+              accessMessageEl.textContent = groupData.error || "ذخیره دسترسی گروه‌ها انجام نشد";
+              savePermissionsButton.textContent = "ذخیره تغییرات";
+              savePermissionsButton.disabled = false;
+              return;
+            }
           }
           card?.classList.remove("permissions-dirty");
           accessMessageEl.textContent = "دسترسی‌ها ذخیره شد.";
@@ -4483,27 +4502,14 @@ const HTML = `<!doctype html>
           loadAccessUsers();
           return;
         }
-        accessMessageEl.textContent = "در حال ذخیره دسترسی گروه‌ها...";
-        try {
-          const res = await fetch("/api/access-users/group-access", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ email, group_access: selectedGroupAccess(groupGrid) }),
-          });
-          const data = await res.json();
-          if (!res.ok) {
-            accessMessageEl.textContent = data.error || "ذخیره دسترسی گروه‌ها انجام نشد";
-            loadAccessUsers();
-            return;
-          }
-          groupGrid.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
-            checkbox.defaultChecked = checkbox.checked;
-          });
-          accessMessageEl.textContent = "دسترسی گروه‌ها ذخیره شد.";
-        } catch (error) {
-          accessMessageEl.textContent = "ذخیره دسترسی گروه‌ها انجام نشد";
-          loadAccessUsers();
+        const card = groupGrid.closest("[data-access-card-email]");
+        const saveButton = card?.querySelector("[data-save-permissions-email]");
+        card?.classList.add("permissions-dirty");
+        if (saveButton) {
+          saveButton.disabled = false;
+          saveButton.textContent = "ذخیره تغییرات";
         }
+        accessMessageEl.textContent = "برای ثبت تغییرات دسترسی، دکمه ذخیره تغییرات را بزنید.";
         return;
       }
       if (!input || !grid) return;
