@@ -8,7 +8,7 @@ const HTML = `<!doctype html>
     @font-face { font-family:"IRANSans"; src:url("/fonts/IRANSansWeb-FaNum.ttf") format("truetype"); font-weight:400; font-style:normal; font-display:swap; }
     @font-face { font-family:"IRANSans"; src:url("/fonts/IRANSansWeb-FaNum-Medium.ttf") format("truetype"); font-weight:600; font-style:normal; font-display:swap; }
     @font-face { font-family:"IRANSans"; src:url("/fonts/IRANSansWeb-FaNum-Bold.ttf") format("truetype"); font-weight:700; font-style:normal; font-display:swap; }
-    :root { color-scheme: light; --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; --header-h:69px; --filters-h:62px; --sidebar-w:260px; }
+    :root { color-scheme: light; --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; --header-h:69px; --filters-h:62px; --sidebar-w:156px; }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: "IRANSans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
     .app-shell { min-height:100vh; display:grid; grid-template-columns:minmax(0, 1fr) var(--sidebar-w); grid-template-areas:"main sidebar"; align-items:start; direction:ltr; }
@@ -387,23 +387,23 @@ const HTML = `<!doctype html>
       --shadow:0 8px 24px rgba(22,22,22,.08);
       --header-h:64px;
       --filters-h:64px;
-      --sidebar-w:268px;
+      --sidebar-w:156px;
     }
     body { color:var(--ink); background:var(--bg); font-size:13px; line-height:1.5; }
     .app-shell { grid-template-columns:minmax(0, 1fr) var(--sidebar-w); grid-template-areas:"main sidebar"; }
-    .app-sidebar { padding:20px 14px; background:#fff; border-left:1px solid var(--line); box-shadow:-1px 0 0 rgba(22,22,22,.02); }
-    .sidebar-brand { padding:2px 10px 18px; margin-bottom:16px; border-bottom:1px solid var(--line); }
-    .sidebar-brand h1 { font-size:26px; line-height:1.3; }
+    .app-sidebar { padding:16px 8px; background:#fff; border-left:1px solid var(--line); box-shadow:-1px 0 0 rgba(22,22,22,.02); }
+    .sidebar-brand { padding:2px 8px 14px; margin-bottom:12px; border-bottom:1px solid var(--line); }
+    .sidebar-brand h1 { font-size:22px; line-height:1.3; }
     header { min-height:var(--header-h); padding:12px 24px; background:#fff; border-bottom:1px solid var(--line); box-shadow:0 1px 0 rgba(22,22,22,.02); }
     h1 { font-size:22px; font-weight:800; letter-spacing:0; }
     .page-title { min-height:38px; display:flex; align-items:center; color:#393939; font-size:20px; font-weight:800; }
     .brand { gap:18px; }
-    nav { gap:18px; }
+    nav { gap:12px; }
     .nav-section { border-radius:0; border:0; background:transparent; }
-    .nav-section-title { height:28px; padding:0 10px; background:transparent; color:#6f6f6f; font-size:12px; letter-spacing:0; }
+    .nav-section-title { height:24px; padding:0 8px; background:transparent; color:#6f6f6f; font-size:11px; letter-spacing:0; }
     .nav-section.active .nav-section-title { color:#0f62fe; background:transparent; }
     .nav-section-items { gap:4px; }
-    .nav-button { height:38px; border-radius:0; border-color:transparent; background:#fff; color:#393939; font-weight:700; justify-content:flex-start; text-align:right; }
+    .nav-button { height:34px; padding:0 9px; border-radius:0; border-color:transparent; background:#fff; color:#393939; font-weight:700; justify-content:flex-start; text-align:right; font-size:12px; }
     .nav-button:hover { background:#f4f4f4; border-color:#f4f4f4; }
     .nav-button.active { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:inset -3px 0 0 rgba(0,0,0,.18); }
     main { padding:18px 24px 28px; }
