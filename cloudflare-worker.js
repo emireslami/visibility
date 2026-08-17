@@ -12,8 +12,8 @@ const HTML = `<!doctype html>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: "IRANSans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
     .app-shell { min-height:100vh; display:grid; grid-template-columns:minmax(0, 1fr) var(--sidebar-w); direction:ltr; }
-    .app-sidebar { grid-column:2; position:sticky; top:0; height:100vh; overflow:auto; padding:18px 14px; background:var(--panel); border-left:1px solid var(--line); direction:rtl; }
-    .app-main { grid-column:1; min-width:0; direction:rtl; }
+    .app-sidebar { grid-column:2; grid-row:1; position:sticky; top:0; height:100vh; overflow:auto; padding:18px 14px; background:var(--panel); border-left:1px solid var(--line); direction:rtl; }
+    .app-main { grid-column:1; grid-row:1; min-width:0; direction:rtl; }
     .sidebar-brand { padding:4px 8px 18px; border-bottom:1px solid var(--line); margin-bottom:14px; }
     header { position:sticky; top:0; z-index:50; min-height:var(--header-h); padding: 18px 24px; background: var(--panel); border-bottom: 1px solid var(--line); display:flex; gap:16px; align-items:center; justify-content:space-between; }
     .brand { display:flex; gap:14px; align-items:center; }
