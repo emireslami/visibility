@@ -11,9 +11,9 @@ const HTML = `<!doctype html>
     :root { color-scheme: light; --ink:#172026; --muted:#64727d; --line:#d8dee4; --bg:#f7f8fa; --panel:#fff; --accent:#087f8c; --header-h:69px; --filters-h:62px; --sidebar-w:260px; }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: "IRANSans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
-    .app-shell { min-height:100vh; display:grid; grid-template-columns:minmax(0, 1fr) var(--sidebar-w); direction:ltr; }
-    .app-sidebar { grid-column:2; grid-row:1; position:sticky; top:0; height:100vh; overflow:auto; padding:18px 14px; background:var(--panel); border-left:1px solid var(--line); direction:rtl; }
-    .app-main { grid-column:1; grid-row:1; min-width:0; direction:rtl; }
+    .app-shell { min-height:100vh; display:grid; grid-template-columns:minmax(0, 1fr) var(--sidebar-w); grid-template-areas:"main sidebar"; align-items:start; direction:ltr; }
+    .app-sidebar { grid-area:sidebar; position:sticky; top:0; height:100vh; overflow:auto; padding:18px 14px; background:var(--panel); border-left:1px solid var(--line); direction:rtl; }
+    .app-main { grid-area:main; min-width:0; direction:rtl; }
     .sidebar-brand { padding:4px 8px 18px; border-bottom:1px solid var(--line); margin-bottom:14px; }
     header { position:sticky; top:0; z-index:50; min-height:var(--header-h); padding: 18px 24px; background: var(--panel); border-bottom: 1px solid var(--line); display:flex; gap:16px; align-items:center; justify-content:space-between; }
     .brand { display:flex; gap:14px; align-items:center; }
@@ -346,7 +346,7 @@ const HTML = `<!doctype html>
       --sidebar-w:268px;
     }
     body { color:var(--ink); background:var(--bg); font-size:13px; line-height:1.5; }
-    .app-shell { grid-template-columns:minmax(0, 1fr) var(--sidebar-w); }
+    .app-shell { grid-template-columns:minmax(0, 1fr) var(--sidebar-w); grid-template-areas:"main sidebar"; }
     .app-sidebar { padding:20px 14px; background:#fff; border-left:1px solid var(--line); box-shadow:-1px 0 0 rgba(22,22,22,.02); }
     .sidebar-brand { padding:2px 10px 18px; margin-bottom:16px; border-bottom:1px solid var(--line); }
     .sidebar-brand h1 { font-size:26px; line-height:1.3; }
