@@ -15,7 +15,11 @@ const HTML = `<!doctype html>
     .brand { display:flex; gap:14px; align-items:center; }
     .header-tools { display:flex; align-items:center; gap:12px; }
     h1 { margin: 0; font-size: 20px; }
-    nav { display:flex; gap:8px; direction:rtl; }
+    nav { display:flex; flex-wrap:wrap; gap:8px; direction:rtl; align-items:stretch; }
+    .nav-section { display:flex; align-items:stretch; gap:6px; padding:4px; border:1px solid var(--line); background:#fbfcfd; }
+    .nav-section-title { min-height:32px; display:inline-flex; align-items:center; padding:0 10px; color:var(--muted); background:#eef3f4; font-weight:800; white-space:nowrap; }
+    .nav-section.active .nav-section-title { color:var(--accent); background:#eefbfc; }
+    .nav-section-items { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
     .nav-button { height:32px; padding:0 12px; background:#fff; color:var(--ink); border-color:var(--line); }
     .nav-button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
     main { padding: 18px 24px; }
@@ -340,6 +344,9 @@ const HTML = `<!doctype html>
     h1 { font-size:22px; font-weight:800; letter-spacing:0; }
     .brand { gap:18px; }
     nav { gap:6px; }
+    .nav-section { border-radius:0; border-color:#c6c6c6; background:#f4f4f4; }
+    .nav-section-title { background:#e0e0e0; color:#525252; }
+    .nav-section.active .nav-section-title { color:#0f62fe; background:#edf5ff; }
     .nav-button { height:34px; border-radius:0; border-color:#c6c6c6; background:#fff; color:#393939; font-weight:600; }
     .nav-button:hover { background:#e8e8e8; }
     .nav-button.active { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:inset 0 -2px 0 rgba(0,0,0,.18); }
@@ -409,7 +416,10 @@ const HTML = `<!doctype html>
       header { position:static; display:grid; grid-template-columns:1fr auto; align-items:start; gap:10px; padding:12px 14px; }
       .brand { min-width:0; display:grid; gap:10px; }
       h1 { font-size:20px; }
-      nav { width:100%; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px; direction:rtl; }
+      nav { width:100%; display:grid; grid-template-columns:1fr; gap:6px; direction:rtl; }
+      .nav-section { min-width:0; display:grid; grid-template-columns:84px minmax(0, 1fr); align-items:stretch; }
+      .nav-section-title { justify-content:center; padding:0 6px; font-size:12px; }
+      .nav-section-items { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px; }
       .nav-button { min-width:0; width:100%; padding:0 6px; font-size:12px; }
       .header-tools { align-items:start; gap:8px; }
       .meta { max-width:80px; min-height:38px; justify-content:flex-end; font-size:11px; text-align:left; }
@@ -518,17 +528,32 @@ const HTML = `<!doctype html>
     <div class="brand">
       <h1>دیدپذیری</h1>
       <nav aria-label="صفحه‌های داشبورد">
-        <button class="nav-button" id="dashboardNav" type="button">داشبورد</button>
-        <button class="nav-button" id="analyticsNav" type="button">تحلیل</button>
-        <button class="nav-button" id="threadsNav" type="button">تردها</button>
-        <button class="nav-button active" id="messagesNav" type="button">پیام‌ها</button>
-        <button class="nav-button" id="roadmapNav" type="button">نقشه راه</button>
-        <button class="nav-button" id="userGroupsNav" type="button">گروه‌بندی کاربران</button>
-        <button class="nav-button" id="groupsNav" type="button">گروه‌ها</button>
-        <button class="nav-button" id="sendersNav" type="button">ارسال‌کننده‌ها</button>
-        <button class="nav-button" id="broadcastNav" type="button">اطلاع‌رسانی</button>
-        <button class="nav-button" id="botsNav" type="button">بات‌ها</button>
-        <button class="nav-button" id="accessNav" type="button">دسترسی</button>
+        <div class="nav-section" id="communicationsNavGroup">
+          <span class="nav-section-title">ارتباطات</span>
+          <div class="nav-section-items">
+            <button class="nav-button" id="dashboardNav" type="button">داشبورد</button>
+            <button class="nav-button" id="analyticsNav" type="button">تحلیل</button>
+            <button class="nav-button" id="threadsNav" type="button">تردها</button>
+            <button class="nav-button active" id="messagesNav" type="button">پیام‌ها</button>
+            <button class="nav-button" id="groupsNav" type="button">گروه‌ها</button>
+            <button class="nav-button" id="sendersNav" type="button">ارسال‌کننده‌ها</button>
+            <button class="nav-button" id="broadcastNav" type="button">اطلاع‌رسانی</button>
+            <button class="nav-button" id="botsNav" type="button">بات‌ها</button>
+          </div>
+        </div>
+        <div class="nav-section" id="developmentNavGroup">
+          <span class="nav-section-title">توسعه</span>
+          <div class="nav-section-items">
+            <button class="nav-button" id="roadmapNav" type="button">نقشه راه</button>
+          </div>
+        </div>
+        <div class="nav-section" id="managementNavGroup">
+          <span class="nav-section-title">مدیریت</span>
+          <div class="nav-section-items">
+            <button class="nav-button" id="userGroupsNav" type="button">گروه‌بندی کاربران</button>
+            <button class="nav-button" id="accessNav" type="button">دسترسی</button>
+          </div>
+        </div>
       </nav>
     </div>
     <div class="header-tools">
@@ -1043,6 +1068,9 @@ const HTML = `<!doctype html>
     const broadcastNavEl = document.getElementById("broadcastNav");
     const botsNavEl = document.getElementById("botsNav");
     const accessNavEl = document.getElementById("accessNav");
+    const communicationsNavGroupEl = document.getElementById("communicationsNavGroup");
+    const developmentNavGroupEl = document.getElementById("developmentNavGroup");
+    const managementNavGroupEl = document.getElementById("managementNavGroup");
     const dashboardPageEl = document.getElementById("dashboardPage");
     const analyticsPageEl = document.getElementById("analyticsPage");
     const messagesPageEl = document.getElementById("messagesPage");
@@ -1565,10 +1593,21 @@ const HTML = `<!doctype html>
     function firstAccessiblePage() {
       return ["dashboard", "analytics", "threads", "messages", "roadmap", "user-groups", "groups", "senders", "broadcast", "bots", "access"].find(canOpen);
     }
+    function syncNavGroupVisibility() {
+      [communicationsNavGroupEl, developmentNavGroupEl, managementNavGroupEl].forEach((group) => {
+        group.hidden = ![...group.querySelectorAll(".nav-button")].some((button) => !button.hidden);
+      });
+    }
+    function syncNavGroupActive(page) {
+      communicationsNavGroupEl.classList.toggle("active", ["dashboard", "analytics", "threads", "messages", "groups", "senders", "broadcast", "bots"].includes(page));
+      developmentNavGroupEl.classList.toggle("active", page === "roadmap");
+      managementNavGroupEl.classList.toggle("active", page === "user-groups" || page === "access");
+    }
     function setupAccessShell() {
       accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
       const navByPage = { dashboard:dashboardNavEl, analytics:analyticsNavEl, threads:threadsNavEl, messages:messagesNavEl, roadmap:roadmapNavEl, "user-groups":userGroupsNavEl, groups:groupsNavEl, senders:sendersNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
       Object.entries(navByPage).forEach(([page, element]) => { element.hidden = !canOpen(page); });
+      syncNavGroupVisibility();
       const firstPage = firstAccessiblePage();
       if (!firstPage) {
         document.querySelector("main").innerHTML = '<section class="empty">برای این حساب هنوز دسترسی به بخشی تعریف نشده است.</section>';
@@ -3261,6 +3300,7 @@ const HTML = `<!doctype html>
       broadcastNavEl.classList.toggle("active", isBroadcast);
       botsNavEl.classList.toggle("active", isBots);
       accessNavEl.classList.toggle("active", isAccess);
+      syncNavGroupActive(page);
       if (isDashboard) loadDashboard();
       else if (isAnalytics) loadAnalytics();
       else if (isGroups) loadGroups();
