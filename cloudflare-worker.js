@@ -4434,7 +4434,7 @@ const HTML = `<!doctype html>
           const permissionsRes = await fetch("/api/access-users/permissions", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ email, permissions }),
+            body: JSON.stringify({ email, permissions, group_access: groupGrid ? selectedGroupAccess(groupGrid) : undefined }),
           });
           const permissionsData = await permissionsRes.json();
           if (!permissionsRes.ok) {
@@ -4442,20 +4442,6 @@ const HTML = `<!doctype html>
             savePermissionsButton.textContent = "ذخیره تغییرات";
             savePermissionsButton.disabled = false;
             return;
-          }
-          if (groupGrid) {
-            const groupRes = await fetch("/api/access-users/group-access", {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ email, group_access: selectedGroupAccess(groupGrid) }),
-            });
-            const groupData = await groupRes.json();
-            if (!groupRes.ok) {
-              accessMessageEl.textContent = groupData.error || "ذخیره دسترسی گروه‌ها انجام نشد";
-              savePermissionsButton.textContent = "ذخیره تغییرات";
-              savePermissionsButton.disabled = false;
-              return;
-            }
           }
           card?.classList.remove("permissions-dirty");
           accessMessageEl.textContent = "دسترسی‌ها ذخیره شد.";
@@ -6297,18 +6283,21 @@ async function updateAccessUserPermissions(request, env, authUser) {
   try {
     const existing = await getAccessUserByEmail(env, email);
     if (!existing) return json({ error: "کاربر پیدا نشد" }, 404);
+    const groupAccess = Object.prototype.hasOwnProperty.call(body, "group_access")
+      ? normalizeGroupAccess(body.group_access || {})
+      : groupAccessForUser(existing);
     const user = await patchAccessUser(env, email, {
-      permissions: accessPayload(permissions, groupAccessForUser(existing)),
+      permissions: accessPayload(permissions, groupAccess),
       updated_at_utc: new Date().toISOString(),
     });
     await insertAccessAuditLog(env, {
       actorEmail: authUser?.email,
       targetEmail: email,
       action: "permissions_update",
-      oldValues: { permissions: accessPermissionsForUser(existing) },
-      newValues: { permissions: accessPermissionsForUser(user) },
+      oldValues: { permissions: accessPermissionsForUser(existing), group_access: groupAccessForUser(existing) },
+      newValues: { permissions: accessPermissionsForUser(user), group_access: groupAccessForUser(user) },
     });
-    return json({ user: { email: user.email, permissions: accessPermissionsForUser(user) } });
+    return json({ user: { email: user.email, permissions: accessPermissionsForUser(user), group_access: groupAccessForUser(user) } });
   } catch (error) {
     return json({ error: error.message || "ذخیره دسترسی انجام نشد" }, 500);
   }
