@@ -247,15 +247,23 @@ const HTML = `<!doctype html>
     .roadmap-path-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
     .roadmap-path-head h3 { margin:0; font-size:16px; }
     .roadmap-path-note { color:var(--muted); font-size:12px; }
-    .roadmap-timeline { position:relative; min-width:980px; padding:128px 10px 64px; direction:ltr; }
+    .roadmap-path-filters { display:grid; grid-template-columns:repeat(2, minmax(180px, 1fr)); gap:10px; margin-bottom:12px; direction:rtl; }
+    .roadmap-path-filters select { min-width:0; }
+    .roadmap-path-page .roadmap-path { margin:0; min-height:520px; }
+    .roadmap-path-page .roadmap-timeline { min-width:1180px; padding-top:180px; padding-bottom:88px; }
+    .roadmap-timeline { position:relative; min-width:980px; padding:146px 10px 72px; direction:ltr; }
     .roadmap-axis { position:relative; height:4px; background:#c6c6c6; }
     .roadmap-week-dot { position:absolute; top:50%; width:10px; height:10px; border-radius:50%; background:#fff; border:2px solid var(--muted); transform:translate(-50%, -50%); }
     .roadmap-week-dot.has-items { width:14px; height:14px; border-color:var(--accent); background:var(--accent); }
     .roadmap-month-label { position:absolute; top:24px; transform:translateX(-50%); color:var(--muted); font-size:12px; white-space:nowrap; }
-    .roadmap-pin { position:absolute; bottom:8px; width:1px; min-height:82px; background:var(--accent); transform:translateX(-50%); }
-    .roadmap-pin-card { position:absolute; left:50%; bottom:74px; width:170px; transform:translateX(-50%); padding:8px; border:1px solid var(--line); background:#fbfcfd; color:var(--ink); font-size:11px; line-height:1.5; direction:rtl; text-align:right; box-shadow:0 1px 2px rgba(22,22,22,.08); }
+    .roadmap-pin { position:absolute; bottom:8px; width:2px; min-height:82px; background:var(--pin-color, var(--accent)); transform:translateX(-50%); }
+    .roadmap-pin.is-dependency { bottom:auto; top:8px; min-height:72px; background:repeating-linear-gradient(to bottom, var(--pin-color, var(--accent)) 0 6px, transparent 6px 10px); }
+    .roadmap-pin-card { position:absolute; left:50%; bottom:74px; width:178px; transform:translateX(-50%); padding:8px; border:1px solid var(--pin-color, var(--line)); border-right:4px solid var(--pin-color, var(--accent)); background:#fbfcfd; color:var(--ink); font-size:11px; line-height:1.5; direction:rtl; text-align:right; box-shadow:0 1px 2px rgba(22,22,22,.08); }
+    .roadmap-pin.is-dependency .roadmap-pin-card { top:64px; bottom:auto; border-style:dashed; background:#fff; }
+    .roadmap-pin-kind { display:inline-flex; align-items:center; min-height:18px; padding:0 6px; margin-bottom:4px; border-radius:999px; background:#eef4f8; color:var(--muted); font-size:10px; font-weight:800; }
     .roadmap-pin-card strong { display:block; font-size:12px; margin-bottom:4px; }
     .roadmap-pin:nth-child(even) .roadmap-pin-card { bottom:102px; }
+    .roadmap-pin.is-dependency:nth-child(even) .roadmap-pin-card { top:92px; bottom:auto; }
     .roadmap-pin.is-outside { background:#8d8d8d; }
     .roadmap-pin.is-outside .roadmap-pin-card { border-color:#8d8d8d; }
     .roadmap-table th, .roadmap-table td { text-align:right; direction:rtl; }
@@ -600,6 +608,7 @@ const HTML = `<!doctype html>
           <span class="nav-section-title">توسعه</span>
           <div class="nav-section-items">
             <button class="nav-button" id="roadmapNav" type="button">نقشه راه</button>
+            <button class="nav-button" id="roadmapPathNav" type="button">نمای مسیر</button>
             <button class="nav-button" id="productsNav" type="button">محصول‌ها</button>
           </div>
         </div>
@@ -894,6 +903,10 @@ const HTML = `<!doctype html>
             <h3>نمای مسیر راه</h3>
             <span class="roadmap-path-note">شهریور تا اسفند، ۲۸ نقطه هفتگی</span>
           </div>
+          <div class="roadmap-path-filters">
+            <select id="roadmapTimelineProduct" aria-label="فیلتر محصول مسیر راه"></select>
+            <select id="roadmapTimelineTeam" aria-label="فیلتر تیم مسیر راه"></select>
+          </div>
           <div class="roadmap-timeline" id="roadmapTimeline"></div>
         </section>
         <table class="roadmap-table">
@@ -921,6 +934,23 @@ const HTML = `<!doctype html>
           </thead>
           <tbody id="roadmapRows"></tbody>
         </table>
+      </section>
+    </section>
+    <section class="page roadmap-path-page" id="roadmapPathPage" hidden>
+      <section class="roadmap-panel">
+        <h2>نمای مسیر راه</h2>
+        <p class="thread-muted">نمای بزرگ مسیر تحویل‌دادنی‌ها و وابستگی‌ها بر اساس محصول یا تیم.</p>
+        <section class="roadmap-path" aria-label="نمای بزرگ مسیر راه">
+          <div class="roadmap-path-head">
+            <h3>مسیر شهریور تا اسفند</h3>
+            <span class="roadmap-path-note">پین‌های خطی: تحویل‌دادنی‌ها، پین‌های خط‌چین: وابستگی‌ها</span>
+          </div>
+          <div class="roadmap-path-filters">
+            <select id="roadmapFullTimelineProduct" aria-label="فیلتر محصول نمای مسیر"></select>
+            <select id="roadmapFullTimelineTeam" aria-label="فیلتر تیم نمای مسیر"></select>
+          </div>
+          <div class="roadmap-timeline" id="roadmapFullTimeline"></div>
+        </section>
       </section>
     </section>
     <section class="page" id="userGroupsPage" hidden>
@@ -1186,6 +1216,7 @@ const HTML = `<!doctype html>
     const analyticsNavEl = document.getElementById("analyticsNav");
     const messagesNavEl = document.getElementById("messagesNav");
     const roadmapNavEl = document.getElementById("roadmapNav");
+    const roadmapPathNavEl = document.getElementById("roadmapPathNav");
     const productsNavEl = document.getElementById("productsNav");
     const userGroupsNavEl = document.getElementById("userGroupsNav");
     const groupsNavEl = document.getElementById("groupsNav");
@@ -1204,6 +1235,7 @@ const HTML = `<!doctype html>
     const sendersPageEl = document.getElementById("sendersPage");
     const threadsPageEl = document.getElementById("threadsPage");
     const roadmapPageEl = document.getElementById("roadmapPage");
+    const roadmapPathPageEl = document.getElementById("roadmapPathPage");
     const productsPageEl = document.getElementById("productsPage");
     const userGroupsPageEl = document.getElementById("userGroupsPage");
     const broadcastPageEl = document.getElementById("broadcastPage");
@@ -1298,6 +1330,11 @@ const HTML = `<!doctype html>
     const roadmapDependencyListEl = document.getElementById("roadmapDependencyList");
     const roadmapMessageEl = document.getElementById("roadmapMessage");
     const roadmapTimelineEl = document.getElementById("roadmapTimeline");
+    const roadmapTimelineProductEl = document.getElementById("roadmapTimelineProduct");
+    const roadmapTimelineTeamEl = document.getElementById("roadmapTimelineTeam");
+    const roadmapFullTimelineEl = document.getElementById("roadmapFullTimeline");
+    const roadmapFullTimelineProductEl = document.getElementById("roadmapFullTimelineProduct");
+    const roadmapFullTimelineTeamEl = document.getElementById("roadmapFullTimelineTeam");
     const productFormEl = document.getElementById("productForm");
     const productNameEl = document.getElementById("productName");
     const productKeyEl = document.getElementById("productKey");
@@ -1396,6 +1433,7 @@ const HTML = `<!doctype html>
       return String(value || "").trim().replace(/^@+/, "");
     }
     function pagePermission(page) {
+      if (page === "roadmap-path") return "roadmap";
       return page === "user-groups" ? "user_groups" : page;
     }
     function canOpen(page) {
@@ -1725,13 +1763,14 @@ const HTML = `<!doctype html>
       else if (isGroups) loadAccessGroupView();
       else loadAccessUsers();
     }
-    const routablePages = ["dashboard", "analytics", "threads", "messages", "roadmap", "products", "user-groups", "groups", "senders", "broadcast", "bots", "access", "profile"];
+    const routablePages = ["dashboard", "analytics", "threads", "messages", "roadmap", "roadmap-path", "products", "user-groups", "groups", "senders", "broadcast", "bots", "access", "profile"];
     const pageTitles = {
       dashboard: "داشبورد",
       analytics: "تحلیل",
       threads: "تردها",
       messages: "پیام‌ها",
       roadmap: "نقشه راه",
+      "roadmap-path": "نمای مسیر",
       products: "محصول‌ها",
       "user-groups": "گروه‌بندی کاربران",
       groups: "گروه‌ها",
@@ -1750,7 +1789,7 @@ const HTML = `<!doctype html>
       return routablePages.includes(page) ? page : "messages";
     }
     function firstAccessiblePage() {
-      return ["dashboard", "analytics", "threads", "messages", "roadmap", "products", "user-groups", "groups", "senders", "broadcast", "bots", "access"].find(canOpen);
+      return ["dashboard", "analytics", "threads", "messages", "roadmap", "roadmap-path", "products", "user-groups", "groups", "senders", "broadcast", "bots", "access"].find(canOpen);
     }
     function syncNavGroupVisibility() {
       [communicationsNavGroupEl, developmentNavGroupEl, managementNavGroupEl].forEach((group) => {
@@ -1759,12 +1798,12 @@ const HTML = `<!doctype html>
     }
     function syncNavGroupActive(page) {
       communicationsNavGroupEl.classList.toggle("active", ["dashboard", "analytics", "threads", "messages", "groups", "senders", "broadcast", "bots"].includes(page));
-      developmentNavGroupEl.classList.toggle("active", page === "roadmap" || page === "products");
+      developmentNavGroupEl.classList.toggle("active", page === "roadmap" || page === "roadmap-path" || page === "products");
       managementNavGroupEl.classList.toggle("active", page === "user-groups" || page === "access");
     }
     function setupAccessShell() {
       accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
-      const navByPage = { dashboard:dashboardNavEl, analytics:analyticsNavEl, threads:threadsNavEl, messages:messagesNavEl, roadmap:roadmapNavEl, products:productsNavEl, "user-groups":userGroupsNavEl, groups:groupsNavEl, senders:sendersNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
+      const navByPage = { dashboard:dashboardNavEl, analytics:analyticsNavEl, threads:threadsNavEl, messages:messagesNavEl, roadmap:roadmapNavEl, "roadmap-path":roadmapPathNavEl, products:productsNavEl, "user-groups":userGroupsNavEl, groups:groupsNavEl, senders:sendersNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
       Object.entries(navByPage).forEach(([page, element]) => { element.hidden = !canOpen(page); });
       syncNavGroupVisibility();
       const firstPage = firstAccessiblePage();
@@ -3255,6 +3294,7 @@ const HTML = `<!doctype html>
     }
     let roadmapProducts = [];
     let roadmapTeams = [];
+    let roadmapItems = [];
     function productNameById(products, id) {
       const product = products.find((item) => String(item.id) === String(id || ""));
       return product?.name || "";
@@ -3355,28 +3395,105 @@ const HTML = `<!doctype html>
       return item.delivery_slot || item.delivery_date || "-";
     }
     function roadmapTimelineIndex(item) {
-      const deliveryMonth = Number(item?.delivery_month);
-      const deliveryWeek = Number(item?.delivery_week);
+      const deliveryMonth = Number(item?.timeline_month ?? item?.delivery_month);
+      const deliveryWeek = Number(item?.timeline_week ?? item?.delivery_week);
       if (deliveryMonth >= 6 && deliveryMonth <= 12 && deliveryWeek >= 1 && deliveryWeek <= 4) {
         return (deliveryMonth - 6) * 4 + deliveryWeek - 1;
       }
-      const parts = persianMonthDay(item?.delivery_date);
+      const parts = persianMonthDay(item?.timeline_date || item?.delivery_date);
       if (!parts) return null;
       const monthOffset = parts.month - 6;
       if (monthOffset < 0 || monthOffset > 6) return null;
       const weekOffset = Math.min(3, Math.max(0, Math.ceil(parts.day / 7) - 1));
       return monthOffset * 4 + weekOffset;
     }
-    function renderRoadmapTimeline(items, products) {
+    const roadmapColorPalette = ["#0f62fe", "#24a148", "#ff832b", "#8a3ffc", "#da1e28", "#007d79", "#d12771", "#6f6f6f", "#b28600", "#4589ff"];
+    function stableColor(key) {
+      const source = String(key || "default");
+      let hash = 0;
+      for (let index = 0; index < source.length; index += 1) hash = ((hash * 31) + source.charCodeAt(index)) >>> 0;
+      return roadmapColorPalette[hash % roadmapColorPalette.length];
+    }
+    function productLineageIds(products, productId) {
+      const ids = new Set();
+      const direct = String(productId || "");
+      if (!direct) return ids;
+      ids.add(direct);
+      products.filter((product) => String(product.parent_id || "") === direct).forEach((product) => ids.add(String(product.id)));
+      return ids;
+    }
+    function roadmapItemMatchesProduct(item, products, selectedProductId) {
+      const selectedIds = productLineageIds(products, selectedProductId);
+      if (!selectedIds.size) return true;
+      if (selectedIds.has(String(item.product_id || "")) || selectedIds.has(String(item.subproduct_id || ""))) return true;
+      return (item.dependencies || []).some((dep) => selectedIds.has(String(dep.product_id || "")) || selectedIds.has(String(dep.subproduct_id || "")));
+    }
+    function roadmapItemMatchesTeam(item, selectedTeamId) {
+      if (!selectedTeamId) return true;
+      return (item.dependencies || []).some((dep) => String(dep.team_id || "") === String(selectedTeamId));
+    }
+    function roadmapDependencyPins(items, products, selectedProductId, selectedTeamId) {
+      const selectedProductIds = productLineageIds(products, selectedProductId);
+      return items.flatMap((item) => (item.dependencies || []).map((dep) => ({ item, dep })))
+        .filter(({ dep }) => !selectedTeamId || String(dep.team_id || "") === String(selectedTeamId))
+        .filter(({ dep }) => !selectedProductIds.size || selectedProductIds.has(String(dep.product_id || "")) || selectedProductIds.has(String(dep.subproduct_id || "")))
+        .map(({ item, dep }) => ({
+          kind: "dependency",
+          title: dep.title || "وابستگی",
+          subtitle: item.title || "",
+          meta: dependencyResolutionText(dep),
+          product_id: dep.subproduct_id || dep.product_id || item.subproduct_id || item.product_id,
+          team_id: dep.team_id || "",
+          timeline_month: dep.expected_resolution_month,
+          timeline_week: dep.expected_resolution_week,
+          timeline_date: dep.expected_resolution_date,
+        }));
+    }
+    function roadmapTimelineOptions(products, teams, selectedProductId, selectedTeamId) {
+      const productOptions = '<option value="">همه محصول‌ها</option>' + products.map((product) => {
+        const prefix = product.parent_id ? "زیرمحصول: " : "";
+        const label = prefix + (product.name || product.product_key || product.id);
+        return \`<option value="\${esc(product.id)}" \${String(product.id) === String(selectedProductId || "") ? "selected" : ""}>\${esc(label)}</option>\`;
+      }).join("");
+      const teamOptions = '<option value="">همه تیم‌ها</option>' + teams.map((team) => {
+        const label = [userGroupTypeLabel(team.group_type), userGroupModeLabel(team.group_mode), team.name || team.id].filter(Boolean).join(" · ");
+        return \`<option value="\${esc(team.id)}" \${String(team.id) === String(selectedTeamId || "") ? "selected" : ""}>\${esc(label)}</option>\`;
+      }).join("");
+      [roadmapTimelineProductEl, roadmapFullTimelineProductEl].forEach((select) => { select.innerHTML = productOptions; });
+      [roadmapTimelineTeamEl, roadmapFullTimelineTeamEl].forEach((select) => { select.innerHTML = teamOptions; });
+      roadmapTimelineProductEl.value = selectedProductId || "";
+      roadmapFullTimelineProductEl.value = selectedProductId || "";
+      roadmapTimelineTeamEl.value = selectedTeamId || "";
+      roadmapFullTimelineTeamEl.value = selectedTeamId || "";
+    }
+    function renderRoadmapTimeline(targetEl, items, products, teams, filters = {}) {
       const totalPoints = 28;
+      const selectedProductId = String(filters.productId || "");
+      const selectedTeamId = String(filters.teamId || "");
+      const filteredItems = items
+        .filter((item) => roadmapItemMatchesProduct(item, products, selectedProductId))
+        .filter((item) => roadmapItemMatchesTeam(item, selectedTeamId));
+      const deliveryPins = filteredItems.map((item) => ({
+        kind: "delivery",
+        title: item.title || "-",
+        subtitle: productNameById(products, item.subproduct_id || item.product_id) || "-",
+        meta: roadmapDeliveryText(item),
+        product_id: item.subproduct_id || item.product_id,
+        team_id: "",
+        timeline_month: item.delivery_month,
+        timeline_week: item.delivery_week,
+        timeline_date: item.delivery_date,
+      }));
+      const dependencyPins = roadmapDependencyPins(filteredItems, products, selectedProductId, selectedTeamId);
+      const pins = [...deliveryPins, ...dependencyPins];
       const pinsByIndex = new Map();
       const outside = [];
-      items.forEach((item) => {
-        const index = roadmapTimelineIndex(item);
-        if (index === null) outside.push(item);
+      pins.forEach((pin) => {
+        const index = roadmapTimelineIndex(pin);
+        if (index === null) outside.push(pin);
         else {
           if (!pinsByIndex.has(index)) pinsByIndex.set(index, []);
-          pinsByIndex.get(index).push(item);
+          pinsByIndex.get(index).push(pin);
         }
       });
       const dotHtml = Array.from({ length: totalPoints }, (_, index) => {
@@ -3389,21 +3506,30 @@ const HTML = `<!doctype html>
       }).join("");
       const pinHtml = [...pinsByIndex.entries()].flatMap(([index, list]) => {
         const left = (index / (totalPoints - 1)) * 100;
-        return list.map((item, itemIndex) => {
-          const productName = productNameById(products, item.subproduct_id || item.product_id);
-          return \`<div class="roadmap-pin" style="left:\${left}%; min-height:\${82 + itemIndex * 34}px">
+        return list.map((pin, itemIndex) => {
+          const colorKey = pin.kind === "dependency" && pin.team_id ? "team:" + pin.team_id : "product:" + (pin.product_id || pin.title);
+          const color = stableColor(colorKey);
+          return \`<div class="roadmap-pin \${pin.kind === "dependency" ? "is-dependency" : ""}" style="left:\${left}%; min-height:\${pin.kind === "dependency" ? 72 + itemIndex * 34 : 82 + itemIndex * 34}px; --pin-color:\${esc(color)}">
             <div class="roadmap-pin-card">
-              <strong>\${esc(item.title || "-")}</strong>
-              <span>\${esc(roadmapDeliveryText(item))}</span><br>
-              <span>\${esc(productName || "-")}</span>
+              <span class="roadmap-pin-kind">\${pin.kind === "dependency" ? "وابستگی" : "تحویل‌دادنی"}</span>
+              <strong>\${esc(pin.title || "-")}</strong>
+              <span>\${esc(pin.meta || "-")}</span><br>
+              <span>\${esc(pin.subtitle || "-")}</span>
             </div>
           </div>\`;
         });
       }).join("");
       const outsideHtml = outside.length ? \`<div class="roadmap-pin is-outside" style="left:100%">
-        <div class="roadmap-pin-card"><strong>خارج از بازه</strong>\${outside.map((item) => \`<br>\${esc(item.title || "-")} · \${esc(roadmapDeliveryText(item))}\`).join("")}</div>
+        <div class="roadmap-pin-card"><strong>خارج از بازه</strong>\${outside.map((pin) => \`<br>\${esc(pin.title || "-")} · \${esc(pin.meta || "-")}\`).join("")}</div>
       </div>\` : "";
-      roadmapTimelineEl.innerHTML = \`<div class="roadmap-axis">\${dotHtml}\${monthHtml}\${pinHtml}\${outsideHtml}</div>\`;
+      targetEl.innerHTML = \`<div class="roadmap-axis">\${dotHtml}\${monthHtml}\${pinHtml}\${outsideHtml}</div>\`;
+    }
+    function refreshRoadmapTimelines() {
+      const productId = roadmapTimelineProductEl.value || roadmapFullTimelineProductEl.value || "";
+      const teamId = roadmapTimelineTeamEl.value || roadmapFullTimelineTeamEl.value || "";
+      roadmapTimelineOptions(roadmapProducts, roadmapTeams, productId, teamId);
+      renderRoadmapTimeline(roadmapTimelineEl, roadmapItems, roadmapProducts, roadmapTeams, { productId, teamId });
+      renderRoadmapTimeline(roadmapFullTimelineEl, roadmapItems, roadmapProducts, roadmapTeams, { productId, teamId });
     }
     function roadmapItemDetailsHtml(item) {
       return \`<div class="details-grid">
@@ -3422,9 +3548,10 @@ const HTML = `<!doctype html>
     function renderRoadmapRows(items, products, teams) {
       roadmapProducts = products;
       roadmapTeams = teams;
+      roadmapItems = items;
       roadmapProductEl.innerHTML = roadmapProductOptions(products, roadmapProductEl.value);
       syncRoadmapSubproductOptions();
-      renderRoadmapTimeline(items, products);
+      refreshRoadmapTimelines();
       detailByKey.clear();
       roadmapRowsEl.innerHTML = items.map((item, index) => {
         const key = "roadmap-" + index;
@@ -3750,6 +3877,7 @@ const HTML = `<!doctype html>
       const isSenders = page === "senders";
       const isThreads = page === "threads";
       const isRoadmap = page === "roadmap";
+      const isRoadmapPath = page === "roadmap-path";
       const isProducts = page === "products";
       const isUserGroups = page === "user-groups";
       const isBroadcast = page === "broadcast";
@@ -3758,11 +3886,12 @@ const HTML = `<!doctype html>
       const isProfile = page === "profile";
       dashboardPageEl.hidden = !isDashboard;
       analyticsPageEl.hidden = !isAnalytics;
-      messagesPageEl.hidden = isDashboard || isAnalytics || isGroups || isSenders || isThreads || isRoadmap || isProducts || isUserGroups || isBroadcast || isBots || isAccess || isProfile;
+      messagesPageEl.hidden = isDashboard || isAnalytics || isGroups || isSenders || isThreads || isRoadmap || isRoadmapPath || isProducts || isUserGroups || isBroadcast || isBots || isAccess || isProfile;
       groupsPageEl.hidden = !isGroups;
       sendersPageEl.hidden = !isSenders;
       threadsPageEl.hidden = !isThreads;
       roadmapPageEl.hidden = !isRoadmap;
+      roadmapPathPageEl.hidden = !isRoadmapPath;
       productsPageEl.hidden = !isProducts;
       userGroupsPageEl.hidden = !isUserGroups;
       broadcastPageEl.hidden = !isBroadcast;
@@ -3771,11 +3900,12 @@ const HTML = `<!doctype html>
       profilePageEl.hidden = !isProfile;
       dashboardNavEl.classList.toggle("active", isDashboard);
       analyticsNavEl.classList.toggle("active", isAnalytics);
-      messagesNavEl.classList.toggle("active", !isDashboard && !isAnalytics && !isGroups && !isSenders && !isThreads && !isRoadmap && !isProducts && !isUserGroups && !isBroadcast && !isBots && !isAccess && !isProfile);
+      messagesNavEl.classList.toggle("active", !isDashboard && !isAnalytics && !isGroups && !isSenders && !isThreads && !isRoadmap && !isRoadmapPath && !isProducts && !isUserGroups && !isBroadcast && !isBots && !isAccess && !isProfile);
       groupsNavEl.classList.toggle("active", isGroups);
       sendersNavEl.classList.toggle("active", isSenders);
       threadsNavEl.classList.toggle("active", isThreads);
       roadmapNavEl.classList.toggle("active", isRoadmap);
+      roadmapPathNavEl.classList.toggle("active", isRoadmapPath);
       productsNavEl.classList.toggle("active", isProducts);
       userGroupsNavEl.classList.toggle("active", isUserGroups);
       broadcastNavEl.classList.toggle("active", isBroadcast);
@@ -3789,6 +3919,7 @@ const HTML = `<!doctype html>
       else if (isSenders) loadSenders();
       else if (isThreads) loadThreadFilterOptions().then(loadThreads);
       else if (isRoadmap) loadRoadmap();
+      else if (isRoadmapPath) loadRoadmap();
       else if (isProducts) loadProducts();
       else if (isUserGroups) loadUserGroups();
       else if (isBroadcast) loadBroadcast();
@@ -3863,6 +3994,20 @@ const HTML = `<!doctype html>
     roadmapProductEl.addEventListener("change", () => {
       roadmapSubproductEl.value = "";
       syncRoadmapSubproductOptions();
+    });
+    [roadmapTimelineProductEl, roadmapFullTimelineProductEl].forEach((select) => {
+      select.addEventListener("change", () => {
+        roadmapTimelineProductEl.value = select.value;
+        roadmapFullTimelineProductEl.value = select.value;
+        refreshRoadmapTimelines();
+      });
+    });
+    [roadmapTimelineTeamEl, roadmapFullTimelineTeamEl].forEach((select) => {
+      select.addEventListener("change", () => {
+        roadmapTimelineTeamEl.value = select.value;
+        roadmapFullTimelineTeamEl.value = select.value;
+        refreshRoadmapTimelines();
+      });
     });
     roadmapDependencyAddEl.addEventListener("click", () => addRoadmapDependencyRow());
     roadmapDependencyListEl.addEventListener("click", event => {
@@ -4308,6 +4453,7 @@ const HTML = `<!doctype html>
     analyticsNavEl.addEventListener("click", () => showPage("analytics"));
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     roadmapNavEl.addEventListener("click", () => showPage("roadmap"));
+    roadmapPathNavEl.addEventListener("click", () => showPage("roadmap-path"));
     productsNavEl.addEventListener("click", () => showPage("products"));
     userGroupsNavEl.addEventListener("click", () => showPage("user-groups"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
@@ -4655,6 +4801,7 @@ const HTML = `<!doctype html>
       else if (currentPage === "senders" && canOpen("senders")) loadSenders();
       else if (currentPage === "threads" && canOpen("threads")) loadThreads();
       else if (currentPage === "roadmap" && canOpen("roadmap")) loadRoadmap();
+      else if (currentPage === "roadmap-path" && canOpen("roadmap-path")) loadRoadmap();
       else if (currentPage === "products" && canOpen("products")) loadProducts();
       else if (currentPage === "user-groups" && canOpen("user-groups")) loadUserGroups();
       else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast();
