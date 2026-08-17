@@ -215,9 +215,9 @@ const HTML = `<!doctype html>
     .analytics-detail-note { margin:0 0 12px; color:var(--muted); font-size:12px; white-space:normal; }
     .access-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
     .access-panel h2 { margin:0 0 6px; font-size:18px; }
-    .bots-panel, .roadmap-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1180px; margin:0 auto; }
-    .bots-panel h2, .roadmap-panel h2 { margin:0 0 6px; font-size:18px; }
-    .bots-panel p, .roadmap-panel p { margin:0 0 16px; }
+    .bots-panel, .roadmap-panel, .user-groups-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1180px; margin:0 auto; }
+    .bots-panel h2, .roadmap-panel h2, .user-groups-panel h2 { margin:0 0 6px; font-size:18px; }
+    .bots-panel p, .roadmap-panel p, .user-groups-panel p { margin:0 0 16px; }
     .bot-form { display:grid; grid-template-columns:130px minmax(150px, 1fr) minmax(150px, 1fr) minmax(220px, 1.3fr) 110px; gap:10px; align-items:center; margin:14px 0 16px; }
     .bot-form .password-wrap { margin:0; }
     .bot-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
@@ -229,6 +229,15 @@ const HTML = `<!doctype html>
     .roadmap-table .roadmap-title-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.5; font-weight:700; }
     .roadmap-table .roadmap-description-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.6; color:var(--muted); }
     .roadmap-table select { width:100%; min-width:118px; height:32px; font-size:12px; }
+    .user-groups-form { display:grid; grid-template-columns:minmax(180px, .8fr) minmax(260px, 1.4fr) 120px; gap:10px; align-items:center; margin:14px 0 16px; }
+    .user-groups-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
+    .user-group-list { display:grid; gap:12px; }
+    .user-group-card { display:grid; gap:12px; padding:14px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; }
+    .user-group-head { display:grid; grid-template-columns:minmax(180px, .8fr) minmax(240px, 1.2fr) auto auto; gap:10px; align-items:center; }
+    .user-group-members { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:8px; }
+    .user-group-member { min-height:34px; display:flex; align-items:center; justify-content:flex-start; gap:8px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; direction:ltr; }
+    .user-group-member input { width:15px; height:15px; flex:0 0 auto; }
+    .user-group-member span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .broadcast-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
     .broadcast-panel h2 { margin:0 0 6px; font-size:18px; }
     .broadcast-form { display:grid; gap:12px; margin-top:16px; }
@@ -375,8 +384,8 @@ const HTML = `<!doctype html>
     .modal-close { border-radius:0; }
     .detail-row { border-radius:0; border-color:var(--line); background:#fff; }
     .detail-label { color:#525252; }
-    .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel, .roadmap-panel { border-radius:0; border-color:var(--line); box-shadow:0 1px 0 rgba(22,22,22,.04); }
-    .chart-head h2, .access-panel h2, .profile-panel h2, .bots-panel h2, .broadcast-panel h2, .roadmap-panel h2 { font-size:20px; font-weight:800; }
+    .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel, .roadmap-panel, .user-groups-panel { border-radius:0; border-color:var(--line); box-shadow:0 1px 0 rgba(22,22,22,.04); }
+    .chart-head h2, .access-panel h2, .profile-panel h2, .bots-panel h2, .broadcast-panel h2, .roadmap-panel h2, .user-groups-panel h2 { font-size:20px; font-weight:800; }
     .broadcast-message-input, .broadcast-option { border-radius:0; border-color:#dfe1e6; }
     .bar-stack { border-radius:0; border-color:#c6c6c6; }
     .bar-segment { transition:filter .12s ease; }
@@ -463,10 +472,10 @@ const HTML = `<!doctype html>
       .access-log-table { margin-top:10px; direction:rtl; }
       .access-log-table th, .access-log-table td { direction:rtl; text-align:right; }
       .broadcast-log-table { margin-top:10px; direction:rtl; }
-      .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel, .roadmap-panel { padding:14px; }
+      .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel, .roadmap-panel, .user-groups-panel { padding:14px; }
       .chart-head { align-items:flex-start; flex-direction:column; }
       .legend-grid { grid-template-columns:1fr; }
-      .bot-form, .roadmap-form { grid-template-columns:1fr; }
+      .bot-form, .roadmap-form, .user-groups-form, .user-group-head { grid-template-columns:1fr; }
       .roadmap-form textarea { grid-column:1; }
       .access-form, .access-main { grid-template-columns:1fr; }
       .access-row { direction:rtl; }
@@ -514,6 +523,7 @@ const HTML = `<!doctype html>
         <button class="nav-button" id="threadsNav" type="button">تردها</button>
         <button class="nav-button active" id="messagesNav" type="button">پیام‌ها</button>
         <button class="nav-button" id="roadmapNav" type="button">نقشه راه</button>
+        <button class="nav-button" id="userGroupsNav" type="button">گروه‌بندی کاربران</button>
         <button class="nav-button" id="groupsNav" type="button">گروه‌ها</button>
         <button class="nav-button" id="sendersNav" type="button">ارسال‌کننده‌ها</button>
         <button class="nav-button" id="broadcastNav" type="button">اطلاع‌رسانی</button>
@@ -803,6 +813,19 @@ const HTML = `<!doctype html>
         </table>
       </section>
     </section>
+    <section class="page" id="userGroupsPage" hidden>
+      <section class="user-groups-panel">
+        <h2>گروه‌بندی کاربران</h2>
+        <p class="thread-muted">گروه‌های داخلی کاربران برای استفاده عملیاتی؛ این گروه‌ها سطح دسترسی کاربران را تغییر نمی‌دهند.</p>
+        <form class="user-groups-form" id="userGroupForm">
+          <input id="userGroupName" type="text" maxlength="120" placeholder="نام گروه" autocomplete="off" required />
+          <input id="userGroupDescription" type="text" maxlength="500" placeholder="توضیح کوتاه" autocomplete="off" />
+          <button type="submit">ساخت گروه</button>
+        </form>
+        <div class="user-groups-message" id="userGroupsMessage"></div>
+        <div class="user-group-list" id="userGroupList"></div>
+      </section>
+    </section>
     <section class="page" id="botsPage" hidden>
       <section class="bots-panel">
         <h2>مدیریت بات‌ها</h2>
@@ -1013,6 +1036,7 @@ const HTML = `<!doctype html>
     const analyticsNavEl = document.getElementById("analyticsNav");
     const messagesNavEl = document.getElementById("messagesNav");
     const roadmapNavEl = document.getElementById("roadmapNav");
+    const userGroupsNavEl = document.getElementById("userGroupsNav");
     const groupsNavEl = document.getElementById("groupsNav");
     const sendersNavEl = document.getElementById("sendersNav");
     const threadsNavEl = document.getElementById("threadsNav");
@@ -1026,6 +1050,7 @@ const HTML = `<!doctype html>
     const sendersPageEl = document.getElementById("sendersPage");
     const threadsPageEl = document.getElementById("threadsPage");
     const roadmapPageEl = document.getElementById("roadmapPage");
+    const userGroupsPageEl = document.getElementById("userGroupsPage");
     const broadcastPageEl = document.getElementById("broadcastPage");
     const botsPageEl = document.getElementById("botsPage");
     const accessPageEl = document.getElementById("accessPage");
@@ -1115,6 +1140,11 @@ const HTML = `<!doctype html>
     const roadmapStatusEl = document.getElementById("roadmapStatus");
     const roadmapDescriptionEl = document.getElementById("roadmapDescription");
     const roadmapMessageEl = document.getElementById("roadmapMessage");
+    const userGroupFormEl = document.getElementById("userGroupForm");
+    const userGroupNameEl = document.getElementById("userGroupName");
+    const userGroupDescriptionEl = document.getElementById("userGroupDescription");
+    const userGroupsMessageEl = document.getElementById("userGroupsMessage");
+    const userGroupListEl = document.getElementById("userGroupList");
     const currentUserPermissions = new Set(__CURRENT_USER_PERMISSIONS__);
     const currentUser = __CURRENT_USER__;
     const permissionOptions = [
@@ -1123,6 +1153,7 @@ const HTML = `<!doctype html>
       { key:"threads", label:"تردها" },
       { key:"messages", label:"پیام‌ها" },
       { key:"roadmap", label:"نقشه راه" },
+      { key:"user_groups", label:"گروه‌بندی کاربران" },
       { key:"senders", label:"ارسال‌کننده‌ها" },
       { key:"groups", label:"گروه‌ها" },
       { key:"broadcast", label:"اطلاع‌رسانی" },
@@ -1195,8 +1226,11 @@ const HTML = `<!doctype html>
     function telegramUsernameLocal(value) {
       return String(value || "").trim().replace(/^@+/, "");
     }
+    function pagePermission(page) {
+      return page === "user-groups" ? "user_groups" : page;
+    }
     function canOpen(page) {
-      return currentUserPermissions.has(page);
+      return currentUserPermissions.has(pagePermission(page));
     }
     function selectedPermissions(root) {
       return [...root.querySelectorAll("input[data-permission]:checked")].map(input => input.dataset.permission);
@@ -1440,6 +1474,9 @@ const HTML = `<!doctype html>
         bot_rotate: "تغییر توکن بات",
         roadmap_create: "ثبت نقشه راه",
         roadmap_update: "به‌روزرسانی نقشه راه",
+        user_group_create: "ساخت گروه کاربران",
+        user_group_update: "به‌روزرسانی گروه کاربران",
+        user_group_delete: "حذف گروه کاربران",
         thread_reply: "ارسال پاسخ",
         group_broadcast: "ارسال اطلاع‌رسانی گروهی",
       };
@@ -1516,7 +1553,7 @@ const HTML = `<!doctype html>
       else if (isGroups) loadAccessGroupView();
       else loadAccessUsers();
     }
-    const routablePages = ["dashboard", "analytics", "threads", "messages", "roadmap", "groups", "senders", "broadcast", "bots", "access", "profile"];
+    const routablePages = ["dashboard", "analytics", "threads", "messages", "roadmap", "user-groups", "groups", "senders", "broadcast", "bots", "access", "profile"];
     function pagePath(page) {
       return "/main/" + page;
     }
@@ -1526,11 +1563,11 @@ const HTML = `<!doctype html>
       return routablePages.includes(page) ? page : "messages";
     }
     function firstAccessiblePage() {
-      return ["dashboard", "analytics", "threads", "messages", "roadmap", "groups", "senders", "broadcast", "bots", "access"].find(canOpen);
+      return ["dashboard", "analytics", "threads", "messages", "roadmap", "user-groups", "groups", "senders", "broadcast", "bots", "access"].find(canOpen);
     }
     function setupAccessShell() {
       accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
-      const navByPage = { dashboard:dashboardNavEl, analytics:analyticsNavEl, threads:threadsNavEl, messages:messagesNavEl, roadmap:roadmapNavEl, groups:groupsNavEl, senders:sendersNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
+      const navByPage = { dashboard:dashboardNavEl, analytics:analyticsNavEl, threads:threadsNavEl, messages:messagesNavEl, roadmap:roadmapNavEl, "user-groups":userGroupsNavEl, groups:groupsNavEl, senders:sendersNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
       Object.entries(navByPage).forEach(([page, element]) => { element.hidden = !canOpen(page); });
       const firstPage = firstAccessiblePage();
       if (!firstPage) {
@@ -3075,6 +3112,51 @@ const HTML = `<!doctype html>
         setStatus(token, "خطا در دریافت نقشه راه");
       }
     }
+    function userGroupMemberOptions(group, users) {
+      const memberSet = new Set(Array.isArray(group.member_emails) ? group.member_emails.map((email) => String(email).toLowerCase()) : []);
+      return users.map((user) => {
+        const email = String(user.email || "").toLowerCase();
+        const label = [user.email, user.telegram_username ? user.telegram_username : ""].filter(Boolean).join(" · ");
+        return \`<label class="user-group-member">
+          <input type="checkbox" data-user-group-member="\${esc(email)}" \${memberSet.has(email) ? "checked" : ""} />
+          <span>\${esc(label || email)}</span>
+        </label>\`;
+      }).join("") || '<div class="thread-muted">کاربری برای انتخاب وجود ندارد.</div>';
+    }
+    function renderUserGroups(groups, users) {
+      userGroupListEl.innerHTML = groups.map((group) => \`<section class="user-group-card" data-user-group-id="\${esc(group.id)}">
+        <div class="user-group-head">
+          <input data-user-group-name value="\${esc(group.name || "")}" maxlength="120" aria-label="نام گروه" />
+          <input data-user-group-description value="\${esc(group.description || "")}" maxlength="500" aria-label="توضیح گروه" />
+          <button class="secondary-button" type="button" data-user-group-save>ذخیره</button>
+          <button class="revoke-button" type="button" data-user-group-delete>حذف</button>
+        </div>
+        <div class="user-group-members">
+          \${userGroupMemberOptions(group, users)}
+        </div>
+        <div class="thread-muted">\${esc((group.member_emails || []).length)} عضو</div>
+      </section>\`).join("") || '<div class="empty">هنوز گروهی ساخته نشده است.</div>';
+    }
+    async function loadUserGroups() {
+      const token = showLoading("در حال دریافت گروه‌بندی کاربران...");
+      try {
+        const res = await fetch("/api/user-groups");
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.groups) || !Array.isArray(data.users)) {
+          userGroupListEl.innerHTML = "";
+          userGroupsMessageEl.textContent = data.detail || data.error || "خطا در دریافت گروه‌بندی کاربران";
+          setStatus(token, data.detail || data.error || "خطا در دریافت گروه‌بندی کاربران");
+          return;
+        }
+        renderUserGroups(data.groups, data.users);
+        userGroupsMessageEl.textContent = "";
+        setStatus(token, data.groups.length + " گروه کاربری");
+      } catch (error) {
+        userGroupListEl.innerHTML = "";
+        userGroupsMessageEl.textContent = "خطا در دریافت گروه‌بندی کاربران";
+        setStatus(token, "خطا در دریافت گروه‌بندی کاربران");
+      }
+    }
     async function loadThreads() {
       updateFilterButtons();
       const token = showLoading("در حال دریافت تردها...");
@@ -3151,28 +3233,31 @@ const HTML = `<!doctype html>
       const isSenders = page === "senders";
       const isThreads = page === "threads";
       const isRoadmap = page === "roadmap";
+      const isUserGroups = page === "user-groups";
       const isBroadcast = page === "broadcast";
       const isBots = page === "bots";
       const isAccess = page === "access";
       const isProfile = page === "profile";
       dashboardPageEl.hidden = !isDashboard;
       analyticsPageEl.hidden = !isAnalytics;
-      messagesPageEl.hidden = isDashboard || isAnalytics || isGroups || isSenders || isThreads || isRoadmap || isBroadcast || isBots || isAccess || isProfile;
+      messagesPageEl.hidden = isDashboard || isAnalytics || isGroups || isSenders || isThreads || isRoadmap || isUserGroups || isBroadcast || isBots || isAccess || isProfile;
       groupsPageEl.hidden = !isGroups;
       sendersPageEl.hidden = !isSenders;
       threadsPageEl.hidden = !isThreads;
       roadmapPageEl.hidden = !isRoadmap;
+      userGroupsPageEl.hidden = !isUserGroups;
       broadcastPageEl.hidden = !isBroadcast;
       botsPageEl.hidden = !isBots;
       accessPageEl.hidden = !isAccess;
       profilePageEl.hidden = !isProfile;
       dashboardNavEl.classList.toggle("active", isDashboard);
       analyticsNavEl.classList.toggle("active", isAnalytics);
-      messagesNavEl.classList.toggle("active", !isDashboard && !isAnalytics && !isGroups && !isSenders && !isThreads && !isRoadmap && !isBroadcast && !isBots && !isAccess && !isProfile);
+      messagesNavEl.classList.toggle("active", !isDashboard && !isAnalytics && !isGroups && !isSenders && !isThreads && !isRoadmap && !isUserGroups && !isBroadcast && !isBots && !isAccess && !isProfile);
       groupsNavEl.classList.toggle("active", isGroups);
       sendersNavEl.classList.toggle("active", isSenders);
       threadsNavEl.classList.toggle("active", isThreads);
       roadmapNavEl.classList.toggle("active", isRoadmap);
+      userGroupsNavEl.classList.toggle("active", isUserGroups);
       broadcastNavEl.classList.toggle("active", isBroadcast);
       botsNavEl.classList.toggle("active", isBots);
       accessNavEl.classList.toggle("active", isAccess);
@@ -3182,6 +3267,7 @@ const HTML = `<!doctype html>
       else if (isSenders) loadSenders();
       else if (isThreads) loadThreadFilterOptions().then(loadThreads);
       else if (isRoadmap) loadRoadmap();
+      else if (isUserGroups) loadUserGroups();
       else if (isBroadcast) loadBroadcast();
       else if (isBots) loadBots();
       else if (isAccess) showAccessSection(accessLogsSectionEl.hidden ? "users" : "logs");
@@ -3244,6 +3330,55 @@ const HTML = `<!doctype html>
       } catch (error) {
         roadmapMessageEl.textContent = "به‌روزرسانی وضعیت انجام نشد";
         select.disabled = false;
+      }
+    });
+    userGroupListEl.addEventListener("click", async event => {
+      const card = event.target.closest("[data-user-group-id]");
+      if (!card) return;
+      const id = card.dataset.userGroupId;
+      if (event.target.closest("[data-user-group-delete]")) {
+        const confirmed = await openConfirmModal({
+          title: "حذف گروه",
+          message: "این گروه کاربری حذف شود؟ عضویت کاربران هم از همین گروه حذف می‌شود.",
+          confirmText: "حذف",
+          cancelText: "انصراف",
+        });
+        if (!confirmed) return;
+        userGroupsMessageEl.textContent = "در حال حذف گروه...";
+        try {
+          const res = await fetch("/api/user-groups?id=" + encodeURIComponent(id), { method: "DELETE" });
+          const data = await res.json();
+          if (!res.ok) {
+            userGroupsMessageEl.textContent = data.error || "حذف گروه انجام نشد";
+            return;
+          }
+          userGroupsMessageEl.textContent = "گروه حذف شد.";
+          await loadUserGroups();
+        } catch (error) {
+          userGroupsMessageEl.textContent = "حذف گروه انجام نشد";
+        }
+        return;
+      }
+      if (!event.target.closest("[data-user-group-save]")) return;
+      const memberEmails = [...card.querySelectorAll("[data-user-group-member]:checked")].map((input) => input.dataset.userGroupMember);
+      const name = card.querySelector("[data-user-group-name]")?.value.trim() || "";
+      const description = card.querySelector("[data-user-group-description]")?.value.trim() || "";
+      userGroupsMessageEl.textContent = "در حال ذخیره گروه...";
+      try {
+        const res = await fetch("/api/user-groups", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ id, name, description, member_emails: memberEmails }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          userGroupsMessageEl.textContent = data.error || "ذخیره گروه انجام نشد";
+          return;
+        }
+        userGroupsMessageEl.textContent = "گروه ذخیره شد.";
+        await loadUserGroups();
+      } catch (error) {
+        userGroupsMessageEl.textContent = "ذخیره گروه انجام نشد";
       }
     });
     broadcastLogRowsEl.addEventListener("click", event => {
@@ -3351,6 +3486,31 @@ const HTML = `<!doctype html>
         await loadRoadmap();
       } catch (error) {
         roadmapMessageEl.textContent = "ثبت فیچر انجام نشد";
+      }
+    });
+    userGroupFormEl.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      userGroupsMessageEl.textContent = "در حال ساخت گروه...";
+      try {
+        const res = await fetch("/api/user-groups", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            name: userGroupNameEl.value.trim(),
+            description: userGroupDescriptionEl.value.trim(),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          userGroupsMessageEl.textContent = data.error || "ساخت گروه انجام نشد";
+          return;
+        }
+        userGroupsMessageEl.textContent = "گروه ساخته شد.";
+        userGroupNameEl.value = "";
+        userGroupDescriptionEl.value = "";
+        await loadUserGroups();
+      } catch (error) {
+        userGroupsMessageEl.textContent = "ساخت گروه انجام نشد";
       }
     });
     accessLogRowsEl.addEventListener("click", event => {
@@ -3506,6 +3666,7 @@ const HTML = `<!doctype html>
     analyticsNavEl.addEventListener("click", () => showPage("analytics"));
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     roadmapNavEl.addEventListener("click", () => showPage("roadmap"));
+    userGroupsNavEl.addEventListener("click", () => showPage("user-groups"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     sendersNavEl.addEventListener("click", () => showPage("senders"));
     threadsNavEl.addEventListener("click", () => showPage("threads"));
@@ -3784,7 +3945,7 @@ const HTML = `<!doctype html>
     window.addEventListener("scroll", positionOpenFilterPanels, true);
     syncProfileUi();
     setupAccessShell();
-    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "analytics" && canOpen("analytics")) loadAnalytics(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "senders" && canOpen("senders")) loadSenders(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "roadmap" && canOpen("roadmap")) loadRoadmap(); else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
+    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "analytics" && canOpen("analytics")) loadAnalytics(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "senders" && canOpen("senders")) loadSenders(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "roadmap" && canOpen("roadmap")) loadRoadmap(); else if (currentPage === "user-groups" && canOpen("user-groups")) loadUserGroups(); else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
   </script>
 </body>
 </html>`;
@@ -4298,7 +4459,7 @@ function senderLabelTextServer(value) {
   return labels[String(value || "")] || "بدون لیبل";
 }
 
-const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "senders", "dashboard", "analytics", "bots", "roadmap"];
+const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "senders", "dashboard", "analytics", "bots", "roadmap", "user_groups"];
 const EXTRA_ACCESS_PERMISSIONS = ["reply", "broadcast"];
 const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS, ...EXTRA_ACCESS_PERMISSIONS];
 const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
@@ -4511,8 +4672,8 @@ function hasAnyAccessPermission(user, permissions) {
 }
 
 function defaultMainPathForUser(user) {
-  const firstPage = ["dashboard", "threads", "messages", "roadmap", "senders", "groups", "broadcast", "bots", "access", "analytics"].find((permission) => hasAccessPermission(user, permission));
-  return `/main/${firstPage || "messages"}`;
+  const firstPage = ["dashboard", "threads", "messages", "roadmap", "user_groups", "senders", "groups", "broadcast", "bots", "access", "analytics"].find((permission) => hasAccessPermission(user, permission));
+  return `/main/${firstPage === "user_groups" ? "user-groups" : (firstPage || "messages")}`;
 }
 
 function groupRowAllowedByAccess(row, groupAccess) {
@@ -7869,6 +8030,221 @@ async function updateRoadmapItem(request, env, authUser) {
   return json({ item: roadmapItemForClient(item || { ...existing, ...payload }) });
 }
 
+function normalizeUserGroupName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function userGroupForClient(group, membersByGroup) {
+  return {
+    id: group.id,
+    name: group.name || "",
+    description: group.description || "",
+    member_emails: membersByGroup.get(String(group.id)) || [],
+    created_by_email: group.created_by_email || "",
+    updated_by_email: group.updated_by_email || "",
+    created_at_utc: group.created_at_utc || "",
+    updated_at_utc: group.updated_at_utc || "",
+  };
+}
+
+async function fetchUserGroupRows(env) {
+  const params = new URLSearchParams({
+    select: "id,name,description,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
+    order: "name.asc",
+    limit: "1000",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_user_groups?${params}`, { headers: supabaseHeaders(env) });
+  const body = await readSupabaseJson(response);
+  if (!response.ok) throw new Error(body?.message || "دریافت گروه‌های کاربران انجام نشد");
+  return Array.isArray(body) ? body : [];
+}
+
+async function fetchUserGroupMemberRows(env) {
+  const params = new URLSearchParams({
+    select: "group_id,user_email",
+    order: "user_email.asc",
+    limit: "10000",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_user_group_members?${params}`, { headers: supabaseHeaders(env) });
+  const body = await readSupabaseJson(response);
+  if (!response.ok) throw new Error(body?.message || "دریافت عضویت گروه‌های کاربران انجام نشد");
+  return Array.isArray(body) ? body : [];
+}
+
+function membersByGroupId(memberRows) {
+  const map = new Map();
+  memberRows.forEach((row) => {
+    const key = String(row.group_id || "");
+    if (!key) return;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(normalizeEmail(row.user_email));
+  });
+  return map;
+}
+
+async function fetchUserGroups(env) {
+  try {
+    const [groups, memberRows, users] = await Promise.all([
+      fetchUserGroupRows(env),
+      fetchUserGroupMemberRows(env),
+      listAccessUsers(env),
+    ]);
+    const members = membersByGroupId(memberRows);
+    return json({
+      groups: groups.map((group) => userGroupForClient(group, members)),
+      users: users.map((user) => ({
+        email: normalizeEmail(user.email),
+        telegram_username: user.telegram_username || "",
+        is_active: isAccessOwnerEmail(user.email) ? true : Boolean(user.is_active),
+        is_owner: isAccessOwnerEmail(user.email),
+      })),
+    });
+  } catch (error) {
+    return json({ error: error.message || "دریافت گروه‌بندی کاربران انجام نشد" }, 500);
+  }
+}
+
+async function fetchUserGroupById(env, id) {
+  const params = new URLSearchParams({
+    select: "id,name,description,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
+    id: `eq.${id}`,
+    limit: "1",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_user_groups?${params}`, { headers: supabaseHeaders(env) });
+  if (!response.ok) return null;
+  const rows = await response.json();
+  return rows[0] || null;
+}
+
+function normalizeMemberEmails(value, validEmails) {
+  const validSet = new Set(validEmails.map(normalizeEmail));
+  return [...new Set((Array.isArray(value) ? value : [])
+    .map(normalizeEmail)
+    .filter((email) => validSet.has(email)))];
+}
+
+async function createUserGroup(request, env, authUser) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const name = normalizeUserGroupName(body.name);
+  if (name.length < 2 || name.length > 120) return json({ error: "نام گروه باید بین ۲ تا ۱۲۰ کاراکتر باشد" }, 400);
+  const description = String(body.description || "").trim();
+  if (description.length > 500) return json({ error: "توضیح گروه بیش از حد طولانی است" }, 400);
+  const now = new Date().toISOString();
+  const row = {
+    name,
+    description,
+    created_by_email: normalizeEmail(authUser.email),
+    updated_by_email: normalizeEmail(authUser.email),
+    created_at_utc: now,
+    updated_at_utc: now,
+  };
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_user_groups`, {
+    method: "POST",
+    headers: supabaseHeaders(env, "return=representation"),
+    body: JSON.stringify(row),
+  });
+  const saved = await readSupabaseJson(response);
+  if (!response.ok) return json({ error: saved?.code === "23505" ? "گروهی با این نام وجود دارد" : "ساخت گروه انجام نشد", detail: saved?.message || saved || response.status }, 400);
+  const group = Array.isArray(saved) ? saved[0] : saved;
+  await insertAccessAuditLog(env, {
+    actorEmail: authUser.email,
+    targetEmail: authUser.email,
+    action: "user_group_create",
+    newValues: group || row,
+    metadata: { user_group_id: group?.id || null, name },
+  });
+  return json({ group: userGroupForClient(group || row, new Map()) }, 201);
+}
+
+async function replaceUserGroupMembers(env, groupId, memberEmails) {
+  const deleteResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_user_group_members?group_id=eq.${groupId}`, {
+    method: "DELETE",
+    headers: supabaseHeaders(env, "return=minimal"),
+  });
+  if (!deleteResponse.ok) throw new Error("پاک‌سازی عضویت‌های قبلی انجام نشد");
+  if (!memberEmails.length) return;
+  const now = new Date().toISOString();
+  const rows = memberEmails.map((email) => ({ group_id: groupId, user_email: email, created_at_utc: now }));
+  const insertResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_user_group_members`, {
+    method: "POST",
+    headers: supabaseHeaders(env, "return=minimal"),
+    body: JSON.stringify(rows),
+  });
+  if (!insertResponse.ok) throw new Error("ذخیره عضویت کاربران انجام نشد");
+}
+
+async function updateUserGroup(request, env, authUser) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const id = Number.parseInt(String(body.id || ""), 10);
+  if (!Number.isFinite(id) || id <= 0) return json({ error: "شناسه گروه نامعتبر است" }, 400);
+  const existing = await fetchUserGroupById(env, id);
+  if (!existing) return json({ error: "گروه پیدا نشد" }, 404);
+  const name = normalizeUserGroupName(body.name);
+  if (name.length < 2 || name.length > 120) return json({ error: "نام گروه باید بین ۲ تا ۱۲۰ کاراکتر باشد" }, 400);
+  const description = String(body.description || "").trim();
+  if (description.length > 500) return json({ error: "توضیح گروه بیش از حد طولانی است" }, 400);
+  const users = await listAccessUsers(env);
+  const memberEmails = normalizeMemberEmails(body.member_emails, users.map((user) => user.email));
+  const patch = {
+    name,
+    description,
+    updated_by_email: normalizeEmail(authUser.email),
+    updated_at_utc: new Date().toISOString(),
+  };
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_user_groups?id=eq.${id}`, {
+    method: "PATCH",
+    headers: supabaseHeaders(env, "return=representation"),
+    body: JSON.stringify(patch),
+  });
+  const saved = await readSupabaseJson(response);
+  if (!response.ok) return json({ error: saved?.code === "23505" ? "گروهی با این نام وجود دارد" : "ذخیره گروه انجام نشد", detail: saved?.message || saved || response.status }, 400);
+  try {
+    await replaceUserGroupMembers(env, id, memberEmails);
+  } catch (error) {
+    return json({ error: error.message || "ذخیره عضویت کاربران انجام نشد" }, 500);
+  }
+  const group = Array.isArray(saved) ? saved[0] : saved;
+  await insertAccessAuditLog(env, {
+    actorEmail: authUser.email,
+    targetEmail: authUser.email,
+    action: "user_group_update",
+    oldValues: existing,
+    newValues: { ...(group || { ...existing, ...patch }), member_emails: memberEmails },
+    metadata: { user_group_id: id, name },
+  });
+  return json({ group: userGroupForClient(group || { ...existing, ...patch }, new Map([[String(id), memberEmails]])) });
+}
+
+async function deleteUserGroup(request, env, authUser) {
+  const id = Number.parseInt(String(new URL(request.url).searchParams.get("id") || ""), 10);
+  if (!Number.isFinite(id) || id <= 0) return json({ error: "شناسه گروه نامعتبر است" }, 400);
+  const existing = await fetchUserGroupById(env, id);
+  if (!existing) return json({ error: "گروه پیدا نشد" }, 404);
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_user_groups?id=eq.${id}`, {
+    method: "DELETE",
+    headers: supabaseHeaders(env, "return=minimal"),
+  });
+  if (!response.ok) return json({ error: "حذف گروه انجام نشد", detail: await response.text() }, 500);
+  await insertAccessAuditLog(env, {
+    actorEmail: authUser.email,
+    targetEmail: authUser.email,
+    action: "user_group_delete",
+    oldValues: existing,
+    metadata: { user_group_id: id, name: existing.name },
+  });
+  return json({ ok: true });
+}
+
 async function fetchBots(env) {
   const params = new URLSearchParams();
   params.set("select", "platform,bot_id,bot_username,bot_name,webhook_path,is_active,first_seen_at_utc,last_seen_at_utc,last_update_at_utc,credential_last4,credential_updated_at_utc,created_by_email,message_count,group_count,last_message_at_utc");
@@ -8305,6 +8681,22 @@ async function handleRequest(request, env) {
     if (url.pathname === "/api/roadmap" && request.method === "PATCH") {
       if (!hasAccessPermission(authUser, "roadmap")) return forbiddenAccess();
       return updateRoadmapItem(request, env, authUser);
+    }
+    if (url.pathname === "/api/user-groups" && request.method === "GET") {
+      if (!hasAccessPermission(authUser, "user_groups")) return forbiddenAccess();
+      return fetchUserGroups(env);
+    }
+    if (url.pathname === "/api/user-groups" && request.method === "POST") {
+      if (!hasAccessPermission(authUser, "user_groups")) return forbiddenAccess();
+      return createUserGroup(request, env, authUser);
+    }
+    if (url.pathname === "/api/user-groups" && request.method === "PATCH") {
+      if (!hasAccessPermission(authUser, "user_groups")) return forbiddenAccess();
+      return updateUserGroup(request, env, authUser);
+    }
+    if (url.pathname === "/api/user-groups" && request.method === "DELETE") {
+      if (!hasAccessPermission(authUser, "user_groups")) return forbiddenAccess();
+      return deleteUserGroup(request, env, authUser);
     }
     if (url.pathname === "/api/dashboard") {
       if (!hasAccessPermission(authUser, "dashboard")) return forbiddenAccess();
