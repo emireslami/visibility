@@ -247,6 +247,7 @@ const HTML = `<!doctype html>
     .user-group-member { min-height:34px; display:flex; align-items:center; justify-content:flex-start; gap:8px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; direction:ltr; }
     .user-group-member input { width:15px; height:15px; flex:0 0 auto; }
     .user-group-member span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .user-group-block-title { margin:4px 0 0; color:var(--muted); font-size:12px; font-weight:800; }
     .products-form { display:grid; grid-template-columns:minmax(150px, .9fr) minmax(120px, .55fr) minmax(150px, .75fr) minmax(170px, .85fr) minmax(180px, 1fr) 120px; gap:10px; align-items:center; margin:14px 0 16px; }
     .products-form > *, .product-head > * { min-width:0; }
     .products-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
@@ -3253,12 +3254,24 @@ const HTML = `<!doctype html>
         </label>\`;
       }).join("") || '<div class="thread-muted">کاربری برای انتخاب وجود ندارد.</div>';
     }
+    function userGroupProductOptions(group, products) {
+      const productSet = new Set(Array.isArray(group.product_ids) ? group.product_ids.map((id) => String(id)) : []);
+      return products.map((product) => {
+        const id = String(product.id || "");
+        const parentPrefix = product.parent_id ? "زیرمحصول: " : "";
+        const label = parentPrefix + [product.name, product.product_key ? product.product_key : ""].filter(Boolean).join(" · ");
+        return \`<label class="user-group-member">
+          <input type="checkbox" data-user-group-product="\${esc(id)}" \${productSet.has(id) ? "checked" : ""} />
+          <span>\${esc(label || id)}</span>
+        </label>\`;
+      }).join("") || '<div class="thread-muted">محصولی برای انتخاب وجود ندارد.</div>';
+    }
     function userGroupTypeOptions(selected) {
       const value = String(selected || "squad").toLowerCase();
       return '<option value="squad"' + (value === "squad" ? " selected" : "") + '>Squad</option>'
         + '<option value="gtm"' + (value === "gtm" ? " selected" : "") + '>GTM</option>';
     }
-    function renderUserGroups(groups, users) {
+    function renderUserGroups(groups, users, products) {
       userGroupListEl.innerHTML = groups.map((group) => \`<section class="user-group-card" data-user-group-id="\${esc(group.id)}">
         <div class="user-group-head">
           <input data-user-group-name value="\${esc(group.name || "")}" maxlength="120" aria-label="نام گروه" />
@@ -3267,10 +3280,15 @@ const HTML = `<!doctype html>
           <button class="secondary-button" type="button" data-user-group-save>ذخیره</button>
           <button class="revoke-button" type="button" data-user-group-delete>حذف</button>
         </div>
+        <div class="user-group-block-title">کاربران گروه</div>
         <div class="user-group-members">
           \${userGroupMemberOptions(group, users)}
         </div>
-        <div class="thread-muted">\${esc(group.group_type === "gtm" ? "GTM" : "Squad")} · \${esc((group.member_emails || []).length)} عضو</div>
+        <div class="user-group-block-title">محصول‌های مرتبط</div>
+        <div class="user-group-members">
+          \${userGroupProductOptions(group, products)}
+        </div>
+        <div class="thread-muted">\${esc(group.group_type === "gtm" ? "GTM" : "Squad")} · \${esc((group.member_emails || []).length)} عضو · \${esc((group.product_ids || []).length)} محصول</div>
       </section>\`).join("") || '<div class="empty">هنوز گروهی ساخته نشده است.</div>';
     }
     async function loadUserGroups() {
@@ -3278,13 +3296,13 @@ const HTML = `<!doctype html>
       try {
         const res = await fetch("/api/user-groups");
         const data = await res.json();
-        if (!res.ok || !Array.isArray(data.groups) || !Array.isArray(data.users)) {
+        if (!res.ok || !Array.isArray(data.groups) || !Array.isArray(data.users) || !Array.isArray(data.products)) {
           userGroupListEl.innerHTML = "";
           userGroupsMessageEl.textContent = data.detail || data.error || "خطا در دریافت گروه‌بندی کاربران";
           setStatus(token, data.detail || data.error || "خطا در دریافت گروه‌بندی کاربران");
           return;
         }
-        renderUserGroups(data.groups, data.users);
+        renderUserGroups(data.groups, data.users, data.products);
         userGroupsMessageEl.textContent = "";
         setStatus(token, data.groups.length + " گروه کاربری");
       } catch (error) {
@@ -3588,6 +3606,7 @@ const HTML = `<!doctype html>
       }
       if (!event.target.closest("[data-user-group-save]")) return;
       const memberEmails = [...card.querySelectorAll("[data-user-group-member]:checked")].map((input) => input.dataset.userGroupMember);
+      const productIds = [...card.querySelectorAll("[data-user-group-product]:checked")].map((input) => input.dataset.userGroupProduct);
       const name = card.querySelector("[data-user-group-name]")?.value.trim() || "";
       const groupType = card.querySelector("[data-user-group-type]")?.value || "squad";
       const description = card.querySelector("[data-user-group-description]")?.value.trim() || "";
@@ -3596,7 +3615,7 @@ const HTML = `<!doctype html>
         const res = await fetch("/api/user-groups", {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ id, name, group_type: groupType, description, member_emails: memberEmails }),
+          body: JSON.stringify({ id, name, group_type: groupType, description, member_emails: memberEmails, product_ids: productIds }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -8561,13 +8580,14 @@ function normalizeUserGroupType(value) {
   return groupType === "gtm" ? "gtm" : "squad";
 }
 
-function userGroupForClient(group, membersByGroup) {
+function userGroupForClient(group, membersByGroup, productsByGroup = new Map()) {
   return {
     id: group.id,
     name: group.name || "",
     group_type: normalizeUserGroupType(group.group_type),
     description: group.description || "",
     member_emails: membersByGroup.get(String(group.id)) || [],
+    product_ids: productsByGroup.get(String(group.id)) || [],
     created_by_email: group.created_by_email || "",
     updated_by_email: group.updated_by_email || "",
     created_at_utc: group.created_at_utc || "",
@@ -8599,6 +8619,18 @@ async function fetchUserGroupMemberRows(env) {
   return Array.isArray(body) ? body : [];
 }
 
+async function fetchUserGroupProductRows(env) {
+  const params = new URLSearchParams({
+    select: "group_id,product_id",
+    order: "product_id.asc",
+    limit: "10000",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_user_group_products?${params}`, { headers: supabaseHeaders(env) });
+  const body = await readSupabaseJson(response);
+  if (!response.ok) throw new Error(body?.message || "دریافت محصول‌های گروه‌ها انجام نشد");
+  return Array.isArray(body) ? body : [];
+}
+
 function membersByGroupId(memberRows) {
   const map = new Map();
   memberRows.forEach((row) => {
@@ -8610,22 +8642,37 @@ function membersByGroupId(memberRows) {
   return map;
 }
 
+function productsByGroupId(productRows) {
+  const map = new Map();
+  productRows.forEach((row) => {
+    const key = String(row.group_id || "");
+    if (!key) return;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(Number(row.product_id));
+  });
+  return map;
+}
+
 async function fetchUserGroups(env) {
   try {
-    const [groups, memberRows, users] = await Promise.all([
+    const [groups, memberRows, productRows, users, products] = await Promise.all([
       fetchUserGroupRows(env),
       fetchUserGroupMemberRows(env),
+      fetchUserGroupProductRows(env),
       listAccessUsers(env),
+      fetchProductRows(env),
     ]);
     const members = membersByGroupId(memberRows);
+    const groupProducts = productsByGroupId(productRows);
     return json({
-      groups: groups.map((group) => userGroupForClient(group, members)),
+      groups: groups.map((group) => userGroupForClient(group, members, groupProducts)),
       users: users.map((user) => ({
         email: normalizeEmail(user.email),
         telegram_username: user.telegram_username || "",
         is_active: isAccessOwnerEmail(user.email) ? true : Boolean(user.is_active),
         is_owner: isAccessOwnerEmail(user.email),
       })),
+      products: products.map(productForClient),
     });
   } catch (error) {
     return json({ error: error.message || "دریافت گروه‌بندی کاربران انجام نشد" }, 500);
@@ -8649,6 +8696,13 @@ function normalizeMemberEmails(value, validEmails) {
   return [...new Set((Array.isArray(value) ? value : [])
     .map(normalizeEmail)
     .filter((email) => validSet.has(email)))];
+}
+
+function normalizeProductIds(value, validIds) {
+  const validSet = new Set(validIds.map((id) => String(id)));
+  return [...new Set((Array.isArray(value) ? value : [])
+    .map((item) => Number.parseInt(String(item || ""), 10))
+    .filter((id) => Number.isFinite(id) && id > 0 && validSet.has(String(id))))];
 }
 
 async function createUserGroup(request, env, authUser) {
@@ -8708,6 +8762,23 @@ async function replaceUserGroupMembers(env, groupId, memberEmails) {
   if (!insertResponse.ok) throw new Error("ذخیره عضویت کاربران انجام نشد");
 }
 
+async function replaceUserGroupProducts(env, groupId, productIds) {
+  const deleteResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_user_group_products?group_id=eq.${groupId}`, {
+    method: "DELETE",
+    headers: supabaseHeaders(env, "return=minimal"),
+  });
+  if (!deleteResponse.ok) throw new Error("پاک‌سازی محصول‌های قبلی گروه انجام نشد");
+  if (!productIds.length) return;
+  const now = new Date().toISOString();
+  const rows = productIds.map((productId) => ({ group_id: groupId, product_id: productId, created_at_utc: now }));
+  const insertResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_user_group_products`, {
+    method: "POST",
+    headers: supabaseHeaders(env, "return=minimal"),
+    body: JSON.stringify(rows),
+  });
+  if (!insertResponse.ok) throw new Error("ذخیره محصول‌های گروه انجام نشد");
+}
+
 async function updateUserGroup(request, env, authUser) {
   let body;
   try {
@@ -8724,8 +8795,9 @@ async function updateUserGroup(request, env, authUser) {
   const groupType = normalizeUserGroupType(body.group_type);
   const description = String(body.description || "").trim();
   if (description.length > 500) return json({ error: "توضیح گروه بیش از حد طولانی است" }, 400);
-  const users = await listAccessUsers(env);
+  const [users, products] = await Promise.all([listAccessUsers(env), fetchProductRows(env)]);
   const memberEmails = normalizeMemberEmails(body.member_emails, users.map((user) => user.email));
+  const productIds = normalizeProductIds(body.product_ids, products.map((product) => product.id));
   const patch = {
     name,
     group_type: groupType,
@@ -8741,9 +8813,12 @@ async function updateUserGroup(request, env, authUser) {
   const saved = await readSupabaseJson(response);
   if (!response.ok) return json({ error: saved?.code === "23505" ? "گروهی با این نام وجود دارد" : "ذخیره گروه انجام نشد", detail: saved?.message || saved || response.status }, 400);
   try {
-    await replaceUserGroupMembers(env, id, memberEmails);
+    await Promise.all([
+      replaceUserGroupMembers(env, id, memberEmails),
+      replaceUserGroupProducts(env, id, productIds),
+    ]);
   } catch (error) {
-    return json({ error: error.message || "ذخیره عضویت کاربران انجام نشد" }, 500);
+    return json({ error: error.message || "ذخیره گروه انجام نشد" }, 500);
   }
   const group = Array.isArray(saved) ? saved[0] : saved;
   await insertAccessAuditLog(env, {
@@ -8751,10 +8826,10 @@ async function updateUserGroup(request, env, authUser) {
     targetEmail: authUser.email,
     action: "user_group_update",
     oldValues: existing,
-    newValues: { ...(group || { ...existing, ...patch }), member_emails: memberEmails },
-    metadata: { user_group_id: id, name, group_type: groupType },
+    newValues: { ...(group || { ...existing, ...patch }), member_emails: memberEmails, product_ids: productIds },
+    metadata: { user_group_id: id, name, group_type: groupType, product_ids: productIds },
   });
-  return json({ group: userGroupForClient(group || { ...existing, ...patch }, new Map([[String(id), memberEmails]])) });
+  return json({ group: userGroupForClient(group || { ...existing, ...patch }, new Map([[String(id), memberEmails]]), new Map([[String(id), productIds]])) });
 }
 
 async function deleteUserGroup(request, env, authUser) {
