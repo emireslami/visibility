@@ -4448,6 +4448,9 @@ const HTML = `<!doctype html>
             loadAccessUsers();
             return;
           }
+          groupGrid.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+            checkbox.defaultChecked = checkbox.checked;
+          });
           accessMessageEl.textContent = "دسترسی گروه‌ها ذخیره شد.";
         } catch (error) {
           accessMessageEl.textContent = "ذخیره دسترسی گروه‌ها انجام نشد";
@@ -4514,7 +4517,59 @@ const HTML = `<!doctype html>
     window.addEventListener("scroll", positionOpenFilterPanels, true);
     syncProfileUi();
     setupAccessShell();
-    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "analytics" && canOpen("analytics")) loadAnalytics(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "senders" && canOpen("senders")) loadSenders(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "roadmap" && canOpen("roadmap")) loadRoadmap(); else if (currentPage === "products" && canOpen("products")) loadProducts(); else if (currentPage === "user-groups" && canOpen("user-groups")) loadUserGroups(); else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
+    function controlChanged(control) {
+      if (!control || control.disabled) return false;
+      const tag = control.tagName;
+      if (tag === "SELECT") {
+        return Array.from(control.options || []).some((option) => option.selected !== option.defaultSelected);
+      }
+      if (tag === "TEXTAREA") return control.value !== control.defaultValue;
+      if (tag === "INPUT") {
+        const type = String(control.type || "").toLowerCase();
+        if (["button", "submit", "reset", "hidden"].includes(type)) return false;
+        if (type === "checkbox" || type === "radio") return control.checked !== control.defaultChecked;
+        return control.value !== control.defaultValue;
+      }
+      return false;
+    }
+    function containerHasChangedControls(root) {
+      if (!root || root.hidden) return false;
+      return Array.from(root.querySelectorAll("input, textarea, select")).some(controlChanged);
+    }
+    function userIsEditingCurrentPage() {
+      const active = document.activeElement;
+      if (!active || active === document.body) return false;
+      if (!active.matches("input, textarea, select, [contenteditable='true']")) return false;
+      return Boolean(active.closest(".page:not([hidden])"));
+    }
+    function currentPageHasUnsavedChanges() {
+      if (userIsEditingCurrentPage()) return true;
+      if (currentPage === "access") return Boolean(accessRowsEl.querySelector(".permissions-dirty")) || containerHasChangedControls(accessUsersSectionEl);
+      if (currentPage === "roadmap") return containerHasChangedControls(roadmapFormEl);
+      if (currentPage === "products") return containerHasChangedControls(productsPageEl);
+      if (currentPage === "user-groups") return containerHasChangedControls(userGroupsPageEl);
+      if (currentPage === "broadcast") return containerHasChangedControls(broadcastPageEl);
+      if (currentPage === "bots") return containerHasChangedControls(botsPageEl);
+      if (currentPage === "profile") return true;
+      return false;
+    }
+    function autoRefreshCurrentPage() {
+      if (currentPageHasUnsavedChanges()) return;
+      if (currentPage === "profile") return;
+      if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard();
+      else if (currentPage === "analytics" && canOpen("analytics")) loadAnalytics();
+      else if (currentPage === "groups" && canOpen("groups")) loadGroups();
+      else if (currentPage === "senders" && canOpen("senders")) loadSenders();
+      else if (currentPage === "threads" && canOpen("threads")) loadThreads();
+      else if (currentPage === "roadmap" && canOpen("roadmap")) loadRoadmap();
+      else if (currentPage === "products" && canOpen("products")) loadProducts();
+      else if (currentPage === "user-groups" && canOpen("user-groups")) loadUserGroups();
+      else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast();
+      else if (currentPage === "bots" && canOpen("bots")) loadBots();
+      else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs());
+      else if (canOpen("messages")) load();
+    }
+    setInterval(autoRefreshCurrentPage, 20000);
   </script>
 </body>
 </html>`;
