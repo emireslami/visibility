@@ -262,7 +262,7 @@ const HTML = `<!doctype html>
     .roadmap-table .roadmap-title-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.5; font-weight:700; }
     .roadmap-table .roadmap-description-cell { overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.6; color:var(--muted); }
     .roadmap-dependency-summary { display:grid; gap:4px; color:var(--muted); font-size:12px; white-space:normal; line-height:1.6; }
-    .user-groups-form { display:grid; grid-template-columns:minmax(180px, .8fr) 120px minmax(260px, 1.4fr) 120px; gap:10px; align-items:center; margin:14px 0 16px; }
+    .user-groups-form { display:grid; grid-template-columns:minmax(180px, .8fr) minmax(140px, .7fr) minmax(150px, .75fr) minmax(260px, 1.4fr) 120px; gap:10px; align-items:center; margin:14px 0 16px; }
     .user-groups-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
     .user-group-list { display:grid; gap:12px; }
     .user-group-card { display:grid; gap:12px; padding:14px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; }
@@ -932,6 +932,19 @@ const HTML = `<!doctype html>
           <select id="userGroupType" aria-label="نوع گروه">
             <option value="squad">Squad</option>
             <option value="gtm">GTM</option>
+            <option value="content">Content</option>
+            <option value="marketing">Marketing</option>
+            <option value="sales">Sales</option>
+            <option value="account">Account</option>
+            <option value="commercial">Commercial</option>
+            <option value="product_design">Product Design</option>
+            <option value="product_management">Product Management</option>
+            <option value="product_operations">Product Operations</option>
+            <option value="engineering">Engineering</option>
+          </select>
+          <select id="userGroupMode" aria-label="ساختار گروه">
+            <option value="functional">Functional</option>
+            <option value="cross_functional">Cross-Functional</option>
           </select>
           <input id="userGroupDescription" type="text" maxlength="500" placeholder="توضیح کوتاه" autocomplete="off" />
           <button type="submit">ساخت گروه</button>
@@ -1296,6 +1309,7 @@ const HTML = `<!doctype html>
     const userGroupFormEl = document.getElementById("userGroupForm");
     const userGroupNameEl = document.getElementById("userGroupName");
     const userGroupTypeEl = document.getElementById("userGroupType");
+    const userGroupModeEl = document.getElementById("userGroupMode");
     const userGroupDescriptionEl = document.getElementById("userGroupDescription");
     const userGroupsMessageEl = document.getElementById("userGroupsMessage");
     const userGroupListEl = document.getElementById("userGroupList");
@@ -3263,7 +3277,7 @@ const HTML = `<!doctype html>
     function roadmapTeamOptions(teams, selectedId) {
       const selected = String(selectedId || "");
       return '<option value="">تیم</option>' + teams
-        .map((team) => \`<option value="\${esc(team.id)}" \${String(team.id) === selected ? "selected" : ""}>\${esc((team.group_type === "gtm" ? "GTM" : "Squad") + " · " + (team.name || team.id))}</option>\`)
+        .map((team) => \`<option value="\${esc(team.id)}" \${String(team.id) === selected ? "selected" : ""}>\${esc(userGroupTypeLabel(team.group_type) + " · " + userGroupModeLabel(team.group_mode) + " · " + (team.name || team.id))}</option>\`)
         .join("");
     }
     function syncRoadmapSubproductOptions() {
@@ -3475,16 +3489,47 @@ const HTML = `<!doctype html>
         </label>\`;
       }).join("") || '<div class="thread-muted">محصولی برای انتخاب وجود ندارد.</div>';
     }
+    const userGroupTypeLabels = {
+      squad: "Squad",
+      gtm: "GTM",
+      content: "Content",
+      marketing: "Marketing",
+      sales: "Sales",
+      account: "Account",
+      commercial: "Commercial",
+      product_design: "Product Design",
+      product_management: "Product Management",
+      product_operations: "Product Operations",
+      engineering: "Engineering",
+    };
+    const userGroupModeLabels = {
+      functional: "Functional",
+      cross_functional: "Cross-Functional",
+    };
+    function userGroupTypeLabel(value) {
+      return userGroupTypeLabels[String(value || "squad").toLowerCase()] || userGroupTypeLabels.squad;
+    }
+    function userGroupModeLabel(value) {
+      return userGroupModeLabels[String(value || "functional").toLowerCase()] || userGroupModeLabels.functional;
+    }
+    function optionsFromLabels(labels, selected) {
+      const value = String(selected || "").toLowerCase();
+      return Object.entries(labels).map(([key, label]) => \`<option value="\${esc(key)}" \${key === value ? "selected" : ""}>\${esc(label)}</option>\`).join("");
+    }
     function userGroupTypeOptions(selected) {
       const value = String(selected || "squad").toLowerCase();
-      return '<option value="squad"' + (value === "squad" ? " selected" : "") + '>Squad</option>'
-        + '<option value="gtm"' + (value === "gtm" ? " selected" : "") + '>GTM</option>';
+      return optionsFromLabels(userGroupTypeLabels, userGroupTypeLabels[value] ? value : "squad");
+    }
+    function userGroupModeOptions(selected) {
+      const value = String(selected || "functional").toLowerCase();
+      return optionsFromLabels(userGroupModeLabels, userGroupModeLabels[value] ? value : "functional");
     }
     function renderUserGroups(groups, users, products) {
       userGroupListEl.innerHTML = groups.map((group) => \`<section class="user-group-card" data-user-group-id="\${esc(group.id)}">
         <div class="user-group-head">
           <input data-user-group-name value="\${esc(group.name || "")}" maxlength="120" aria-label="نام گروه" />
           <select data-user-group-type aria-label="نوع گروه">\${userGroupTypeOptions(group.group_type)}</select>
+          <select data-user-group-mode aria-label="ساختار گروه">\${userGroupModeOptions(group.group_mode)}</select>
           <input data-user-group-description value="\${esc(group.description || "")}" maxlength="500" aria-label="توضیح گروه" />
           <button class="secondary-button" type="button" data-user-group-save>ذخیره</button>
           <button class="revoke-button" type="button" data-user-group-delete>حذف</button>
@@ -3497,7 +3542,7 @@ const HTML = `<!doctype html>
         <div class="user-group-members">
           \${userGroupProductOptions(group, products)}
         </div>
-        <div class="thread-muted">\${esc(group.group_type === "gtm" ? "GTM" : "Squad")} · \${esc((group.member_emails || []).length)} عضو · \${esc((group.product_ids || []).length)} محصول</div>
+        <div class="thread-muted">\${esc(userGroupTypeLabel(group.group_type))} · \${esc(userGroupModeLabel(group.group_mode))} · \${esc((group.member_emails || []).length)} عضو · \${esc((group.product_ids || []).length)} محصول</div>
       </section>\`).join("") || '<div class="empty">هنوز گروهی ساخته نشده است.</div>';
     }
     async function loadUserGroups() {
@@ -3810,13 +3855,14 @@ const HTML = `<!doctype html>
       const productIds = [...card.querySelectorAll("[data-user-group-product]:checked")].map((input) => input.dataset.userGroupProduct);
       const name = card.querySelector("[data-user-group-name]")?.value.trim() || "";
       const groupType = card.querySelector("[data-user-group-type]")?.value || "squad";
+      const groupMode = card.querySelector("[data-user-group-mode]")?.value || "functional";
       const description = card.querySelector("[data-user-group-description]")?.value.trim() || "";
       userGroupsMessageEl.textContent = "در حال ذخیره گروه...";
       try {
         const res = await fetch("/api/user-groups", {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ id, name, group_type: groupType, description, member_emails: memberEmails, product_ids: productIds }),
+          body: JSON.stringify({ id, name, group_type: groupType, group_mode: groupMode, description, member_emails: memberEmails, product_ids: productIds }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -4006,6 +4052,7 @@ const HTML = `<!doctype html>
           body: JSON.stringify({
             name: userGroupNameEl.value.trim(),
             group_type: userGroupTypeEl.value,
+            group_mode: userGroupModeEl.value,
             description: userGroupDescriptionEl.value.trim(),
           }),
         });
@@ -4017,6 +4064,7 @@ const HTML = `<!doctype html>
         userGroupsMessageEl.textContent = "گروه ساخته شد.";
         userGroupNameEl.value = "";
         userGroupTypeEl.value = "squad";
+        userGroupModeEl.value = "functional";
         userGroupDescriptionEl.value = "";
         await loadUserGroups();
       } catch (error) {
@@ -8649,7 +8697,7 @@ async function fetchRoadmapItems(env) {
   return json({
     items: (Array.isArray(body) ? body : []).map(roadmapItemForClient),
     products: products.map(productForClient),
-    teams: teams.map((team) => ({ id: team.id, name: team.name || "", group_type: normalizeUserGroupType(team.group_type) })),
+    teams: teams.map((team) => ({ id: team.id, name: team.name || "", group_type: normalizeUserGroupType(team.group_type), group_mode: normalizeUserGroupMode(team.group_mode) })),
   });
 }
 
@@ -8980,9 +9028,29 @@ function normalizeUserGroupName(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
 }
 
+const USER_GROUP_TYPES = new Set([
+  "squad",
+  "gtm",
+  "content",
+  "marketing",
+  "sales",
+  "account",
+  "commercial",
+  "product_design",
+  "product_management",
+  "product_operations",
+  "engineering",
+]);
+const USER_GROUP_MODES = new Set(["functional", "cross_functional"]);
+
 function normalizeUserGroupType(value) {
   const groupType = String(value || "").trim().toLowerCase();
-  return groupType === "gtm" ? "gtm" : "squad";
+  return USER_GROUP_TYPES.has(groupType) ? groupType : "squad";
+}
+
+function normalizeUserGroupMode(value) {
+  const groupMode = String(value || "").trim().toLowerCase();
+  return USER_GROUP_MODES.has(groupMode) ? groupMode : "functional";
 }
 
 function userGroupForClient(group, membersByGroup, productsByGroup = new Map()) {
@@ -8990,6 +9058,7 @@ function userGroupForClient(group, membersByGroup, productsByGroup = new Map()) 
     id: group.id,
     name: group.name || "",
     group_type: normalizeUserGroupType(group.group_type),
+    group_mode: normalizeUserGroupMode(group.group_mode),
     description: group.description || "",
     member_emails: membersByGroup.get(String(group.id)) || [],
     product_ids: productsByGroup.get(String(group.id)) || [],
@@ -9002,8 +9071,8 @@ function userGroupForClient(group, membersByGroup, productsByGroup = new Map()) 
 
 async function fetchUserGroupRows(env) {
   const params = new URLSearchParams({
-    select: "id,name,group_type,description,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
-    order: "group_type.asc,name.asc",
+    select: "id,name,group_type,group_mode,description,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
+    order: "group_type.asc,group_mode.asc,name.asc",
     limit: "1000",
   });
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_user_groups?${params}`, { headers: supabaseHeaders(env) });
@@ -9086,7 +9155,7 @@ async function fetchUserGroups(env) {
 
 async function fetchUserGroupById(env, id) {
   const params = new URLSearchParams({
-    select: "id,name,group_type,description,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
+    select: "id,name,group_type,group_mode,description,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
     id: `eq.${id}`,
     limit: "1",
   });
@@ -9120,12 +9189,14 @@ async function createUserGroup(request, env, authUser) {
   const name = normalizeUserGroupName(body.name);
   if (name.length < 2 || name.length > 120) return json({ error: "نام گروه باید بین ۲ تا ۱۲۰ کاراکتر باشد" }, 400);
   const groupType = normalizeUserGroupType(body.group_type);
+  const groupMode = normalizeUserGroupMode(body.group_mode);
   const description = String(body.description || "").trim();
   if (description.length > 500) return json({ error: "توضیح گروه بیش از حد طولانی است" }, 400);
   const now = new Date().toISOString();
   const row = {
     name,
     group_type: groupType,
+    group_mode: groupMode,
     description,
     created_by_email: normalizeEmail(authUser.email),
     updated_by_email: normalizeEmail(authUser.email),
@@ -9145,7 +9216,7 @@ async function createUserGroup(request, env, authUser) {
     targetEmail: authUser.email,
     action: "user_group_create",
     newValues: group || row,
-    metadata: { user_group_id: group?.id || null, name, group_type: groupType },
+    metadata: { user_group_id: group?.id || null, name, group_type: groupType, group_mode: groupMode },
   });
   return json({ group: userGroupForClient(group || row, new Map()) }, 201);
 }
@@ -9198,6 +9269,7 @@ async function updateUserGroup(request, env, authUser) {
   const name = normalizeUserGroupName(body.name);
   if (name.length < 2 || name.length > 120) return json({ error: "نام گروه باید بین ۲ تا ۱۲۰ کاراکتر باشد" }, 400);
   const groupType = normalizeUserGroupType(body.group_type);
+  const groupMode = normalizeUserGroupMode(body.group_mode);
   const description = String(body.description || "").trim();
   if (description.length > 500) return json({ error: "توضیح گروه بیش از حد طولانی است" }, 400);
   const [users, products] = await Promise.all([listAccessUsers(env), fetchProductRows(env)]);
@@ -9206,6 +9278,7 @@ async function updateUserGroup(request, env, authUser) {
   const patch = {
     name,
     group_type: groupType,
+    group_mode: groupMode,
     description,
     updated_by_email: normalizeEmail(authUser.email),
     updated_at_utc: new Date().toISOString(),
@@ -9232,7 +9305,7 @@ async function updateUserGroup(request, env, authUser) {
     action: "user_group_update",
     oldValues: existing,
     newValues: { ...(group || { ...existing, ...patch }), member_emails: memberEmails, product_ids: productIds },
-    metadata: { user_group_id: id, name, group_type: groupType, product_ids: productIds },
+    metadata: { user_group_id: id, name, group_type: groupType, group_mode: groupMode, product_ids: productIds },
   });
   return json({ group: userGroupForClient(group || { ...existing, ...patch }, new Map([[String(id), memberEmails]]), new Map([[String(id), productIds]])) });
 }
