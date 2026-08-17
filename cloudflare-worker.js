@@ -247,12 +247,13 @@ const HTML = `<!doctype html>
     .user-group-member { min-height:34px; display:flex; align-items:center; justify-content:flex-start; gap:8px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; direction:ltr; }
     .user-group-member input { width:15px; height:15px; flex:0 0 auto; }
     .user-group-member span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .products-form { display:grid; grid-template-columns:minmax(160px, .9fr) minmax(130px, .6fr) minmax(170px, .8fr) minmax(190px, .9fr) minmax(220px, 1.2fr) 120px; gap:10px; align-items:center; margin:14px 0 16px; }
+    .products-form { display:grid; grid-template-columns:minmax(150px, .9fr) minmax(120px, .55fr) minmax(150px, .75fr) minmax(170px, .85fr) minmax(180px, 1fr) 120px; gap:10px; align-items:center; margin:14px 0 16px; }
+    .products-form > *, .product-head > * { min-width:0; }
     .products-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
     .product-list { display:grid; gap:12px; }
     .product-card { display:grid; gap:12px; padding:14px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; }
     .product-card.is-child { margin-right:24px; border-right:3px solid var(--accent); }
-    .product-head { display:grid; grid-template-columns:minmax(160px, .8fr) minmax(120px, .5fr) minmax(170px, .7fr) minmax(180px, .9fr) minmax(220px, 1fr) 110px auto auto; gap:10px; align-items:center; }
+    .product-head { display:grid; grid-template-columns:minmax(140px, .85fr) minmax(110px, .5fr) minmax(145px, .75fr) minmax(165px, .8fr) minmax(170px, 1fr) 105px 92px 82px; gap:10px; align-items:center; }
     .product-meta { display:flex; flex-wrap:wrap; gap:8px; color:var(--muted); font-size:12px; }
     .broadcast-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
     .broadcast-panel h2 { margin:0 0 6px; font-size:18px; }
@@ -823,7 +824,7 @@ const HTML = `<!doctype html>
     <section class="page" id="roadmapPage" hidden>
       <section class="roadmap-panel">
         <h2>نقشه راه محصول</h2>
-        <p class="thread-muted">ثبت فیچرهای جدید محصول، مالک محصول و زمان تحویل.</p>
+        <p class="thread-muted">ثبت فیچرهای جدید محصول، مدیر محصول و زمان تحویل.</p>
         <form class="roadmap-form" id="roadmapForm">
           <input id="roadmapTitle" type="text" maxlength="180" placeholder="عنوان فیچر" autocomplete="off" required />
           <input id="roadmapOwner" type="email" placeholder="ایمیل مدیر محصول" autocomplete="off" dir="ltr" />
@@ -897,7 +898,9 @@ const HTML = `<!doctype html>
           <select id="productParent" aria-label="محصول مادر">
             <option value="">محصول اصلی</option>
           </select>
-          <input id="productOwner" type="email" maxlength="180" placeholder="مالک محصول" autocomplete="off" dir="ltr" />
+          <select id="productOwner" aria-label="مدیر محصول">
+            <option value="">بدون مدیر محصول</option>
+          </select>
           <input id="productDescription" type="text" maxlength="600" placeholder="توضیح کوتاه" autocomplete="off" />
           <button type="submit">ساخت محصول</button>
         </form>
@@ -3299,8 +3302,20 @@ const HTML = `<!doctype html>
           .map((product) => \`<option value="\${esc(product.id)}" \${String(product.id) === selected ? "selected" : ""}>\${esc(product.name || product.product_key || product.id)}</option>\`)
           .join("");
     }
+    function productManagerOptions(users, selectedEmail) {
+      const selected = String(selectedEmail || "").toLowerCase();
+      return '<option value=""' + (!selected ? " selected" : "") + '>بدون مدیر محصول</option>'
+        + users.map((user) => {
+          const email = String(user.email || "").toLowerCase();
+          const label = [user.telegram_username || "", user.email || ""].filter(Boolean).join(" · ") || email;
+          return \`<option value="\${esc(email)}" \${email === selected ? "selected" : ""}>\${esc(label)}</option>\`;
+        }).join("");
+    }
     function refreshProductParentOptions(products) {
       productParentEl.innerHTML = productParentOptions(products, productParentEl.value);
+    }
+    function refreshProductManagerOptions(users) {
+      productOwnerEl.innerHTML = productManagerOptions(users, productOwnerEl.value);
     }
     function orderedProducts(products) {
       const childrenByParent = new Map();
@@ -3318,14 +3333,15 @@ const HTML = `<!doctype html>
         .forEach((product) => result.push({ product, level: 0 }));
       return result;
     }
-    function renderProducts(products) {
+    function renderProducts(products, users) {
       refreshProductParentOptions(products);
+      refreshProductManagerOptions(users);
       productListEl.innerHTML = orderedProducts(products).map(({ product, level, parent }) => \`<section class="product-card \${level ? "is-child" : ""}" data-product-id="\${esc(product.id)}">
         <div class="product-head">
           <input data-product-name value="\${esc(product.name || "")}" maxlength="140" aria-label="نام محصول" />
           <input data-product-key value="\${esc(product.product_key || "")}" maxlength="80" aria-label="کلید محصول" dir="ltr" />
           <select data-product-parent aria-label="محصول مادر">\${productParentOptions(products, product.parent_id, product.id)}</select>
-          <input data-product-owner value="\${esc(product.owner_email || "")}" maxlength="180" aria-label="مالک محصول" dir="ltr" />
+          <select data-product-owner aria-label="مدیر محصول">\${productManagerOptions(users, product.owner_email)}</select>
           <input data-product-description value="\${esc(product.description || "")}" maxlength="600" aria-label="توضیح محصول" />
           <select data-product-status aria-label="وضعیت محصول">
             <option value="active" \${product.is_active ? "selected" : ""}>فعال</option>
@@ -3337,7 +3353,7 @@ const HTML = `<!doctype html>
         <div class="product-meta">
           <span>\${level ? "زیرمحصول " + esc(parent?.name || "") : "محصول اصلی"}</span>
           <span>کلید: \${esc(product.product_key || "-")}</span>
-          <span>مالک: \${esc(product.owner_email || "-")}</span>
+          <span>مدیر محصول: \${esc(product.owner_email || "-")}</span>
           <span>\${product.is_active ? "فعال" : "غیرفعال"}</span>
         </div>
       </section>\`).join("") || '<div class="empty">هنوز محصولی ساخته نشده است.</div>';
@@ -3347,13 +3363,13 @@ const HTML = `<!doctype html>
       try {
         const res = await fetch("/api/products");
         const data = await res.json();
-        if (!res.ok || !Array.isArray(data.products)) {
+        if (!res.ok || !Array.isArray(data.products) || !Array.isArray(data.users)) {
           productListEl.innerHTML = "";
           productsMessageEl.textContent = data.detail || data.error || "خطا در دریافت محصول‌ها";
           setStatus(token, data.detail || data.error || "خطا در دریافت محصول‌ها");
           return;
         }
-        renderProducts(data.products);
+        renderProducts(data.products, data.users);
         productsMessageEl.textContent = "";
         setStatus(token, data.products.length + " محصول");
       } catch (error) {
@@ -8377,8 +8393,19 @@ async function fetchProductRows(env) {
 
 async function fetchProducts(env) {
   try {
-    const rows = await fetchProductRows(env);
-    return json({ products: rows.map(productForClient) });
+    const [rows, users] = await Promise.all([
+      fetchProductRows(env),
+      listAccessUsers(env),
+    ]);
+    return json({
+      products: rows.map(productForClient),
+      users: users.map((user) => ({
+        email: normalizeEmail(user.email),
+        telegram_username: user.telegram_username || "",
+        is_active: isAccessOwnerEmail(user.email) ? true : Boolean(user.is_active),
+        is_owner: isAccessOwnerEmail(user.email),
+      })),
+    });
   } catch (error) {
     return json({ error: error.message || "دریافت محصول‌ها انجام نشد" }, 500);
   }
@@ -8411,7 +8438,7 @@ function productPayloadFromBody(body) {
   const productKey = normalizeProductKey(body.product_key);
   if (productKey && !/^[a-z0-9][a-z0-9._-]{1,78}[a-z0-9]$/.test(productKey)) throw new Error("کلید محصول باید با حروف انگلیسی، عدد، نقطه، خط تیره یا زیرخط باشد");
   const ownerEmail = body.owner_email ? normalizeEmail(body.owner_email) : "";
-  if (body.owner_email && !ownerEmail) throw new Error("ایمیل مالک محصول نامعتبر است");
+  if (body.owner_email && !ownerEmail) throw new Error("مدیر محصول نامعتبر است");
   const description = String(body.description || "").trim();
   if (description.length > 600) throw new Error("توضیح محصول بیش از حد طولانی است");
   return {
