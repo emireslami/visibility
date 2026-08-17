@@ -224,9 +224,9 @@ const HTML = `<!doctype html>
     .analytics-detail-note { margin:0 0 12px; color:var(--muted); font-size:12px; white-space:normal; }
     .access-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
     .access-panel h2 { margin:0 0 6px; font-size:18px; }
-    .bots-panel, .roadmap-panel, .user-groups-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1180px; margin:0 auto; }
-    .bots-panel h2, .roadmap-panel h2, .user-groups-panel h2 { margin:0 0 6px; font-size:18px; }
-    .bots-panel p, .roadmap-panel p, .user-groups-panel p { margin:0 0 16px; }
+    .bots-panel, .roadmap-panel, .user-groups-panel, .products-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1180px; margin:0 auto; }
+    .bots-panel h2, .roadmap-panel h2, .user-groups-panel h2, .products-panel h2 { margin:0 0 6px; font-size:18px; }
+    .bots-panel p, .roadmap-panel p, .user-groups-panel p, .products-panel p { margin:0 0 16px; }
     .bot-form { display:grid; grid-template-columns:130px minmax(150px, 1fr) minmax(150px, 1fr) minmax(220px, 1.3fr) 110px; gap:10px; align-items:center; margin:14px 0 16px; }
     .bot-form .password-wrap { margin:0; }
     .bot-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
@@ -247,6 +247,13 @@ const HTML = `<!doctype html>
     .user-group-member { min-height:34px; display:flex; align-items:center; justify-content:flex-start; gap:8px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; direction:ltr; }
     .user-group-member input { width:15px; height:15px; flex:0 0 auto; }
     .user-group-member span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .products-form { display:grid; grid-template-columns:minmax(160px, .9fr) minmax(130px, .6fr) minmax(170px, .8fr) minmax(190px, .9fr) minmax(220px, 1.2fr) 120px; gap:10px; align-items:center; margin:14px 0 16px; }
+    .products-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
+    .product-list { display:grid; gap:12px; }
+    .product-card { display:grid; gap:12px; padding:14px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; }
+    .product-card.is-child { margin-right:24px; border-right:3px solid var(--accent); }
+    .product-head { display:grid; grid-template-columns:minmax(160px, .8fr) minmax(120px, .5fr) minmax(170px, .7fr) minmax(180px, .9fr) minmax(220px, 1fr) 110px auto auto; gap:10px; align-items:center; }
+    .product-meta { display:flex; flex-wrap:wrap; gap:8px; color:var(--muted); font-size:12px; }
     .broadcast-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1120px; margin:0 auto; }
     .broadcast-panel h2 { margin:0 0 6px; font-size:18px; }
     .broadcast-form { display:grid; gap:12px; margin-top:16px; }
@@ -403,8 +410,8 @@ const HTML = `<!doctype html>
     .modal-close { border-radius:0; }
     .detail-row { border-radius:0; border-color:var(--line); background:#fff; }
     .detail-label { color:#525252; }
-    .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel, .roadmap-panel, .user-groups-panel { border-radius:0; border-color:var(--line); box-shadow:0 1px 0 rgba(22,22,22,.04); }
-    .chart-head h2, .access-panel h2, .profile-panel h2, .bots-panel h2, .broadcast-panel h2, .roadmap-panel h2, .user-groups-panel h2 { font-size:20px; font-weight:800; }
+    .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel, .roadmap-panel, .user-groups-panel, .products-panel { border-radius:0; border-color:var(--line); box-shadow:0 1px 0 rgba(22,22,22,.04); }
+    .chart-head h2, .access-panel h2, .profile-panel h2, .bots-panel h2, .broadcast-panel h2, .roadmap-panel h2, .user-groups-panel h2, .products-panel h2 { font-size:20px; font-weight:800; }
     .broadcast-message-input, .broadcast-option { border-radius:0; border-color:#dfe1e6; }
     .bar-stack { border-radius:0; border-color:#c6c6c6; }
     .bar-segment { transition:filter .12s ease; }
@@ -499,10 +506,10 @@ const HTML = `<!doctype html>
       .access-log-table { margin-top:10px; direction:rtl; }
       .access-log-table th, .access-log-table td { direction:rtl; text-align:right; }
       .broadcast-log-table { margin-top:10px; direction:rtl; }
-      .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel, .roadmap-panel, .user-groups-panel { padding:14px; }
+      .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel, .roadmap-panel, .user-groups-panel, .products-panel { padding:14px; }
       .chart-head { align-items:flex-start; flex-direction:column; }
       .legend-grid { grid-template-columns:1fr; }
-      .bot-form, .roadmap-form, .user-groups-form, .user-group-head { grid-template-columns:1fr; }
+      .bot-form, .roadmap-form, .user-groups-form, .user-group-head, .products-form, .product-head { grid-template-columns:1fr; }
       .roadmap-form textarea { grid-column:1; }
       .access-form, .access-main { grid-template-columns:1fr; }
       .access-row { direction:rtl; }
@@ -564,6 +571,7 @@ const HTML = `<!doctype html>
           <span class="nav-section-title">توسعه</span>
           <div class="nav-section-items">
             <button class="nav-button" id="roadmapNav" type="button">نقشه راه</button>
+            <button class="nav-button" id="productsNav" type="button">محصول‌ها</button>
           </div>
         </div>
         <div class="nav-section" id="managementNavGroup">
@@ -879,6 +887,24 @@ const HTML = `<!doctype html>
         <div class="user-group-list" id="userGroupList"></div>
       </section>
     </section>
+    <section class="page" id="productsPage" hidden>
+      <section class="products-panel">
+        <h2>محصول‌ها</h2>
+        <p class="thread-muted">فهرست محصول‌های داخلی برای استفاده در بخش‌های توسعه و گزارش‌گیری.</p>
+        <form class="products-form" id="productForm">
+          <input id="productName" type="text" maxlength="140" placeholder="نام محصول" autocomplete="off" required />
+          <input id="productKey" type="text" maxlength="80" placeholder="کلید محصول" autocomplete="off" dir="ltr" />
+          <select id="productParent" aria-label="محصول مادر">
+            <option value="">محصول اصلی</option>
+          </select>
+          <input id="productOwner" type="email" maxlength="180" placeholder="مالک محصول" autocomplete="off" dir="ltr" />
+          <input id="productDescription" type="text" maxlength="600" placeholder="توضیح کوتاه" autocomplete="off" />
+          <button type="submit">ساخت محصول</button>
+        </form>
+        <div class="products-message" id="productsMessage"></div>
+        <div class="product-list" id="productList"></div>
+      </section>
+    </section>
     <section class="page" id="botsPage" hidden>
       <section class="bots-panel">
         <h2>مدیریت بات‌ها</h2>
@@ -1092,6 +1118,7 @@ const HTML = `<!doctype html>
     const analyticsNavEl = document.getElementById("analyticsNav");
     const messagesNavEl = document.getElementById("messagesNav");
     const roadmapNavEl = document.getElementById("roadmapNav");
+    const productsNavEl = document.getElementById("productsNav");
     const userGroupsNavEl = document.getElementById("userGroupsNav");
     const groupsNavEl = document.getElementById("groupsNav");
     const sendersNavEl = document.getElementById("sendersNav");
@@ -1109,6 +1136,7 @@ const HTML = `<!doctype html>
     const sendersPageEl = document.getElementById("sendersPage");
     const threadsPageEl = document.getElementById("threadsPage");
     const roadmapPageEl = document.getElementById("roadmapPage");
+    const productsPageEl = document.getElementById("productsPage");
     const userGroupsPageEl = document.getElementById("userGroupsPage");
     const broadcastPageEl = document.getElementById("broadcastPage");
     const botsPageEl = document.getElementById("botsPage");
@@ -1199,6 +1227,14 @@ const HTML = `<!doctype html>
     const roadmapStatusEl = document.getElementById("roadmapStatus");
     const roadmapDescriptionEl = document.getElementById("roadmapDescription");
     const roadmapMessageEl = document.getElementById("roadmapMessage");
+    const productFormEl = document.getElementById("productForm");
+    const productNameEl = document.getElementById("productName");
+    const productKeyEl = document.getElementById("productKey");
+    const productParentEl = document.getElementById("productParent");
+    const productOwnerEl = document.getElementById("productOwner");
+    const productDescriptionEl = document.getElementById("productDescription");
+    const productsMessageEl = document.getElementById("productsMessage");
+    const productListEl = document.getElementById("productList");
     const userGroupFormEl = document.getElementById("userGroupForm");
     const userGroupNameEl = document.getElementById("userGroupName");
     const userGroupTypeEl = document.getElementById("userGroupType");
@@ -1213,6 +1249,7 @@ const HTML = `<!doctype html>
       { key:"threads", label:"تردها" },
       { key:"messages", label:"پیام‌ها" },
       { key:"roadmap", label:"نقشه راه" },
+      { key:"products", label:"محصول‌ها" },
       { key:"user_groups", label:"گروه‌بندی کاربران" },
       { key:"senders", label:"ارسال‌کننده‌ها" },
       { key:"groups", label:"گروه‌ها" },
@@ -1537,6 +1574,9 @@ const HTML = `<!doctype html>
         user_group_create: "ساخت گروه کاربران",
         user_group_update: "به‌روزرسانی گروه کاربران",
         user_group_delete: "حذف گروه کاربران",
+        product_create: "ساخت محصول",
+        product_update: "به‌روزرسانی محصول",
+        product_delete: "حذف محصول",
         thread_reply: "ارسال پاسخ",
         group_broadcast: "ارسال اطلاع‌رسانی گروهی",
       };
@@ -1613,13 +1653,14 @@ const HTML = `<!doctype html>
       else if (isGroups) loadAccessGroupView();
       else loadAccessUsers();
     }
-    const routablePages = ["dashboard", "analytics", "threads", "messages", "roadmap", "user-groups", "groups", "senders", "broadcast", "bots", "access", "profile"];
+    const routablePages = ["dashboard", "analytics", "threads", "messages", "roadmap", "products", "user-groups", "groups", "senders", "broadcast", "bots", "access", "profile"];
     const pageTitles = {
       dashboard: "داشبورد",
       analytics: "تحلیل",
       threads: "تردها",
       messages: "پیام‌ها",
       roadmap: "نقشه راه",
+      products: "محصول‌ها",
       "user-groups": "گروه‌بندی کاربران",
       groups: "گروه‌ها",
       senders: "ارسال‌کننده‌ها",
@@ -1637,7 +1678,7 @@ const HTML = `<!doctype html>
       return routablePages.includes(page) ? page : "messages";
     }
     function firstAccessiblePage() {
-      return ["dashboard", "analytics", "threads", "messages", "roadmap", "user-groups", "groups", "senders", "broadcast", "bots", "access"].find(canOpen);
+      return ["dashboard", "analytics", "threads", "messages", "roadmap", "products", "user-groups", "groups", "senders", "broadcast", "bots", "access"].find(canOpen);
     }
     function syncNavGroupVisibility() {
       [communicationsNavGroupEl, developmentNavGroupEl, managementNavGroupEl].forEach((group) => {
@@ -1646,12 +1687,12 @@ const HTML = `<!doctype html>
     }
     function syncNavGroupActive(page) {
       communicationsNavGroupEl.classList.toggle("active", ["dashboard", "analytics", "threads", "messages", "groups", "senders", "broadcast", "bots"].includes(page));
-      developmentNavGroupEl.classList.toggle("active", page === "roadmap");
+      developmentNavGroupEl.classList.toggle("active", page === "roadmap" || page === "products");
       managementNavGroupEl.classList.toggle("active", page === "user-groups" || page === "access");
     }
     function setupAccessShell() {
       accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
-      const navByPage = { dashboard:dashboardNavEl, analytics:analyticsNavEl, threads:threadsNavEl, messages:messagesNavEl, roadmap:roadmapNavEl, "user-groups":userGroupsNavEl, groups:groupsNavEl, senders:sendersNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
+      const navByPage = { dashboard:dashboardNavEl, analytics:analyticsNavEl, threads:threadsNavEl, messages:messagesNavEl, roadmap:roadmapNavEl, products:productsNavEl, "user-groups":userGroupsNavEl, groups:groupsNavEl, senders:sendersNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
       Object.entries(navByPage).forEach(([page, element]) => { element.hidden = !canOpen(page); });
       syncNavGroupVisibility();
       const firstPage = firstAccessiblePage();
@@ -3248,6 +3289,78 @@ const HTML = `<!doctype html>
         setStatus(token, "خطا در دریافت گروه‌بندی کاربران");
       }
     }
+    function productParentOptions(products, selectedId, currentId = "") {
+      const selected = String(selectedId || "");
+      const current = String(currentId || "");
+      return '<option value=""' + (!selected ? " selected" : "") + '>محصول اصلی</option>'
+        + products
+          .filter((product) => String(product.id) !== current && !product.parent_id)
+          .map((product) => \`<option value="\${esc(product.id)}" \${String(product.id) === selected ? "selected" : ""}>\${esc(product.name || product.product_key || product.id)}</option>\`)
+          .join("");
+    }
+    function refreshProductParentOptions(products) {
+      productParentEl.innerHTML = productParentOptions(products, productParentEl.value);
+    }
+    function orderedProducts(products) {
+      const childrenByParent = new Map();
+      products.forEach((product) => {
+        const key = String(product.parent_id || "");
+        if (!childrenByParent.has(key)) childrenByParent.set(key, []);
+        childrenByParent.get(key).push(product);
+      });
+      const result = [];
+      (childrenByParent.get("") || []).forEach((parent) => {
+        result.push({ product: parent, level: 0 });
+        (childrenByParent.get(String(parent.id)) || []).forEach((child) => result.push({ product: child, level: 1, parent }));
+      });
+      products.filter((product) => product.parent_id && !products.some((item) => String(item.id) === String(product.parent_id)))
+        .forEach((product) => result.push({ product, level: 0 }));
+      return result;
+    }
+    function renderProducts(products) {
+      refreshProductParentOptions(products);
+      productListEl.innerHTML = orderedProducts(products).map(({ product, level, parent }) => \`<section class="product-card \${level ? "is-child" : ""}" data-product-id="\${esc(product.id)}">
+        <div class="product-head">
+          <input data-product-name value="\${esc(product.name || "")}" maxlength="140" aria-label="نام محصول" />
+          <input data-product-key value="\${esc(product.product_key || "")}" maxlength="80" aria-label="کلید محصول" dir="ltr" />
+          <select data-product-parent aria-label="محصول مادر">\${productParentOptions(products, product.parent_id, product.id)}</select>
+          <input data-product-owner value="\${esc(product.owner_email || "")}" maxlength="180" aria-label="مالک محصول" dir="ltr" />
+          <input data-product-description value="\${esc(product.description || "")}" maxlength="600" aria-label="توضیح محصول" />
+          <select data-product-status aria-label="وضعیت محصول">
+            <option value="active" \${product.is_active ? "selected" : ""}>فعال</option>
+            <option value="inactive" \${!product.is_active ? "selected" : ""}>غیرفعال</option>
+          </select>
+          <button class="secondary-button" type="button" data-product-save>ذخیره</button>
+          <button class="revoke-button" type="button" data-product-delete>حذف</button>
+        </div>
+        <div class="product-meta">
+          <span>\${level ? "زیرمحصول " + esc(parent?.name || "") : "محصول اصلی"}</span>
+          <span>کلید: \${esc(product.product_key || "-")}</span>
+          <span>مالک: \${esc(product.owner_email || "-")}</span>
+          <span>\${product.is_active ? "فعال" : "غیرفعال"}</span>
+        </div>
+      </section>\`).join("") || '<div class="empty">هنوز محصولی ساخته نشده است.</div>';
+    }
+    async function loadProducts() {
+      const token = showLoading("در حال دریافت محصول‌ها...");
+      try {
+        const res = await fetch("/api/products");
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.products)) {
+          productListEl.innerHTML = "";
+          productsMessageEl.textContent = data.detail || data.error || "خطا در دریافت محصول‌ها";
+          setStatus(token, data.detail || data.error || "خطا در دریافت محصول‌ها");
+          return;
+        }
+        renderProducts(data.products);
+        productsMessageEl.textContent = "";
+        setStatus(token, data.products.length + " محصول");
+      } catch (error) {
+        productListEl.innerHTML = "";
+        productsMessageEl.textContent = "خطا در دریافت محصول‌ها";
+        setStatus(token, "خطا در دریافت محصول‌ها");
+      }
+    }
     async function loadThreads() {
       updateFilterButtons();
       const token = showLoading("در حال دریافت تردها...");
@@ -3324,6 +3437,7 @@ const HTML = `<!doctype html>
       const isSenders = page === "senders";
       const isThreads = page === "threads";
       const isRoadmap = page === "roadmap";
+      const isProducts = page === "products";
       const isUserGroups = page === "user-groups";
       const isBroadcast = page === "broadcast";
       const isBots = page === "bots";
@@ -3331,11 +3445,12 @@ const HTML = `<!doctype html>
       const isProfile = page === "profile";
       dashboardPageEl.hidden = !isDashboard;
       analyticsPageEl.hidden = !isAnalytics;
-      messagesPageEl.hidden = isDashboard || isAnalytics || isGroups || isSenders || isThreads || isRoadmap || isUserGroups || isBroadcast || isBots || isAccess || isProfile;
+      messagesPageEl.hidden = isDashboard || isAnalytics || isGroups || isSenders || isThreads || isRoadmap || isProducts || isUserGroups || isBroadcast || isBots || isAccess || isProfile;
       groupsPageEl.hidden = !isGroups;
       sendersPageEl.hidden = !isSenders;
       threadsPageEl.hidden = !isThreads;
       roadmapPageEl.hidden = !isRoadmap;
+      productsPageEl.hidden = !isProducts;
       userGroupsPageEl.hidden = !isUserGroups;
       broadcastPageEl.hidden = !isBroadcast;
       botsPageEl.hidden = !isBots;
@@ -3343,11 +3458,12 @@ const HTML = `<!doctype html>
       profilePageEl.hidden = !isProfile;
       dashboardNavEl.classList.toggle("active", isDashboard);
       analyticsNavEl.classList.toggle("active", isAnalytics);
-      messagesNavEl.classList.toggle("active", !isDashboard && !isAnalytics && !isGroups && !isSenders && !isThreads && !isRoadmap && !isUserGroups && !isBroadcast && !isBots && !isAccess && !isProfile);
+      messagesNavEl.classList.toggle("active", !isDashboard && !isAnalytics && !isGroups && !isSenders && !isThreads && !isRoadmap && !isProducts && !isUserGroups && !isBroadcast && !isBots && !isAccess && !isProfile);
       groupsNavEl.classList.toggle("active", isGroups);
       sendersNavEl.classList.toggle("active", isSenders);
       threadsNavEl.classList.toggle("active", isThreads);
       roadmapNavEl.classList.toggle("active", isRoadmap);
+      productsNavEl.classList.toggle("active", isProducts);
       userGroupsNavEl.classList.toggle("active", isUserGroups);
       broadcastNavEl.classList.toggle("active", isBroadcast);
       botsNavEl.classList.toggle("active", isBots);
@@ -3360,6 +3476,7 @@ const HTML = `<!doctype html>
       else if (isSenders) loadSenders();
       else if (isThreads) loadThreadFilterOptions().then(loadThreads);
       else if (isRoadmap) loadRoadmap();
+      else if (isProducts) loadProducts();
       else if (isUserGroups) loadUserGroups();
       else if (isBroadcast) loadBroadcast();
       else if (isBots) loadBots();
@@ -3473,6 +3590,61 @@ const HTML = `<!doctype html>
         await loadUserGroups();
       } catch (error) {
         userGroupsMessageEl.textContent = "ذخیره گروه انجام نشد";
+      }
+    });
+    productListEl.addEventListener("click", async event => {
+      const card = event.target.closest("[data-product-id]");
+      if (!card) return;
+      const id = card.dataset.productId;
+      if (event.target.closest("[data-product-delete]")) {
+        const confirmed = await openConfirmModal({
+          title: "حذف محصول",
+          message: "این محصول حذف شود؟",
+          confirmText: "حذف",
+          cancelText: "انصراف",
+        });
+        if (!confirmed) return;
+        productsMessageEl.textContent = "در حال حذف محصول...";
+        try {
+          const res = await fetch("/api/products?id=" + encodeURIComponent(id), { method: "DELETE" });
+          const data = await res.json();
+          if (!res.ok) {
+            productsMessageEl.textContent = data.error || "حذف محصول انجام نشد";
+            return;
+          }
+          productsMessageEl.textContent = "محصول حذف شد.";
+          await loadProducts();
+        } catch (error) {
+          productsMessageEl.textContent = "حذف محصول انجام نشد";
+        }
+        return;
+      }
+      if (!event.target.closest("[data-product-save]")) return;
+      const payload = {
+        id,
+        name: card.querySelector("[data-product-name]")?.value.trim() || "",
+        product_key: card.querySelector("[data-product-key]")?.value.trim() || "",
+        parent_id: card.querySelector("[data-product-parent]")?.value || null,
+        owner_email: card.querySelector("[data-product-owner]")?.value.trim() || "",
+        description: card.querySelector("[data-product-description]")?.value.trim() || "",
+        is_active: card.querySelector("[data-product-status]")?.value !== "inactive",
+      };
+      productsMessageEl.textContent = "در حال ذخیره محصول...";
+      try {
+        const res = await fetch("/api/products", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          productsMessageEl.textContent = data.error || "ذخیره محصول انجام نشد";
+          return;
+        }
+        productsMessageEl.textContent = "محصول ذخیره شد.";
+        await loadProducts();
+      } catch (error) {
+        productsMessageEl.textContent = "ذخیره محصول انجام نشد";
       }
     });
     broadcastLogRowsEl.addEventListener("click", event => {
@@ -3607,6 +3779,37 @@ const HTML = `<!doctype html>
         await loadUserGroups();
       } catch (error) {
         userGroupsMessageEl.textContent = "ساخت گروه انجام نشد";
+      }
+    });
+    productFormEl.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      productsMessageEl.textContent = "در حال ساخت محصول...";
+      try {
+        const res = await fetch("/api/products", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            name: productNameEl.value.trim(),
+            product_key: productKeyEl.value.trim(),
+            parent_id: productParentEl.value || null,
+            owner_email: productOwnerEl.value.trim(),
+            description: productDescriptionEl.value.trim(),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          productsMessageEl.textContent = data.error || "ساخت محصول انجام نشد";
+          return;
+        }
+        productsMessageEl.textContent = "محصول ساخته شد.";
+        productNameEl.value = "";
+        productKeyEl.value = "";
+        productParentEl.value = "";
+        productOwnerEl.value = "";
+        productDescriptionEl.value = "";
+        await loadProducts();
+      } catch (error) {
+        productsMessageEl.textContent = "ساخت محصول انجام نشد";
       }
     });
     accessLogRowsEl.addEventListener("click", event => {
@@ -3762,6 +3965,7 @@ const HTML = `<!doctype html>
     analyticsNavEl.addEventListener("click", () => showPage("analytics"));
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     roadmapNavEl.addEventListener("click", () => showPage("roadmap"));
+    productsNavEl.addEventListener("click", () => showPage("products"));
     userGroupsNavEl.addEventListener("click", () => showPage("user-groups"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
     sendersNavEl.addEventListener("click", () => showPage("senders"));
@@ -4041,7 +4245,7 @@ const HTML = `<!doctype html>
     window.addEventListener("scroll", positionOpenFilterPanels, true);
     syncProfileUi();
     setupAccessShell();
-    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "analytics" && canOpen("analytics")) loadAnalytics(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "senders" && canOpen("senders")) loadSenders(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "roadmap" && canOpen("roadmap")) loadRoadmap(); else if (currentPage === "user-groups" && canOpen("user-groups")) loadUserGroups(); else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
+    setInterval(() => { if (currentPage === "profile") return; if (currentPage === "dashboard" && canOpen("dashboard")) loadDashboard(); else if (currentPage === "analytics" && canOpen("analytics")) loadAnalytics(); else if (currentPage === "groups" && canOpen("groups")) loadGroups(); else if (currentPage === "senders" && canOpen("senders")) loadSenders(); else if (currentPage === "threads" && canOpen("threads")) loadThreads(); else if (currentPage === "roadmap" && canOpen("roadmap")) loadRoadmap(); else if (currentPage === "products" && canOpen("products")) loadProducts(); else if (currentPage === "user-groups" && canOpen("user-groups")) loadUserGroups(); else if (currentPage === "broadcast" && canOpen("broadcast")) loadBroadcast(); else if (currentPage === "bots" && canOpen("bots")) loadBots(); else if (currentPage === "access" && canOpen("access")) (accessLogsSectionEl.hidden ? (accessGroupsSectionEl.hidden ? loadAccessUsers() : loadAccessGroupView()) : loadAccessLogs()); else if (canOpen("messages")) load(); }, 20000);
   </script>
 </body>
 </html>`;
@@ -4555,7 +4759,7 @@ function senderLabelTextServer(value) {
   return labels[String(value || "")] || "بدون لیبل";
 }
 
-const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "senders", "dashboard", "analytics", "bots", "roadmap", "user_groups"];
+const ACCESS_PERMISSIONS = ["access", "threads", "groups", "messages", "senders", "dashboard", "analytics", "bots", "roadmap", "products", "user_groups"];
 const EXTRA_ACCESS_PERMISSIONS = ["reply", "broadcast"];
 const FULL_ACCESS_PERMISSIONS = [...ACCESS_PERMISSIONS, ...EXTRA_ACCESS_PERMISSIONS];
 const ACCESS_OWNER_EMAIL = "a.eslami@toman.ir";
@@ -4768,7 +4972,7 @@ function hasAnyAccessPermission(user, permissions) {
 }
 
 function defaultMainPathForUser(user) {
-  const firstPage = ["dashboard", "threads", "messages", "roadmap", "user_groups", "senders", "groups", "broadcast", "bots", "access", "analytics"].find((permission) => hasAccessPermission(user, permission));
+  const firstPage = ["dashboard", "threads", "messages", "roadmap", "products", "user_groups", "senders", "groups", "broadcast", "bots", "access", "analytics"].find((permission) => hasAccessPermission(user, permission));
   return `/main/${firstPage === "user_groups" ? "user-groups" : (firstPage || "messages")}`;
 }
 
@@ -8126,6 +8330,198 @@ async function updateRoadmapItem(request, env, authUser) {
   return json({ item: roadmapItemForClient(item || { ...existing, ...payload }) });
 }
 
+function normalizeProductName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function normalizeProductKey(value) {
+  return String(value || "").trim().replace(/\s+/g, "-").toLowerCase();
+}
+
+function normalizeProductParentId(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const id = Number.parseInt(String(value), 10);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function productForClient(row) {
+  return {
+    id: row.id,
+    parent_id: row.parent_id || null,
+    name: row.name || "",
+    product_key: row.product_key || "",
+    owner_email: row.owner_email || "",
+    description: row.description || "",
+    is_active: row.is_active !== false,
+    created_by_email: row.created_by_email || "",
+    updated_by_email: row.updated_by_email || "",
+    created_at_utc: row.created_at_utc || "",
+    updated_at_utc: row.updated_at_utc || "",
+  };
+}
+
+async function fetchProductRows(env) {
+  const params = new URLSearchParams({
+    select: "id,parent_id,name,product_key,owner_email,description,is_active,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
+    order: "parent_id.asc.nullsfirst,name.asc",
+    limit: "1000",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_products?${params}`, { headers: supabaseHeaders(env) });
+  const body = await readSupabaseJson(response);
+  if (!response.ok) throw new Error(body?.message || "دریافت محصول‌ها انجام نشد");
+  return Array.isArray(body) ? body : [];
+}
+
+async function fetchProducts(env) {
+  try {
+    const rows = await fetchProductRows(env);
+    return json({ products: rows.map(productForClient) });
+  } catch (error) {
+    return json({ error: error.message || "دریافت محصول‌ها انجام نشد" }, 500);
+  }
+}
+
+async function fetchProductById(env, id) {
+  const params = new URLSearchParams({
+    select: "id,parent_id,name,product_key,owner_email,description,is_active,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
+    id: `eq.${id}`,
+    limit: "1",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_products?${params}`, { headers: supabaseHeaders(env) });
+  if (!response.ok) return null;
+  const rows = await response.json();
+  return rows[0] || null;
+}
+
+async function validateProductParent(env, parentId, currentId = null) {
+  if (!parentId) return null;
+  if (currentId && Number(parentId) === Number(currentId)) throw new Error("محصول نمی‌تواند زیرمحصول خودش باشد");
+  const parent = await fetchProductById(env, parentId);
+  if (!parent) throw new Error("محصول مادر پیدا نشد");
+  if (parent.parent_id) throw new Error("محصول مادر باید محصول اصلی باشد");
+  return parent.id;
+}
+
+function productPayloadFromBody(body) {
+  const name = normalizeProductName(body.name);
+  if (name.length < 2 || name.length > 140) throw new Error("نام محصول باید بین ۲ تا ۱۴۰ کاراکتر باشد");
+  const productKey = normalizeProductKey(body.product_key);
+  if (productKey && !/^[a-z0-9][a-z0-9._-]{1,78}[a-z0-9]$/.test(productKey)) throw new Error("کلید محصول باید با حروف انگلیسی، عدد، نقطه، خط تیره یا زیرخط باشد");
+  const ownerEmail = body.owner_email ? normalizeEmail(body.owner_email) : "";
+  if (body.owner_email && !ownerEmail) throw new Error("ایمیل مالک محصول نامعتبر است");
+  const description = String(body.description || "").trim();
+  if (description.length > 600) throw new Error("توضیح محصول بیش از حد طولانی است");
+  return {
+    name,
+    product_key: productKey || null,
+    owner_email: ownerEmail || null,
+    description,
+    is_active: body.is_active !== false,
+  };
+}
+
+async function createProduct(request, env, authUser) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  let payload;
+  try {
+    payload = productPayloadFromBody(body);
+    payload.parent_id = await validateProductParent(env, normalizeProductParentId(body.parent_id));
+  } catch (error) {
+    return json({ error: error.message || "اطلاعات محصول نامعتبر است" }, 400);
+  }
+  const now = new Date().toISOString();
+  const row = {
+    ...payload,
+    created_by_email: normalizeEmail(authUser.email),
+    updated_by_email: normalizeEmail(authUser.email),
+    created_at_utc: now,
+    updated_at_utc: now,
+  };
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_products`, {
+    method: "POST",
+    headers: supabaseHeaders(env, "return=representation"),
+    body: JSON.stringify(row),
+  });
+  const saved = await readSupabaseJson(response);
+  if (!response.ok) return json({ error: saved?.code === "23505" ? "محصولی با این نام یا کلید وجود دارد" : "ساخت محصول انجام نشد", detail: saved?.message || saved || response.status }, 400);
+  const product = Array.isArray(saved) ? saved[0] : saved;
+  await insertAccessAuditLog(env, {
+    actorEmail: authUser.email,
+    targetEmail: authUser.email,
+    action: "product_create",
+    newValues: product || row,
+    metadata: { product_id: product?.id || null, name: row.name, parent_id: row.parent_id },
+  });
+  return json({ product: productForClient(product || row) }, 201);
+}
+
+async function updateProduct(request, env, authUser) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "درخواست نامعتبر است" }, 400);
+  }
+  const id = Number.parseInt(String(body.id || ""), 10);
+  if (!Number.isFinite(id) || id <= 0) return json({ error: "شناسه محصول نامعتبر است" }, 400);
+  const existing = await fetchProductById(env, id);
+  if (!existing) return json({ error: "محصول پیدا نشد" }, 404);
+  let payload;
+  try {
+    payload = productPayloadFromBody(body);
+    payload.parent_id = await validateProductParent(env, normalizeProductParentId(body.parent_id), id);
+  } catch (error) {
+    return json({ error: error.message || "اطلاعات محصول نامعتبر است" }, 400);
+  }
+  const patch = {
+    ...payload,
+    updated_by_email: normalizeEmail(authUser.email),
+    updated_at_utc: new Date().toISOString(),
+  };
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_products?id=eq.${id}`, {
+    method: "PATCH",
+    headers: supabaseHeaders(env, "return=representation"),
+    body: JSON.stringify(patch),
+  });
+  const saved = await readSupabaseJson(response);
+  if (!response.ok) return json({ error: saved?.code === "23505" ? "محصولی با این نام یا کلید وجود دارد" : "ذخیره محصول انجام نشد", detail: saved?.message || saved || response.status }, 400);
+  const product = Array.isArray(saved) ? saved[0] : saved;
+  await insertAccessAuditLog(env, {
+    actorEmail: authUser.email,
+    targetEmail: authUser.email,
+    action: "product_update",
+    oldValues: existing,
+    newValues: product || { ...existing, ...patch },
+    metadata: { product_id: id, name: patch.name, parent_id: patch.parent_id },
+  });
+  return json({ product: productForClient(product || { ...existing, ...patch }) });
+}
+
+async function deleteProduct(request, env, authUser) {
+  const id = Number.parseInt(String(new URL(request.url).searchParams.get("id") || ""), 10);
+  if (!Number.isFinite(id) || id <= 0) return json({ error: "شناسه محصول نامعتبر است" }, 400);
+  const existing = await fetchProductById(env, id);
+  if (!existing) return json({ error: "محصول پیدا نشد" }, 404);
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_products?id=eq.${id}`, {
+    method: "DELETE",
+    headers: supabaseHeaders(env, "return=minimal"),
+  });
+  if (!response.ok) return json({ error: "حذف محصول انجام نشد", detail: await response.text() }, 500);
+  await insertAccessAuditLog(env, {
+    actorEmail: authUser.email,
+    targetEmail: authUser.email,
+    action: "product_delete",
+    oldValues: existing,
+    metadata: { product_id: id, name: existing.name },
+  });
+  return json({ ok: true });
+}
+
 function normalizeUserGroupName(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
 }
@@ -8787,6 +9183,22 @@ async function handleRequest(request, env) {
     if (url.pathname === "/api/roadmap" && request.method === "PATCH") {
       if (!hasAccessPermission(authUser, "roadmap")) return forbiddenAccess();
       return updateRoadmapItem(request, env, authUser);
+    }
+    if (url.pathname === "/api/products" && request.method === "GET") {
+      if (!hasAccessPermission(authUser, "products")) return forbiddenAccess();
+      return fetchProducts(env);
+    }
+    if (url.pathname === "/api/products" && request.method === "POST") {
+      if (!hasAccessPermission(authUser, "products")) return forbiddenAccess();
+      return createProduct(request, env, authUser);
+    }
+    if (url.pathname === "/api/products" && request.method === "PATCH") {
+      if (!hasAccessPermission(authUser, "products")) return forbiddenAccess();
+      return updateProduct(request, env, authUser);
+    }
+    if (url.pathname === "/api/products" && request.method === "DELETE") {
+      if (!hasAccessPermission(authUser, "products")) return forbiddenAccess();
+      return deleteProduct(request, env, authUser);
     }
     if (url.pathname === "/api/user-groups" && request.method === "GET") {
       if (!hasAccessPermission(authUser, "user_groups")) return forbiddenAccess();
