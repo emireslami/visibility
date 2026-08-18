@@ -3764,12 +3764,17 @@ const HTML = `<!doctype html>
           pinsByIndex.get(index).push(pin);
         }
       });
-      let maxDeliveryStack = outside.length ? 1 : 0;
-      let maxDependencyStack = 0;
-      pinsByIndex.forEach((list) => {
-        maxDeliveryStack = Math.max(maxDeliveryStack, list.filter((pin) => pin.kind !== "dependency").length);
-        maxDependencyStack = Math.max(maxDependencyStack, list.filter((pin) => pin.kind === "dependency").length);
-      });
+      const laneGap = 6;
+      const laneLastIndex = { delivery: [], dependency: [] };
+      const scheduledPins = [...pinsByIndex.entries()].sort(([left], [right]) => left - right).flatMap(([index, list]) => list.map((pin) => {
+        const laneKey = pin.kind === "dependency" ? "dependency" : "delivery";
+        const lane = laneLastIndex[laneKey].findIndex((lastIndex) => index - lastIndex > laneGap);
+        const laneIndex = lane >= 0 ? lane : laneLastIndex[laneKey].length;
+        laneLastIndex[laneKey][laneIndex] = index;
+        return { index, pin, laneIndex };
+      })).sort((left, right) => left.index - right.index || left.laneIndex - right.laneIndex);
+      const maxDeliveryStack = Math.max(outside.length ? 1 : 0, laneLastIndex.delivery.length);
+      const maxDependencyStack = laneLastIndex.dependency.length;
       const stackStep = 124;
       const isFullTimeline = Boolean(targetEl.closest(".roadmap-path-page"));
       const baseTopPadding = isFullTimeline ? 280 : 240;
@@ -3784,18 +3789,13 @@ const HTML = `<!doctype html>
         const left = (((index * 4) + 1.5) / (totalPoints - 1)) * 100;
         return \`<span class="roadmap-month-label" style="left:\${left}%">\${esc(month.label)}</span>\`;
       }).join("");
-      const pinHtml = [...pinsByIndex.entries()].flatMap(([index, list]) => {
+      const pinHtml = scheduledPins.map(({ index, pin, laneIndex }) => {
         const left = (index / (totalPoints - 1)) * 100;
         const edgeClass = index <= 1 ? " edge-start" : index >= totalPoints - 2 ? " edge-end" : "";
-        const stackIndexes = { delivery: 0, dependency: 0 };
-        return list.map((pin) => {
-          const stackKey = pin.kind === "dependency" ? "dependency" : "delivery";
-          const stackIndex = stackIndexes[stackKey];
-          stackIndexes[stackKey] += 1;
-          const stackOffset = stackIndex * stackStep;
-          const colorKey = pin.kind === "dependency" && pin.team_id ? "team:" + pin.team_id : "product:" + (pin.product_id || pin.title);
-          const color = stableColor(colorKey);
-          return \`<div class="roadmap-pin \${pin.kind === "dependency" ? "is-dependency" : ""}\${edgeClass}" style="left:\${left}%; --stack-offset:\${stackOffset}px; --pin-color:\${esc(color)}">
+        const stackOffset = laneIndex * stackStep;
+        const colorKey = pin.kind === "dependency" && pin.team_id ? "team:" + pin.team_id : "product:" + (pin.product_id || pin.title);
+        const color = stableColor(colorKey);
+        return \`<div class="roadmap-pin \${pin.kind === "dependency" ? "is-dependency" : ""}\${edgeClass}" style="left:\${left}%; --stack-offset:\${stackOffset}px; --pin-color:\${esc(color)}">
             <div class="roadmap-pin-card">
               <span class="roadmap-pin-kind">\${pin.kind === "dependency" ? "وابستگی" : "تحویل‌دادنی"}</span>
               <strong>\${esc(pin.title || "-")}</strong>
@@ -3803,7 +3803,6 @@ const HTML = `<!doctype html>
               <span>\${esc(pin.subtitle || "-")}</span>
             </div>
           </div>\`;
-        });
       }).join("");
       const outsideHtml = outside.length ? \`<div class="roadmap-pin is-outside edge-end" style="left:100%">
         <div class="roadmap-pin-card"><strong>خارج از بازه</strong>\${outside.map((pin) => \`<br>\${esc(pin.title || "-")} · \${esc(pin.meta || "-")}\`).join("")}</div>
