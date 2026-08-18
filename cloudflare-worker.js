@@ -283,11 +283,11 @@ const HTML = `<!doctype html>
     .roadmap-matrix-head { position:sticky; top:0; z-index:2; min-height:40px; background:#eef1f4; font-size:12px; font-weight:800; }
     .roadmap-matrix-row-title { position:sticky; right:0; z-index:1; display:flex; align-items:flex-start; background:#fff; font-weight:800; line-height:1.6; }
     .roadmap-matrix-head:first-child { position:sticky; right:0; z-index:3; }
-    .roadmap-matrix-cell { display:grid; align-content:start; gap:8px; background:#fff; overflow:visible; }
-    .roadmap-delivery-card { display:grid; gap:5px; padding:8px; min-height:62px; border:1px solid var(--line); border-right:4px solid var(--card-color, #8d8d8d); border-radius:6px; background:#fff; color:var(--ink); cursor:pointer; font-size:11px; line-height:1.45; text-align:right; white-space:normal; overflow-wrap:anywhere; }
+    .roadmap-matrix-cell { display:grid; align-content:start; gap:8px; max-height:190px; background:#fff; overflow:auto; }
+    .roadmap-delivery-card { display:grid; grid-template-rows:auto auto auto; gap:4px; padding:8px; height:82px; min-width:0; overflow:hidden; border:1px solid var(--line); border-right:4px solid var(--card-color, #8d8d8d); border-radius:6px; background:#fff; color:var(--ink); cursor:pointer; font-size:11px; line-height:1.45; text-align:right; white-space:normal; }
     .roadmap-delivery-card:hover { border-color:var(--accent); background:#f8fbfd; }
-    .roadmap-delivery-card strong { display:block; font-size:12px; line-height:1.55; }
-    .roadmap-card-meta { color:var(--muted); }
+    .roadmap-delivery-card strong { display:-webkit-box; min-width:0; overflow:hidden; -webkit-line-clamp:2; -webkit-box-orient:vertical; font-size:12px; line-height:1.45; text-overflow:ellipsis; }
+    .roadmap-card-meta { display:block; min-width:0; overflow:hidden; color:var(--muted); white-space:nowrap; text-overflow:ellipsis; }
     .roadmap-status-badge, .roadmap-confidence-badge { display:inline-flex; align-items:center; width:max-content; min-height:20px; padding:0 7px; border-radius:999px; border:1px solid var(--line); background:#f4f4f4; color:var(--muted); font-size:10px; font-weight:800; }
     .roadmap-status-badge.status-delivered { color:#0e7a3d; background:#e6f6ec; border-color:#b7e2c5; }
     .roadmap-status-badge.status-at_risk { color:#8a4b00; background:#fff4e5; border-color:#ffd8a8; }
@@ -3946,7 +3946,7 @@ const HTML = `<!doctype html>
       const statusKey = roadmapStatusKey(item);
       const depHealth = roadmapDependencyHealth(item);
       const color = stableColor((item.product_id ? "product:" + item.product_id : "team:" + item.team_id) || item.title);
-      return \`<button class="roadmap-delivery-card status-\${esc(statusKey)} \${roadmapIsOverdue(item) ? "is-overdue" : ""}" type="button" data-roadmap-open="\${esc(item.id)}" style="--card-color:\${esc(color)}">
+      return \`<button class="roadmap-delivery-card status-\${esc(statusKey)} \${roadmapIsOverdue(item) ? "is-overdue" : ""}" type="button" data-roadmap-open="\${esc(item.id)}" title="\${esc(item.title || "-")}" style="--card-color:\${esc(color)}">
         <strong>\${esc(item.title || "-")}</strong>
         <span class="roadmap-card-meta">\${esc(roadmapItemTeamName(item, teams))}</span>
         <span class="roadmap-status-badge">\${esc(roadmapStatusText(item))}</span>
