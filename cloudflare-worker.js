@@ -271,20 +271,20 @@ const HTML = `<!doctype html>
     .roadmap-kpi strong { display:block; margin-top:6px; font-size:24px; direction:ltr; }
     .roadmap-kpi span { color:var(--muted); font-size:12px; }
     .roadmap-kpi.active { border-color:var(--accent); box-shadow:inset -3px 0 0 var(--accent); }
-    .roadmap-filter-bar { display:grid; grid-template-columns:repeat(4, minmax(130px, 1fr)); gap:8px; align-items:start; padding:12px; border:1px solid var(--line); background:#fbfcfd; }
-    .roadmap-filter-bar select[multiple] { min-height:74px; padding:6px; }
+    .roadmap-filter-bar { display:grid; grid-template-columns:repeat(4, minmax(150px, 1fr)); gap:8px; align-items:start; padding:12px; border:1px solid var(--line); background:#fbfcfd; }
+    .roadmap-filter-bar select[multiple] { min-height:42px; height:42px; padding:6px 10px; overflow:hidden; }
     .roadmap-filter-bar input, .roadmap-filter-bar select { min-width:0; }
     .roadmap-matrix-controls { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; }
     .roadmap-matrix-controls h3 { margin:0; font-size:16px; }
     .roadmap-matrix-switches { display:flex; flex-wrap:wrap; gap:8px; }
     .roadmap-matrix-wrap { overflow:auto; border:1px solid var(--line); background:#fff; }
-    .roadmap-matrix { display:grid; width:100%; min-width:860px; }
-    .roadmap-matrix-head, .roadmap-matrix-row-title, .roadmap-matrix-cell { border-bottom:1px solid var(--line); border-left:1px solid var(--line); padding:8px; min-height:58px; text-align:right; direction:rtl; }
+    .roadmap-matrix { display:grid; width:100%; min-width:930px; }
+    .roadmap-matrix-head, .roadmap-matrix-row-title, .roadmap-matrix-cell { border-bottom:1px solid var(--line); border-left:1px solid var(--line); padding:7px; min-height:62px; text-align:right; direction:rtl; }
     .roadmap-matrix-head { position:sticky; top:0; z-index:2; min-height:40px; background:#eef1f4; font-size:12px; font-weight:800; }
     .roadmap-matrix-row-title { position:sticky; right:0; z-index:1; background:#fff; font-weight:800; }
     .roadmap-matrix-head:first-child { position:sticky; right:0; z-index:3; }
     .roadmap-matrix-cell { display:grid; align-content:start; gap:6px; background:#fff; }
-    .roadmap-delivery-card { display:grid; gap:4px; padding:8px; border:1px solid var(--line); border-right:3px solid var(--card-color, #8d8d8d); border-radius:6px; background:#fff; color:var(--ink); cursor:pointer; font-size:11px; line-height:1.45; text-align:right; }
+    .roadmap-delivery-card { display:grid; gap:3px; padding:7px; border:1px solid var(--line); border-right:3px solid var(--card-color, #8d8d8d); border-radius:6px; background:#fff; color:var(--ink); cursor:pointer; font-size:11px; line-height:1.45; text-align:right; white-space:normal; overflow-wrap:anywhere; }
     .roadmap-delivery-card:hover { border-color:var(--accent); background:#f8fbfd; }
     .roadmap-delivery-card strong { font-size:12px; line-height:1.4; }
     .roadmap-card-meta { color:var(--muted); }
@@ -312,6 +312,14 @@ const HTML = `<!doctype html>
     .roadmap-drawer-section h3 { margin:0; font-size:13px; }
     .roadmap-drawer-grid { display:grid; grid-template-columns:130px minmax(0, 1fr); gap:8px; font-size:12px; }
     .roadmap-drawer-label { color:var(--muted); font-weight:800; }
+    .roadmap-data-details { margin-top:14px; border:1px solid var(--line); background:#fff; }
+    .roadmap-data-details summary { cursor:pointer; padding:12px 14px; font-weight:800; background:#eef1f4; }
+    .roadmap-data-details .roadmap-table { margin:0; box-shadow:none; border-right:0; border-left:0; }
+    .roadmap-data-details .roadmap-table-title { margin:14px 12px 8px; font-size:15px; }
+    .roadmap-create-details { margin:12px 0 16px; border:1px solid var(--line); background:#fff; }
+    .roadmap-create-details summary { cursor:pointer; padding:12px 14px; font-weight:800; background:#eef1f4; }
+    .roadmap-create-details .roadmap-form { margin:12px; }
+    .roadmap-create-details .roadmap-message { margin:0 12px 12px; }
     .roadmap-path { margin:16px 0 18px; padding:14px; border:1px solid var(--line); background:#fff; overflow:auto; }
     .roadmap-path-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
     .roadmap-path-head h3 { margin:0; font-size:16px; }
@@ -932,7 +940,9 @@ const HTML = `<!doctype html>
       <section class="roadmap-panel">
         <h2>نقشه راه محصول</h2>
         <p class="thread-muted">مدیریت Initiative، Major Delivery، تحویل‌دادنی‌ها، وابستگی‌ها و Checkpointهای مهم.</p>
-        <form class="roadmap-form" id="roadmapForm">
+        <details class="roadmap-create-details">
+          <summary>ثبت تحویل‌دادنی جدید</summary>
+          <form class="roadmap-form" id="roadmapForm">
           <select id="roadmapItemType" aria-label="نوع مورد">
             <option value="delivery">Delivery / Dependency</option>
             <option value="major">Major Delivery</option>
@@ -1001,17 +1011,18 @@ const HTML = `<!doctype html>
             </div>
             <div class="roadmap-dependency-list" id="roadmapCheckpointList"></div>
           </div>
-        </form>
-        <div class="roadmap-message" id="roadmapMessage"></div>
+          </form>
+          <div class="roadmap-message" id="roadmapMessage"></div>
+        </details>
         <section class="roadmap-dashboard" aria-label="Executive Delivery Dashboard">
           <div class="roadmap-kpis" id="roadmapKpis"></div>
           <div class="roadmap-filter-bar">
-            <select id="roadmapFilterProduct" multiple aria-label="فیلتر محصول"></select>
-            <select id="roadmapFilterInitiative" multiple aria-label="فیلتر Initiative"></select>
-            <select id="roadmapFilterTeam" multiple aria-label="فیلتر تیم"></select>
-            <select id="roadmapFilterOwner" multiple aria-label="فیلتر مالک"></select>
-            <select id="roadmapFilterStatus" multiple aria-label="فیلتر وضعیت"></select>
-            <select id="roadmapFilterConfidence" multiple aria-label="فیلتر Confidence"></select>
+            <select id="roadmapFilterProduct" multiple size="1" aria-label="فیلتر محصول"></select>
+            <select id="roadmapFilterInitiative" multiple size="1" aria-label="فیلتر Initiative"></select>
+            <select id="roadmapFilterTeam" multiple size="1" aria-label="فیلتر تیم"></select>
+            <select id="roadmapFilterOwner" multiple size="1" aria-label="فیلتر مالک"></select>
+            <select id="roadmapFilterStatus" multiple size="1" aria-label="فیلتر وضعیت"></select>
+            <select id="roadmapFilterConfidence" multiple size="1" aria-label="فیلتر Confidence"></select>
             <select id="roadmapFilterRange" aria-label="بازه زمانی">
               <option value="all">شهریور تا اسفند</option>
               <option value="next30">۳۰ روز آینده</option>
@@ -1051,59 +1062,62 @@ const HTML = `<!doctype html>
             <div class="roadmap-compact-table" id="roadmapDelivered"></div>
           </section>
         </section>
-        <table class="roadmap-table">
-          <colgroup>
-            <col style="width:22%" />
-            <col style="width:10%" />
-            <col style="width:14%" />
-            <col style="width:14%" />
-            <col style="width:12%" />
-            <col style="width:10%" />
-            <col style="width:10%" />
-            <col style="width:8%" />
-            <col style="width:4%" />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>تحویل‌دادنی</th>
-              <th>سطح</th>
-              <th>مدیر محصول</th>
-              <th>محصول</th>
-              <th>تیم</th>
-              <th>زمان تحویل</th>
-              <th>وضعیت</th>
-              <th>Progress</th>
-              <th>عملیات</th>
-            </tr>
-          </thead>
-          <tbody id="roadmapRows"></tbody>
-        </table>
-        <h3 class="roadmap-table-title">وابستگی‌ها</h3>
-        <table class="roadmap-table roadmap-dependencies-table">
-          <colgroup>
-            <col style="width:18%" />
-            <col style="width:17%" />
-            <col style="width:17%" />
-            <col style="width:11%" />
-            <col style="width:11%" />
-            <col style="width:9%" />
-            <col style="width:14%" />
-            <col style="width:3%" />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>وابستگی</th>
-              <th>Provider</th>
-              <th>Consumer</th>
-              <th>Need-by</th>
-              <th>Expected</th>
-              <th>Health</th>
-              <th>Chain</th>
-              <th>عملیات</th>
-            </tr>
-          </thead>
-          <tbody id="roadmapDependencyRows"></tbody>
-        </table>
+        <details class="roadmap-data-details">
+          <summary>جدول داده‌ها و وابستگی‌ها</summary>
+          <table class="roadmap-table">
+            <colgroup>
+              <col style="width:22%" />
+              <col style="width:10%" />
+              <col style="width:14%" />
+              <col style="width:14%" />
+              <col style="width:12%" />
+              <col style="width:10%" />
+              <col style="width:10%" />
+              <col style="width:8%" />
+              <col style="width:4%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>تحویل‌دادنی</th>
+                <th>سطح</th>
+                <th>مدیر محصول</th>
+                <th>محصول</th>
+                <th>تیم</th>
+                <th>زمان تحویل</th>
+                <th>وضعیت</th>
+                <th>Progress</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="roadmapRows"></tbody>
+          </table>
+          <h3 class="roadmap-table-title">وابستگی‌ها</h3>
+          <table class="roadmap-table roadmap-dependencies-table">
+            <colgroup>
+              <col style="width:18%" />
+              <col style="width:17%" />
+              <col style="width:17%" />
+              <col style="width:11%" />
+              <col style="width:11%" />
+              <col style="width:9%" />
+              <col style="width:14%" />
+              <col style="width:3%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>وابستگی</th>
+                <th>Provider</th>
+                <th>Consumer</th>
+                <th>Need-by</th>
+                <th>Expected</th>
+                <th>Health</th>
+                <th>Chain</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="roadmapDependencyRows"></tbody>
+          </table>
+        </details>
       </section>
     </section>
     <section class="page roadmap-path-page" id="roadmapPathPage" hidden>
@@ -3860,7 +3874,8 @@ const HTML = `<!doctype html>
     function setSelectOptions(select, options, selected = []) {
       if (!select) return;
       const selectedSet = new Set(selected.map(String));
-      select.innerHTML = options.map((option) => \`<option value="\${esc(option.value)}" \${selectedSet.has(String(option.value)) ? "selected" : ""}>\${esc(option.label)}</option>\`).join("");
+      const placeholder = select.multiple ? \`<option value="" disabled \${selectedSet.size ? "" : "selected"}>\${esc(select.getAttribute("aria-label") || "فیلتر")}</option>\` : "";
+      select.innerHTML = placeholder + options.map((option) => \`<option value="\${esc(option.value)}" \${selectedSet.has(String(option.value)) ? "selected" : ""}>\${esc(option.label)}</option>\`).join("");
     }
     function roadmapPeriodColumns(granularity) {
       if (granularity === "biweekly") {
@@ -3971,7 +3986,8 @@ const HTML = `<!doctype html>
         const cellItems = cells.get(column.key) || [];
         return \`<div class="roadmap-matrix-cell">\${cellItems.map((item) => roadmapCardHtml(item, products, teams)).join("") || '<span class="thread-muted">-</span>'}</div>\`;
       }).join("")}\`).join("");
-      roadmapMatrixEl.innerHTML = \`<div class="roadmap-matrix" style="grid-template-columns:minmax(170px, 1.05fr) repeat(\${columns.length}, minmax(160px, 1fr))">\${header}\${body || \`<div class="empty" style="grid-column:1 / -1">موردی مطابق فیلترها نیست</div>\`}</div>\`;
+      const columnMin = granularity === "biweekly" ? 124 : 104;
+      roadmapMatrixEl.innerHTML = \`<div class="roadmap-matrix" style="grid-template-columns:minmax(150px, .9fr) repeat(\${columns.length}, minmax(\${columnMin}px, 1fr))">\${header}\${body || \`<div class="empty" style="grid-column:1 / -1">موردی مطابق فیلترها نیست</div>\`}</div>\`;
     }
     function renderRoadmapCompactTable(targetEl, rows, emptyText) {
       if (!targetEl) return;
