@@ -250,6 +250,7 @@ const HTML = `<!doctype html>
     .roadmap-inline-form { display:grid; gap:10px; margin-top:10px; padding:12px; border:1px solid var(--line); background:#fbfcfd; direction:rtl; text-align:right; }
     .roadmap-inline-form h4 { margin:0; font-size:13px; }
     .roadmap-inline-form .roadmap-dependency-row { grid-template-columns:repeat(3, minmax(120px, 1fr)); }
+    .roadmap-inline-dependency-list { display:grid; gap:10px; }
     .roadmap-inline-actions { display:flex; align-items:center; justify-content:flex-start; gap:10px; }
     .roadmap-inline-message { min-height:20px; color:var(--muted); font-size:12px; }
     .roadmap-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
@@ -3837,8 +3838,11 @@ const HTML = `<!doctype html>
         <div class="detail-row"><div class="detail-label">افزودن وابستگی</div><div class="detail-value">
           <div class="roadmap-inline-form" data-roadmap-dependency-form="\${esc(item.id)}">
             <h4>Provider Delivery → blocks → این تحویل‌دادنی</h4>
-            <div class="roadmap-dependency-row">\${roadmapDependencyRowHtml({ need_by_month: item.delivery_month, need_by_week: item.delivery_week }, false)}</div>
+            <div class="roadmap-inline-dependency-list" data-roadmap-dependency-list>
+              <div class="roadmap-dependency-row">\${roadmapDependencyRowHtml({ need_by_month: item.delivery_month, need_by_week: item.delivery_week }, false)}</div>
+            </div>
             <div class="roadmap-inline-actions">
+              <button class="secondary-button" type="button" data-roadmap-dependency-add-row="\${esc(item.id)}">+ وابستگی</button>
               <button class="details-button" type="button" data-roadmap-dependency-save="\${esc(item.id)}">ذخیره وابستگی</button>
               <span class="roadmap-inline-message" data-roadmap-dependency-message></span>
             </div>
@@ -4705,6 +4709,21 @@ const HTML = `<!doctype html>
       const archiveButton = event.target.closest("[data-roadmap-archive]");
       if (archiveButton && !archiveButton.disabled) {
         await archiveRoadmapFromButton(archiveButton);
+        return;
+      }
+      const dependencyAddRowButton = event.target.closest("[data-roadmap-dependency-add-row]");
+      if (dependencyAddRowButton) {
+        const itemId = dependencyAddRowButton.dataset.roadmapDependencyAddRow;
+        const item = roadmapItems.find((candidate) => String(candidate.id) === String(itemId));
+        const list = modalBodyEl.querySelector('[data-roadmap-dependency-form="' + itemId + '"] [data-roadmap-dependency-list]');
+        if (list) {
+          list.insertAdjacentHTML("beforeend", \`<div class="roadmap-dependency-row">\${roadmapDependencyRowHtml({ need_by_month: item?.delivery_month, need_by_week: item?.delivery_week }, true)}</div>\`);
+        }
+        return;
+      }
+      const dependencyRemoveButton = event.target.closest(".roadmap-inline-form .roadmap-dependency-remove");
+      if (dependencyRemoveButton) {
+        dependencyRemoveButton.closest(".roadmap-dependency-row")?.remove();
         return;
       }
       const dependencySaveButton = event.target.closest("[data-roadmap-dependency-save]");
