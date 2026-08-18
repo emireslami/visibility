@@ -236,18 +236,29 @@ const HTML = `<!doctype html>
     .bot-form .password-wrap { margin:0; }
     .bot-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
     .bots-table td:last-child, .bots-table th:last-child { padding-left:12px; }
-    .roadmap-form { display:grid; grid-template-columns:minmax(180px, 1fr) minmax(160px, .8fr) minmax(150px, .75fr) minmax(150px, .75fr) minmax(135px, .65fr) minmax(135px, .65fr) 120px; gap:10px; align-items:center; margin:14px 0 16px; }
+    .roadmap-form { display:grid; grid-template-columns:repeat(4, minmax(135px, 1fr)) 120px; gap:10px; align-items:center; margin:14px 0 16px; }
     .roadmap-form > * { min-width:0; }
     .roadmap-form textarea { grid-column:1 / -1; min-height:76px; padding:10px; border:1px solid var(--line); border-radius:6px; resize:vertical; font:inherit; direction:rtl; text-align:right; }
     .roadmap-dependencies { grid-column:1 / -1; display:grid; gap:10px; padding:12px; border:1px solid var(--line); background:#fbfcfd; }
     .roadmap-dependency-head { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--muted); font-size:12px; font-weight:800; }
     .roadmap-dependency-add { width:38px; height:32px; padding:0; font-size:20px; line-height:1; }
     .roadmap-dependency-list { display:grid; gap:8px; }
-    .roadmap-dependency-row { display:grid; grid-template-columns:minmax(150px, 1fr) minmax(120px, .65fr) minmax(120px, .65fr) minmax(130px, .75fr) minmax(130px, .75fr) minmax(130px, .75fr) 34px; gap:8px; align-items:center; }
+    .roadmap-dependency-row { display:grid; grid-template-columns:repeat(4, minmax(120px, 1fr)) 34px; gap:8px; align-items:center; }
     .roadmap-dependency-row > * { min-width:0; }
     .roadmap-dependency-description { grid-column:1 / -1; min-height:96px; padding:10px; border:1px solid var(--line); resize:vertical; font:inherit; direction:rtl; text-align:right; }
     .roadmap-dependency-remove { height:32px; padding:0; color:var(--danger); border-color:#fa4d56; background:#fff; }
     .roadmap-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
+    .roadmap-mini-grid { grid-column:1 / -1; display:grid; grid-template-columns:repeat(3, minmax(180px, 1fr)); gap:10px; }
+    .roadmap-checkpoints { grid-column:1 / -1; display:grid; gap:10px; padding:12px; border:1px solid var(--line); background:#fff; }
+    .roadmap-checkpoint-row { display:grid; grid-template-columns:minmax(180px, 1fr) minmax(120px, .6fr) minmax(120px, .6fr) minmax(130px, .7fr) 34px; gap:8px; align-items:center; }
+    .roadmap-health { display:inline-flex; align-items:center; min-height:24px; padding:0 8px; border-radius:999px; font-size:11px; font-weight:800; border:1px solid var(--line); }
+    .roadmap-health.green { color:#087f5b; background:#e6fcf5; border-color:#96f2d7; }
+    .roadmap-health.yellow { color:#8a5a00; background:#fff4d6; border-color:#ffd43b; }
+    .roadmap-health.red { color:#a2191f; background:#fff1f1; border-color:#ffb3b8; }
+    .roadmap-chain { color:var(--muted); font-size:12px; line-height:1.7; direction:ltr; text-align:left; }
+    .roadmap-progress { display:grid; gap:4px; min-width:90px; }
+    .roadmap-progress-bar { height:7px; border-radius:999px; background:#e5e7eb; overflow:hidden; }
+    .roadmap-progress-bar span { display:block; height:100%; background:var(--accent); }
     .roadmap-path { margin:16px 0 18px; padding:14px; border:1px solid var(--line); background:#fff; overflow:auto; }
     .roadmap-path-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
     .roadmap-path-head h3 { margin:0; font-size:16px; }
@@ -867,11 +878,19 @@ const HTML = `<!doctype html>
     <section class="page" id="roadmapPage" hidden>
       <section class="roadmap-panel">
         <h2>نقشه راه محصول</h2>
-        <p class="thread-muted">ثبت تحویل‌دادنی‌های محصول، محصول و زمان تحویل.</p>
+        <p class="thread-muted">مدیریت Initiative، Major Delivery، تحویل‌دادنی‌ها، وابستگی‌ها و Checkpointهای مهم.</p>
         <form class="roadmap-form" id="roadmapForm">
+          <select id="roadmapItemType" aria-label="نوع مورد">
+            <option value="delivery">Delivery / Dependency</option>
+            <option value="major">Major Delivery</option>
+            <option value="initiative">Initiative / Outcome</option>
+          </select>
           <input id="roadmapTitle" type="text" maxlength="180" placeholder="عنوان تحویل‌دادنی" autocomplete="off" required />
-          <select id="roadmapParent" aria-label="وابسته به">
-            <option value="">بدون وابستگی بالادستی</option>
+          <select id="roadmapInitiative" aria-label="Initiative">
+            <option value="">Initiative / Outcome</option>
+          </select>
+          <select id="roadmapMajor" aria-label="Major Delivery">
+            <option value="">Major Delivery</option>
           </select>
           <select id="roadmapProduct" aria-label="محصول">
             <option value="">محصول</option>
@@ -879,6 +898,23 @@ const HTML = `<!doctype html>
           <select id="roadmapSubproduct" aria-label="زیرمحصول">
             <option value="">زیرمحصول اختیاری</option>
           </select>
+          <select id="roadmapTeam" aria-label="تیم مالک">
+            <option value="">تیم مالک</option>
+          </select>
+          <select id="roadmapStatus" aria-label="وضعیت">
+            <option value="not_started">Not Started</option>
+            <option value="on_track">On Track</option>
+            <option value="at_risk">At Risk</option>
+            <option value="blocked">Blocked</option>
+            <option value="delivered">Delivered</option>
+          </select>
+          <select id="roadmapRisk" aria-label="ریسک">
+            <option value="low">Risk: Low</option>
+            <option value="medium" selected>Risk: Medium</option>
+            <option value="high">Risk: High</option>
+            <option value="critical">Risk: Critical</option>
+          </select>
+          <input id="roadmapProgress" type="number" min="0" max="100" step="5" value="0" placeholder="Progress %" />
           <select id="roadmapDeliveryMonth" aria-label="ماه تحویل" required>
             <option value="">ماه تحویل</option>
             <option value="6">شهریور</option>
@@ -900,10 +936,17 @@ const HTML = `<!doctype html>
           <textarea id="roadmapDescription" maxlength="4000" placeholder="توضیحات، محدوده و معیار تحویل"></textarea>
           <div class="roadmap-dependencies">
             <div class="roadmap-dependency-head">
-              <span>وابستگی‌ها</span>
+              <span>Dependency Relation: Provider Delivery → blocks → این تحویل‌دادنی</span>
               <button class="roadmap-dependency-add" id="roadmapDependencyAdd" type="button" aria-label="افزودن وابستگی">+</button>
             </div>
             <div class="roadmap-dependency-list" id="roadmapDependencyList"></div>
+          </div>
+          <div class="roadmap-checkpoints">
+            <div class="roadmap-dependency-head">
+              <span>Checkpointها / Milestoneها</span>
+              <button class="roadmap-dependency-add" id="roadmapCheckpointAdd" type="button" aria-label="افزودن چک‌پوینت">+</button>
+            </div>
+            <div class="roadmap-dependency-list" id="roadmapCheckpointList"></div>
           </div>
         </form>
         <div class="roadmap-message" id="roadmapMessage"></div>
@@ -921,21 +964,25 @@ const HTML = `<!doctype html>
         <table class="roadmap-table">
           <colgroup>
             <col style="width:22%" />
-            <col style="width:14%" />
-            <col style="width:14%" />
-            <col style="width:14%" />
             <col style="width:10%" />
-            <col style="width:20%" />
-            <col style="width:6%" />
+            <col style="width:14%" />
+            <col style="width:14%" />
+            <col style="width:12%" />
+            <col style="width:10%" />
+            <col style="width:10%" />
+            <col style="width:8%" />
+            <col style="width:4%" />
           </colgroup>
           <thead>
             <tr>
               <th>تحویل‌دادنی</th>
+              <th>سطح</th>
               <th>مدیر محصول</th>
               <th>محصول</th>
-              <th>زیرمحصول</th>
+              <th>تیم</th>
               <th>زمان تحویل</th>
-              <th>توضیحات</th>
+              <th>وضعیت</th>
+              <th>Progress</th>
               <th>عملیات</th>
             </tr>
           </thead>
@@ -944,24 +991,24 @@ const HTML = `<!doctype html>
         <h3 class="roadmap-table-title">وابستگی‌ها</h3>
         <table class="roadmap-table roadmap-dependencies-table">
           <colgroup>
-            <col style="width:19%" />
-            <col style="width:19%" />
-            <col style="width:13%" />
-            <col style="width:13%" />
-            <col style="width:12%" />
+            <col style="width:18%" />
+            <col style="width:17%" />
+            <col style="width:17%" />
+            <col style="width:11%" />
+            <col style="width:11%" />
+            <col style="width:9%" />
             <col style="width:14%" />
-            <col style="width:6%" />
-            <col style="width:4%" />
+            <col style="width:3%" />
           </colgroup>
           <thead>
             <tr>
               <th>وابستگی</th>
-              <th>تحویل‌دادنی بالادستی</th>
-              <th>محصول</th>
-              <th>زیرمحصول</th>
-              <th>تیم</th>
-              <th>زمان حل</th>
-              <th>زیرمجموعه</th>
+              <th>Provider</th>
+              <th>Consumer</th>
+              <th>Need-by</th>
+              <th>Expected</th>
+              <th>Health</th>
+              <th>Chain</th>
               <th>عملیات</th>
             </tr>
           </thead>
@@ -1354,15 +1401,23 @@ const HTML = `<!doctype html>
     const roadmapRowsEl = document.getElementById("roadmapRows");
     const roadmapDependencyRowsEl = document.getElementById("roadmapDependencyRows");
     const roadmapFormEl = document.getElementById("roadmapForm");
+    const roadmapItemTypeEl = document.getElementById("roadmapItemType");
     const roadmapTitleEl = document.getElementById("roadmapTitle");
-    const roadmapParentEl = document.getElementById("roadmapParent");
+    const roadmapInitiativeEl = document.getElementById("roadmapInitiative");
+    const roadmapMajorEl = document.getElementById("roadmapMajor");
     const roadmapProductEl = document.getElementById("roadmapProduct");
     const roadmapSubproductEl = document.getElementById("roadmapSubproduct");
+    const roadmapTeamEl = document.getElementById("roadmapTeam");
+    const roadmapStatusEl = document.getElementById("roadmapStatus");
+    const roadmapRiskEl = document.getElementById("roadmapRisk");
+    const roadmapProgressEl = document.getElementById("roadmapProgress");
     const roadmapDeliveryMonthEl = document.getElementById("roadmapDeliveryMonth");
     const roadmapDeliveryWeekEl = document.getElementById("roadmapDeliveryWeek");
     const roadmapDescriptionEl = document.getElementById("roadmapDescription");
     const roadmapDependencyAddEl = document.getElementById("roadmapDependencyAdd");
     const roadmapDependencyListEl = document.getElementById("roadmapDependencyList");
+    const roadmapCheckpointAddEl = document.getElementById("roadmapCheckpointAdd");
+    const roadmapCheckpointListEl = document.getElementById("roadmapCheckpointList");
     const roadmapMessageEl = document.getElementById("roadmapMessage");
     const roadmapTimelineEl = document.getElementById("roadmapTimeline");
     const roadmapTimelineProductEl = document.getElementById("roadmapTimelineProduct");
@@ -3398,10 +3453,12 @@ const HTML = `<!doctype html>
         .map((product) => \`<option value="\${esc(product.id)}" \${String(product.id) === selected ? "selected" : ""}>\${esc(product.name || product.product_key || product.id)}</option>\`)
         .join("");
     }
-    function roadmapParentOptions(items, selectedId) {
+    function roadmapItemOptions(items, selectedId, types, placeholder) {
       const selected = String(selectedId || "");
-      return '<option value="">بدون وابستگی بالادستی</option>' + items
+      const allowedTypes = new Set(types || []);
+      return '<option value="">' + esc(placeholder) + '</option>' + items
         .filter((item) => String(item.status || "") !== "canceled")
+        .filter((item) => !allowedTypes.size || allowedTypes.has(String(item.item_type || "delivery")))
         .map((item) => \`<option value="\${esc(item.id)}" \${String(item.id) === selected ? "selected" : ""}>\${esc((item.title || item.id) + " · " + roadmapDeliveryText(item))}</option>\`)
         .join("");
     }
@@ -3423,10 +3480,72 @@ const HTML = `<!doctype html>
       roadmapSubproductEl.innerHTML = roadmapSubproductOptions(roadmapProducts, roadmapProductEl.value, roadmapSubproductEl.value);
     }
     function dependencyResolutionText(dep) {
-      const month = roadmapPathMonths.find((item) => Number(item.index) === Number(dep?.expected_resolution_month));
-      const week = Number(dep?.expected_resolution_week);
+      const month = roadmapPathMonths.find((item) => Number(item.index) === Number(dep?.expected_resolution_month ?? dep?.expected_delivery_month));
+      const week = Number(dep?.expected_resolution_week ?? dep?.expected_delivery_week);
       if (month && week >= 1 && week <= 4) return month.label + "، هفته " + numberFmt.format(week);
-      return dep?.expected_resolution_date || "-";
+      return dep?.expected_resolution_date || dep?.expected_delivery_date || "-";
+    }
+    function roadmapStatusLabel(value) {
+      return {
+        not_started: "Not Started",
+        on_track: "On Track",
+        at_risk: "At Risk",
+        blocked: "Blocked",
+        delivered: "Delivered",
+        planned: "Not Started",
+        in_progress: "On Track",
+      }[String(value || "")] || String(value || "-");
+    }
+    function roadmapRiskLabel(value) {
+      return { low:"Low", medium:"Medium", high:"High", critical:"Critical" }[String(value || "")] || "-";
+    }
+    function roadmapTypeLabel(value) {
+      return { initiative:"Initiative", major:"Major", delivery:"Delivery" }[String(value || "delivery")] || "Delivery";
+    }
+    function roadmapSlotIndex(month, week) {
+      const numericMonth = Number(month);
+      const numericWeek = Number(week);
+      if (numericMonth >= 6 && numericMonth <= 12 && numericWeek >= 1 && numericWeek <= 4) return (numericMonth - 6) * 4 + numericWeek - 1;
+      return null;
+    }
+    function dependencyHealth(dep) {
+      const status = String(dep?.dependency_status || dep?.status || "");
+      if (status === "blocked") return { key:"red", label:"Blocked" };
+      if (status === "delivered") return { key:"green", label:"Delivered" };
+      const expected = roadmapSlotIndex(dep?.expected_delivery_month ?? dep?.expected_resolution_month, dep?.expected_delivery_week ?? dep?.expected_resolution_week);
+      const needBy = roadmapSlotIndex(dep?.need_by_month, dep?.need_by_week);
+      if (expected === null || needBy === null) return status === "at_risk" ? { key:"yellow", label:"At Risk" } : { key:"green", label:"Healthy" };
+      if (expected > needBy) return { key:"red", label:"Late" };
+      if (needBy - expected <= 1) return { key:"yellow", label:"Tight" };
+      return { key:"green", label:"Healthy" };
+    }
+    function dependencyNeedByText(dep) {
+      const month = roadmapPathMonths.find((item) => Number(item.index) === Number(dep?.need_by_month));
+      const week = Number(dep?.need_by_week);
+      if (month && week >= 1 && week <= 4) return month.label + "، هفته " + numberFmt.format(week);
+      return dep?.need_by_date || "-";
+    }
+    function roadmapProgressHtml(value) {
+      const progress = Math.max(0, Math.min(100, Number(value || 0)));
+      return \`<div class="roadmap-progress"><span>\${numberFmt.format(progress)}٪</span><div class="roadmap-progress-bar"><span style="width:\${progress}%"></span></div></div>\`;
+    }
+    function roadmapChainFor(provider, consumer, items) {
+      const titles = [provider?.title || "-", consumer?.title || "-"];
+      let cursor = consumer;
+      const seen = new Set([String(provider?.id || ""), String(consumer?.id || "")]);
+      while (cursor?.parent_roadmap_id) {
+        const next = items.find((item) => String(item.id) === String(cursor.parent_roadmap_id));
+        if (!next || seen.has(String(next.id))) break;
+        titles.push(next.title || "-");
+        seen.add(String(next.id));
+        cursor = next;
+      }
+      return titles.join(" → ");
+    }
+    function syncRoadmapHierarchyOptions() {
+      roadmapInitiativeEl.innerHTML = roadmapItemOptions(roadmapItems, roadmapInitiativeEl.value, ["initiative"], "Initiative / Outcome");
+      roadmapMajorEl.innerHTML = roadmapItemOptions(roadmapItems, roadmapMajorEl.value, ["major"], "Major Delivery");
+      roadmapTeamEl.innerHTML = roadmapTeamOptions(roadmapTeams, roadmapTeamEl.value);
     }
     function dependencySummary(dependencies, products, teams) {
       const list = Array.isArray(dependencies) ? dependencies : [];
@@ -3494,6 +3613,12 @@ const HTML = `<!doctype html>
     }
     function roadmapDeliveryText(item) {
       return item.delivery_slot || item.delivery_date || "-";
+    }
+    function roadmapSlotText(monthValue, weekValue) {
+      const month = roadmapPathMonths.find((item) => Number(item.index) === Number(monthValue));
+      const week = Number(weekValue);
+      if (month && week >= 1 && week <= 4) return month.label + "، هفته " + numberFmt.format(week);
+      return "";
     }
     function roadmapTimelineIndex(item) {
       const deliveryMonth = Number(item?.timeline_month ?? item?.delivery_month);
@@ -3653,33 +3778,46 @@ const HTML = `<!doctype html>
       renderRoadmapTimeline(roadmapFullTimelineEl, roadmapItems, roadmapProducts, roadmapTeams, { productId, teamId });
     }
     function roadmapItemDetailsHtml(item) {
-      const parentItem = roadmapItems.find((candidate) => String(candidate.id) === String(item.parent_roadmap_id));
+      const initiative = roadmapItems.find((candidate) => String(candidate.id) === String(item.initiative_id));
+      const major = roadmapItems.find((candidate) => String(candidate.id) === String(item.major_delivery_id));
+      const checkpoints = Array.isArray(item.checkpoints) ? item.checkpoints : [];
       return \`<div class="details-grid">
         \${isOwnerEmail(currentUser.email) ? \`<div class="detail-row"><div class="detail-label">عملیات</div><div class="detail-value"><button class="revoke-button" type="button" data-roadmap-archive="\${esc(item.id)}">آرشیو</button></div></div>\` : ""}
-        \${detailRow("عنوان تحویل‌دادنی", item.title || "-")}
-        \${detailRow("وابسته به", parentItem?.title || "-")}
-        \${detailRow("مدیر محصول", item.owner_email || "-")}
+        \${detailRow("سطح", roadmapTypeLabel(item.item_type))}
+        \${detailRow("عنوان", item.title || "-")}
+        \${detailRow("Initiative / Outcome", initiative?.title || "-")}
+        \${detailRow("Major Delivery", major?.title || "-")}
+        \${detailRow("Owner", item.owner_email || "-")}
         \${detailRow("تیم", roadmapTeams.find((team) => String(team.id) === String(item.team_id))?.name || "-")}
         \${detailRow("محصول", productNameById(roadmapProducts, item.product_id) || "-")}
         \${detailRow("زیرمحصول", productNameById(roadmapProducts, item.subproduct_id) || "-")}
-        \${detailRow("زمان تحویل", roadmapDeliveryText(item))}
+        \${detailRow("Target Date", roadmapDeliveryText(item))}
+        \${detailRow("Status", roadmapStatusLabel(item.status))}
+        \${detailRow("Risk", roadmapRiskLabel(item.risk))}
+        \${detailRow("Progress", numberFmt.format(item.progress || 0) + "٪")}
         \${detailRow("ثبت‌کننده", item.created_by_email || "-")}
         \${detailRow("به‌روزرسانی‌کننده", item.updated_by_email || "-")}
         \${detailRow("آخرین به‌روزرسانی", item.updated_at_utc ? tehranDisplay(item.updated_at_utc) : "-")}
         \${detailRow("توضیحات", item.description || "-")}
         <div class="detail-row"><div class="detail-label">وابستگی‌ها</div><div class="detail-value">\${dependencyDetailsHtml(item.dependencies, roadmapProducts, roadmapTeams)}</div></div>
+        <div class="detail-row"><div class="detail-label">Checkpointها</div><div class="detail-value">\${checkpoints.length ? checkpoints.map((checkpoint) => esc(checkpoint.title || "-") + " · " + esc(roadmapSlotText(checkpoint.expected_month, checkpoint.expected_week) || checkpoint.expected_date || "-") + " · " + esc(roadmapStatusLabel(checkpoint.status))).join("<br>") : '<span class="thread-muted">چک‌پوینتی ثبت نشده است.</span>'}</div></div>
       </div>\`;
     }
     function roadmapDependencyDetailsHtml(dep, parentItem) {
+      const provider = roadmapItems.find((item) => String(item.id) === String(dep.provider_roadmap_id || dep.roadmap_id));
+      const consumer = roadmapItems.find((item) => String(item.id) === String(dep.consumer_roadmap_id || parentItem?.id));
+      const health = dependencyHealth(dep);
       return \`<div class="details-grid">
         \${detailRow("عنوان وابستگی", dep.title || "-")}
-        \${detailRow("تحویل‌دادنی بالادستی", parentItem?.title || "-")}
-        \${detailRow("نوع", dep.roadmap_id ? "تحویل‌دادنی وابسته" : "وابستگی ثبت‌شده")}
+        \${detailRow("Provider", provider?.title || dep.title || "-")}
+        \${detailRow("Consumer", consumer?.title || parentItem?.title || "-")}
+        \${detailRow("Need-by", dependencyNeedByText(dep))}
+        \${detailRow("Expected", dependencyResolutionText(dep))}
+        \${detailRow("Dependency Health", health.label)}
+        \${detailRow("Chain", roadmapChainFor(provider || dep, consumer || parentItem, roadmapItems))}
         \${detailRow("محصول", productNameById(roadmapProducts, dep.product_id) || "-")}
         \${detailRow("زیرمحصول", productNameById(roadmapProducts, dep.subproduct_id) || "-")}
         \${detailRow("تیم", roadmapTeams.find((team) => String(team.id) === String(dep.team_id))?.name || "-")}
-        \${detailRow("زمان حل", dependencyResolutionText(dep))}
-        \${detailRow("وابستگی‌های زیرمجموعه", dep.child_dependency_count ? numberFmt.format(dep.child_dependency_count) : "-")}
         \${detailRow("شرح", dep.description || "-")}
       </div>\`;
     }
@@ -3688,15 +3826,17 @@ const HTML = `<!doctype html>
       roadmapDependencyRowsEl.innerHTML = dependencyRows.map(({ parent, dep }, index) => {
         const key = "roadmap-dependency-" + index;
         detailByKey.set(key, roadmapDependencyDetailsHtml(dep, parent));
-        const teamName = teams.find((team) => String(team.id) === String(dep.team_id))?.name || "";
+        const provider = items.find((item) => String(item.id) === String(dep.provider_roadmap_id || dep.roadmap_id)) || dep;
+        const consumer = items.find((item) => String(item.id) === String(dep.consumer_roadmap_id || parent.id)) || parent;
+        const health = dependencyHealth(dep);
         return \`<tr>
           <td class="roadmap-title-cell" data-label="وابستگی">\${esc(dep.title || "-")}</td>
-          <td class="roadmap-title-cell" data-label="تحویل‌دادنی بالادستی">\${esc(parent.title || "-")}</td>
-          <td data-label="محصول">\${esc(productNameById(products, dep.product_id) || "-")}</td>
-          <td data-label="زیرمحصول">\${esc(productNameById(products, dep.subproduct_id) || "-")}</td>
-          <td class="full-cell" data-label="تیم">\${esc(teamName || "-")}</td>
-          <td data-label="زمان حل">\${esc(dependencyResolutionText(dep))}</td>
-          <td data-label="زیرمجموعه">\${dep.child_dependency_count ? esc(numberFmt.format(dep.child_dependency_count)) : "-"}</td>
+          <td class="roadmap-title-cell" data-label="Provider">\${esc(provider.title || "-")}</td>
+          <td class="roadmap-title-cell" data-label="Consumer">\${esc(consumer.title || "-")}</td>
+          <td data-label="Need-by">\${esc(dependencyNeedByText(dep))}</td>
+          <td data-label="Expected">\${esc(dependencyResolutionText(dep))}</td>
+          <td data-label="Health"><span class="roadmap-health \${esc(health.key)}">\${esc(health.label)}</span></td>
+          <td class="roadmap-chain" data-label="Chain">\${esc(roadmapChainFor(provider, consumer, items))}</td>
           <td data-label="عملیات"><button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button></td>
         </tr>\`;
       }).join("") || '<tr><td colspan="8" class="empty">وابستگی مستقلی برای تحویل‌دادنی‌ها ثبت نشده است</td></tr>';
@@ -3705,28 +3845,32 @@ const HTML = `<!doctype html>
       roadmapProducts = products;
       roadmapTeams = teams;
       roadmapItems = items;
-      roadmapParentEl.innerHTML = roadmapParentOptions(items, roadmapParentEl.value);
+      syncRoadmapHierarchyOptions();
       roadmapProductEl.innerHTML = roadmapProductOptions(products, roadmapProductEl.value);
       syncRoadmapSubproductOptions();
       refreshRoadmapTimelines();
       detailByKey.clear();
       roadmapRowsEl.innerHTML = items.map((item, index) => {
         const key = "roadmap-" + index;
-        const parentItem = items.find((candidate) => String(candidate.id) === String(item.parent_roadmap_id));
+        const initiative = items.find((candidate) => String(candidate.id) === String(item.initiative_id));
+        const major = items.find((candidate) => String(candidate.id) === String(item.major_delivery_id));
+        const teamName = teams.find((team) => String(team.id) === String(item.team_id))?.name || "";
         detailByKey.set(key, roadmapItemDetailsHtml(item));
         return \`<tr>
-          <td class="roadmap-title-cell" data-label="تحویل‌دادنی">\${parentItem ? '<span class="thread-muted">وابسته به: ' + esc(parentItem.title || "-") + '</span><br>' : ""}\${esc(item.title || "-")}</td>
+          <td class="roadmap-title-cell" data-label="تحویل‌دادنی">\${initiative ? '<span class="thread-muted">Initiative: ' + esc(initiative.title || "-") + '</span><br>' : ""}\${major ? '<span class="thread-muted">Major: ' + esc(major.title || "-") + '</span><br>' : ""}\${esc(item.title || "-")}</td>
+          <td data-label="سطح">\${esc(roadmapTypeLabel(item.item_type))}</td>
           <td class="full-cell" data-label="مدیر محصول">\${esc(item.owner_email || "-")}</td>
           <td data-label="محصول">\${esc(productNameById(products, item.product_id) || "-")}</td>
-          <td data-label="زیرمحصول">\${esc(productNameById(products, item.subproduct_id) || "-")}</td>
+          <td data-label="تیم">\${esc(teamName || "-")}</td>
           <td data-label="زمان تحویل">\${esc(roadmapDeliveryText(item))}</td>
-          <td class="roadmap-description-cell" data-label="توضیحات">\${esc(item.description || "-")}</td>
+          <td data-label="وضعیت">\${esc(roadmapStatusLabel(item.status))}<br><span class="thread-muted">Risk: \${esc(roadmapRiskLabel(item.risk))}</span></td>
+          <td data-label="Progress">\${roadmapProgressHtml(item.progress)}</td>
           <td data-label="عملیات">
             <button class="details-button" type="button" data-detail-key="\${esc(key)}">جزئیات</button>
             \${isOwnerEmail(currentUser.email) ? \`<button class="revoke-button" type="button" data-roadmap-archive="\${esc(item.id)}">آرشیو</button>\` : ""}
           </td>
         </tr>\`;
-      }).join("") || '<tr><td colspan="7" class="empty">هنوز تحویل‌دادنی در نقشه راه ثبت نشده است</td></tr>';
+      }).join("") || '<tr><td colspan="9" class="empty">هنوز تحویل‌دادنی در نقشه راه ثبت نشده است</td></tr>';
       renderRoadmapDependencyRows(items, products, teams);
     }
     async function loadRoadmap() {
@@ -3755,9 +3899,12 @@ const HTML = `<!doctype html>
       const row = document.createElement("div");
       row.className = "roadmap-dependency-row";
       row.innerHTML = \`
-        <input data-dependency-title type="text" maxlength="180" placeholder="عنوان وابستگی" value="\${esc(value.title || "")}" />
-        <select data-dependency-month>\${roadmapDeliveryMonthOptions(value.expected_resolution_month)}</select>
-        <select data-dependency-week>\${roadmapDeliveryWeekOptions(value.expected_resolution_week)}</select>
+        <select data-dependency-provider>\${roadmapItemOptions(roadmapItems, value.provider_roadmap_id || value.roadmap_id, ["delivery", "major"], "Provider Delivery جدید")}</select>
+        <input data-dependency-title type="text" maxlength="180" placeholder="عنوان Provider جدید" value="\${esc(value.title || "")}" />
+        <select data-dependency-need-month>\${roadmapDeliveryMonthOptions(value.need_by_month)}</select>
+        <select data-dependency-need-week>\${roadmapDeliveryWeekOptions(value.need_by_week)}</select>
+        <select data-dependency-month>\${roadmapDeliveryMonthOptions(value.expected_delivery_month || value.expected_resolution_month)}</select>
+        <select data-dependency-week>\${roadmapDeliveryWeekOptions(value.expected_delivery_week || value.expected_resolution_week)}</select>
         <select data-dependency-product>\${roadmapProductOptions(roadmapProducts, value.product_id)}</select>
         <select data-dependency-subproduct>\${roadmapSubproductOptions(roadmapProducts, value.product_id, value.subproduct_id)}</select>
         <select data-dependency-team>\${roadmapTeamOptions(roadmapTeams, value.team_id)}</select>
@@ -3768,14 +3915,39 @@ const HTML = `<!doctype html>
     }
     function collectRoadmapDependencies() {
       return [...roadmapDependencyListEl.querySelectorAll(".roadmap-dependency-row")].map((row) => ({
+        provider_roadmap_id: row.querySelector("[data-dependency-provider]")?.value || null,
         title: row.querySelector("[data-dependency-title]")?.value.trim() || "",
-        expected_resolution_month: row.querySelector("[data-dependency-month]")?.value || "",
-        expected_resolution_week: row.querySelector("[data-dependency-week]")?.value || "",
+        need_by_month: row.querySelector("[data-dependency-need-month]")?.value || "",
+        need_by_week: row.querySelector("[data-dependency-need-week]")?.value || "",
+        expected_delivery_month: row.querySelector("[data-dependency-month]")?.value || "",
+        expected_delivery_week: row.querySelector("[data-dependency-week]")?.value || "",
         product_id: row.querySelector("[data-dependency-product]")?.value || null,
         subproduct_id: row.querySelector("[data-dependency-subproduct]")?.value || null,
         team_id: row.querySelector("[data-dependency-team]")?.value || null,
         description: row.querySelector("[data-dependency-description]")?.value.trim() || "",
-      })).filter((dep) => dep.title || dep.expected_resolution_month || dep.expected_resolution_week || dep.product_id || dep.subproduct_id || dep.team_id || dep.description);
+      })).filter((dep) => dep.provider_roadmap_id || dep.title || dep.need_by_month || dep.need_by_week || dep.expected_delivery_month || dep.expected_delivery_week || dep.product_id || dep.subproduct_id || dep.team_id || dep.description);
+    }
+    function addRoadmapCheckpointRow(value = {}) {
+      const row = document.createElement("div");
+      row.className = "roadmap-checkpoint-row";
+      row.innerHTML = \`
+        <input data-checkpoint-title type="text" maxlength="180" placeholder="عنوان Checkpoint" value="\${esc(value.title || "")}" />
+        <select data-checkpoint-month>\${roadmapDeliveryMonthOptions(value.expected_month)}</select>
+        <select data-checkpoint-week>\${roadmapDeliveryWeekOptions(value.expected_week)}</select>
+        <select data-checkpoint-status>
+          \${["not_started", "on_track", "at_risk", "blocked", "delivered"].map((status) => \`<option value="\${status}" \${String(value.status || "not_started") === status ? "selected" : ""}>\${esc(roadmapStatusLabel(status))}</option>\`).join("")}
+        </select>
+        <button class="roadmap-dependency-remove" type="button" aria-label="حذف چک‌پوینت">×</button>
+      \`;
+      roadmapCheckpointListEl.appendChild(row);
+    }
+    function collectRoadmapCheckpoints() {
+      return [...roadmapCheckpointListEl.querySelectorAll(".roadmap-checkpoint-row")].map((row) => ({
+        title: row.querySelector("[data-checkpoint-title]")?.value.trim() || "",
+        expected_month: row.querySelector("[data-checkpoint-month]")?.value || "",
+        expected_week: row.querySelector("[data-checkpoint-week]")?.value || "",
+        status: row.querySelector("[data-checkpoint-status]")?.value || "not_started",
+      })).filter((checkpoint) => checkpoint.title || checkpoint.expected_month || checkpoint.expected_week);
     }
     function userGroupMemberOptions(group, users) {
       const memberSet = new Set(Array.isArray(group.member_emails) ? group.member_emails.map((email) => String(email).toLowerCase()) : []);
@@ -4150,9 +4322,14 @@ const HTML = `<!doctype html>
       });
     });
     roadmapDependencyAddEl.addEventListener("click", () => addRoadmapDependencyRow());
+    roadmapCheckpointAddEl.addEventListener("click", () => addRoadmapCheckpointRow());
     roadmapDependencyListEl.addEventListener("click", event => {
       const button = event.target.closest(".roadmap-dependency-remove");
       if (button) button.closest(".roadmap-dependency-row")?.remove();
+    });
+    roadmapCheckpointListEl.addEventListener("click", event => {
+      const button = event.target.closest(".roadmap-dependency-remove");
+      if (button) button.closest(".roadmap-checkpoint-row")?.remove();
     });
     roadmapDependencyListEl.addEventListener("change", event => {
       const productSelect = event.target.closest("[data-dependency-product]");
@@ -4375,14 +4552,21 @@ const HTML = `<!doctype html>
       event.preventDefault();
       roadmapMessageEl.textContent = "در حال ثبت تحویل‌دادنی...";
       const payload = {
+        item_type: roadmapItemTypeEl.value || "delivery",
         title: roadmapTitleEl.value.trim(),
-        parent_roadmap_id: roadmapParentEl.value || null,
+        initiative_id: roadmapInitiativeEl.value || null,
+        major_delivery_id: roadmapMajorEl.value || null,
         product_id: roadmapProductEl.value || null,
         subproduct_id: roadmapSubproductEl.value || null,
+        team_id: roadmapTeamEl.value || null,
+        status: roadmapStatusEl.value || "not_started",
+        risk: roadmapRiskEl.value || "medium",
+        progress: roadmapProgressEl.value || 0,
         delivery_month: roadmapDeliveryMonthEl.value,
         delivery_week: roadmapDeliveryWeekEl.value,
         description: roadmapDescriptionEl.value.trim(),
         dependencies: collectRoadmapDependencies(),
+        checkpoints: collectRoadmapCheckpoints(),
       };
       try {
         const res = await fetch("/api/roadmap", {
@@ -4396,14 +4580,21 @@ const HTML = `<!doctype html>
           return;
         }
         roadmapMessageEl.textContent = "تحویل‌دادنی در نقشه راه ثبت شد.";
+        roadmapItemTypeEl.value = "delivery";
         roadmapTitleEl.value = "";
-        roadmapParentEl.value = "";
+        roadmapInitiativeEl.value = "";
+        roadmapMajorEl.value = "";
         roadmapProductEl.value = "";
         roadmapSubproductEl.value = "";
+        roadmapTeamEl.value = "";
+        roadmapStatusEl.value = "not_started";
+        roadmapRiskEl.value = "medium";
+        roadmapProgressEl.value = "0";
         roadmapDeliveryMonthEl.value = "";
         roadmapDeliveryWeekEl.value = "";
         roadmapDescriptionEl.value = "";
         roadmapDependencyListEl.innerHTML = "";
+        roadmapCheckpointListEl.innerHTML = "";
         syncRoadmapSubproductOptions();
         await loadRoadmap();
       } catch (error) {
@@ -8907,8 +9098,9 @@ async function updateSenderLabel(request, env, authUser) {
   return json({ sender_label: rows?.[0]?.sender_label || "" });
 }
 
-const ROADMAP_STATUSES = ["planned", "in_progress", "delivered", "blocked", "canceled"];
+const ROADMAP_STATUSES = ["not_started", "on_track", "at_risk", "blocked", "delivered", "canceled"];
 const ROADMAP_PRIORITIES = ["low", "medium", "high", "critical"];
+const ROADMAP_ITEM_TYPES = ["initiative", "major", "delivery"];
 const ROADMAP_DELIVERY_MONTHS = new Map([
   [6, "شهریور"],
   [7, "مهر"],
@@ -8936,12 +9128,24 @@ const ROADMAP_DELIVERY_FALLBACK_DATES_1405 = {
 
 function normalizeRoadmapStatus(value) {
   const status = String(value || "").trim().toLowerCase();
-  return ROADMAP_STATUSES.includes(status) ? status : "planned";
+  const mapped = { planned: "not_started", in_progress: "on_track" }[status] || status;
+  return ROADMAP_STATUSES.includes(mapped) ? mapped : "not_started";
 }
 
 function normalizeRoadmapPriority(value) {
   const priority = String(value || "").trim().toLowerCase();
   return ROADMAP_PRIORITIES.includes(priority) ? priority : "medium";
+}
+
+function normalizeRoadmapItemType(value) {
+  const itemType = String(value || "").trim().toLowerCase();
+  return ROADMAP_ITEM_TYPES.includes(itemType) ? itemType : "delivery";
+}
+
+function normalizeRoadmapProgress(value) {
+  const progress = Number.parseInt(String(value ?? "0"), 10);
+  if (!Number.isFinite(progress)) return 0;
+  return Math.max(0, Math.min(100, progress));
 }
 
 function normalizeRoadmapDate(value) {
@@ -9029,31 +9233,52 @@ async function normalizeRoadmapDependencies(env, value) {
     subproductsByParent.get(key).add(Number(product.id));
   });
   const teamIds = new Set(teams.map((team) => Number(team.id)));
+  const existingIds = new Set();
+  for (const item of list) {
+    const providerId = normalizeRoadmapEntityId(item?.provider_roadmap_id || item?.roadmap_id);
+    if (!providerId) continue;
+    const provider = await fetchRoadmapItemById(env, providerId);
+    if (!provider || provider.status === "canceled") throw new Error("Provider وابستگی نامعتبر است");
+    existingIds.add(providerId);
+  }
   return list.map((item) => {
+    const providerRoadmapId = normalizeRoadmapEntityId(item?.provider_roadmap_id || item?.roadmap_id);
     const title = String(item?.title || "").trim().replace(/\s+/g, " ");
     const description = String(item?.description || "").trim();
-    const expectedMonth = normalizeRoadmapDeliveryMonth(item?.expected_resolution_month);
-    const expectedWeek = normalizeRoadmapDeliveryWeek(item?.expected_resolution_week);
-    const hasExpectedSlot = item?.expected_resolution_month || item?.expected_resolution_week;
-    const legacyExpectedDate = normalizeRoadmapDate(item?.expected_resolution_date || "");
+    const needByMonth = normalizeRoadmapDeliveryMonth(item?.need_by_month);
+    const needByWeek = normalizeRoadmapDeliveryWeek(item?.need_by_week);
+    const hasNeedBySlot = item?.need_by_month || item?.need_by_week;
+    const expectedMonth = normalizeRoadmapDeliveryMonth(item?.expected_delivery_month || item?.expected_resolution_month);
+    const expectedWeek = normalizeRoadmapDeliveryWeek(item?.expected_delivery_week || item?.expected_resolution_week);
+    const hasExpectedSlot = item?.expected_delivery_month || item?.expected_delivery_week || item?.expected_resolution_month || item?.expected_resolution_week;
+    const legacyExpectedDate = normalizeRoadmapDate(item?.expected_delivery_date || item?.expected_resolution_date || "");
     const productId = normalizeRoadmapEntityId(item?.product_id);
     const subproductId = normalizeRoadmapEntityId(item?.subproduct_id);
     const teamId = normalizeRoadmapEntityId(item?.team_id);
-    if (!title) throw new Error("عنوان وابستگی الزامی است");
+    if (!providerRoadmapId && !title) throw new Error("عنوان یا Provider وابستگی الزامی است");
     if (title.length > 180) throw new Error("عنوان وابستگی بیش از حد طولانی است");
     if (description.length > 1200) throw new Error("شرح وابستگی بیش از حد طولانی است");
+    if (hasNeedBySlot && (!needByMonth || !needByWeek)) throw new Error("ماه و هفته Need-by وابستگی نامعتبر است");
     if (hasExpectedSlot && (!expectedMonth || !expectedWeek)) throw new Error("ماه و هفته انتظار حل وابستگی نامعتبر است");
     if (!hasExpectedSlot && item?.expected_resolution_date && !legacyExpectedDate) throw new Error("تاریخ انتظار حل وابستگی نامعتبر است");
     if (productId && !productIds.has(productId)) throw new Error("محصول وابستگی نامعتبر است");
     if (subproductId && (!productId || !subproductsByParent.get(productId)?.has(subproductId))) throw new Error("زیرمحصول وابستگی نامعتبر است");
     if (teamId && !teamIds.has(teamId)) throw new Error("تیم وابستگی نامعتبر است");
+    const needByDate = hasNeedBySlot ? fallbackRoadmapDeliveryDate(needByMonth, needByWeek) : "";
     const expectedDate = hasExpectedSlot ? fallbackRoadmapDeliveryDate(expectedMonth, expectedWeek) : legacyExpectedDate;
     return {
+      provider_roadmap_id: providerRoadmapId,
       title,
       description,
+      need_by_date: needByDate || "",
+      need_by_month: needByMonth,
+      need_by_week: needByWeek,
       expected_resolution_date: expectedDate || "",
       expected_resolution_month: expectedMonth,
       expected_resolution_week: expectedWeek,
+      expected_delivery_date: expectedDate || "",
+      expected_delivery_month: expectedMonth,
+      expected_delivery_week: expectedWeek,
       product_id: productId,
       subproduct_id: subproductId,
       team_id: teamId,
@@ -9064,16 +9289,22 @@ async function normalizeRoadmapDependencies(env, value) {
 function roadmapItemForClient(row) {
   return {
     id: row.id,
+    item_type: row.item_type || "delivery",
     title: row.title || "",
     description: row.description || "",
     owner_email: row.owner_email || "",
     product_id: row.product_id || null,
     subproduct_id: row.subproduct_id || null,
     dependencies: Array.isArray(row.dependencies_json) ? row.dependencies_json : [],
+    checkpoints: [],
     parent_roadmap_id: row.parent_roadmap_id || null,
+    initiative_id: row.initiative_id || null,
+    major_delivery_id: row.major_delivery_id || null,
     team_id: row.team_id || null,
     priority: row.priority || "medium",
-    status: row.status || "planned",
+    status: normalizeRoadmapStatus(row.status),
+    progress: normalizeRoadmapProgress(row.progress),
+    risk: normalizeRoadmapPriority(row.risk),
     delivery_date: row.delivery_date || "",
     delivery_month: row.delivery_month || null,
     delivery_week: row.delivery_week || null,
@@ -9085,18 +9316,64 @@ function roadmapItemForClient(row) {
   };
 }
 
+function roadmapCheckpointForClient(row) {
+  return {
+    id: row.id,
+    roadmap_item_id: row.roadmap_item_id,
+    title: row.title || "",
+    expected_date: row.expected_date || "",
+    expected_month: row.expected_month || null,
+    expected_week: row.expected_week || null,
+    status: normalizeRoadmapStatus(row.status),
+  };
+}
+
+async function fetchRoadmapDependencyRows(env) {
+  const params = new URLSearchParams({
+    select: "id,provider_roadmap_id,consumer_roadmap_id,need_by_date,need_by_month,need_by_week,expected_delivery_date,expected_delivery_month,expected_delivery_week,dependency_status,description",
+    order: "need_by_month.asc.nullslast,need_by_week.asc.nullslast,created_at_utc.asc",
+    limit: "2000",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_roadmap_dependencies?${params}`, { headers: supabaseHeaders(env) });
+  const body = await readSupabaseJson(response);
+  if (!response.ok) return [];
+  return Array.isArray(body) ? body : [];
+}
+
+async function fetchRoadmapCheckpointRows(env) {
+  const params = new URLSearchParams({
+    select: "id,roadmap_item_id,title,expected_date,expected_month,expected_week,status",
+    order: "expected_month.asc.nullslast,expected_week.asc.nullslast,created_at_utc.asc",
+    limit: "3000",
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_roadmap_checkpoints?${params}`, { headers: supabaseHeaders(env) });
+  const body = await readSupabaseJson(response);
+  if (!response.ok) return [];
+  return Array.isArray(body) ? body : [];
+}
+
 async function fetchRoadmapItems(env) {
   const params = new URLSearchParams({
-    select: "id,title,description,owner_email,product_id,subproduct_id,parent_roadmap_id,team_id,dependencies_json,priority,status,delivery_date,delivery_month,delivery_week,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
+    select: "id,item_type,title,description,owner_email,product_id,subproduct_id,parent_roadmap_id,initiative_id,major_delivery_id,team_id,dependencies_json,priority,status,progress,risk,delivery_date,delivery_month,delivery_week,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
     status: "neq.canceled",
-    order: "delivery_month.asc.nullslast,delivery_week.asc.nullslast,delivery_date.asc,status.asc,created_at_utc.desc",
+    order: "item_type.asc,delivery_month.asc.nullslast,delivery_week.asc.nullslast,delivery_date.asc,status.asc,created_at_utc.desc",
     limit: "1000",
   });
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_roadmap_items?${params}`, { headers: supabaseHeaders(env) });
   const body = await readSupabaseJson(response);
   if (!response.ok) return json({ error: "دریافت نقشه راه انجام نشد", detail: body?.message || body || response.status }, 500);
-  const [products, teams] = await Promise.all([fetchProductRows(env), fetchUserGroupRows(env)]);
+  const [products, teams, dependencyRows, checkpointRows] = await Promise.all([
+    fetchProductRows(env),
+    fetchUserGroupRows(env),
+    fetchRoadmapDependencyRows(env),
+    fetchRoadmapCheckpointRows(env),
+  ]);
   const items = (Array.isArray(body) ? body : []).map(roadmapItemForClient);
+  const itemsById = new Map(items.map((item) => [String(item.id), item]));
+  checkpointRows.forEach((checkpoint) => {
+    const item = itemsById.get(String(checkpoint.roadmap_item_id));
+    if (item) item.checkpoints.push(roadmapCheckpointForClient(checkpoint));
+  });
   const childrenByParent = new Map();
   items.forEach((item) => {
     const parentId = String(item.parent_roadmap_id || "");
@@ -9104,19 +9381,54 @@ async function fetchRoadmapItems(env) {
     if (!childrenByParent.has(parentId)) childrenByParent.set(parentId, []);
     childrenByParent.get(parentId).push(item);
   });
+  dependencyRows.forEach((row) => {
+    const consumer = itemsById.get(String(row.consumer_roadmap_id));
+    const provider = itemsById.get(String(row.provider_roadmap_id));
+    if (!consumer || !provider) return;
+    consumer.dependencies.push({
+      id: row.id,
+      provider_roadmap_id: provider.id,
+      consumer_roadmap_id: consumer.id,
+      roadmap_id: provider.id,
+      title: provider.title,
+      description: row.description || provider.description || "",
+      need_by_date: row.need_by_date || "",
+      need_by_month: row.need_by_month || null,
+      need_by_week: row.need_by_week || null,
+      expected_delivery_date: row.expected_delivery_date || provider.delivery_date,
+      expected_delivery_month: row.expected_delivery_month || provider.delivery_month,
+      expected_delivery_week: row.expected_delivery_week || provider.delivery_week,
+      expected_resolution_date: row.expected_delivery_date || provider.delivery_date,
+      expected_resolution_month: row.expected_delivery_month || provider.delivery_month,
+      expected_resolution_week: row.expected_delivery_week || provider.delivery_week,
+      dependency_status: normalizeRoadmapStatus(row.dependency_status),
+      product_id: provider.product_id,
+      subproduct_id: provider.subproduct_id,
+      team_id: provider.team_id,
+    });
+  });
   items.forEach((item) => {
     const childDependencies = (childrenByParent.get(String(item.id)) || []).map((child) => ({
       roadmap_id: child.id,
+      provider_roadmap_id: child.id,
+      consumer_roadmap_id: item.id,
       title: child.title,
       description: child.description,
+      need_by_date: item.delivery_date,
+      need_by_month: item.delivery_month,
+      need_by_week: item.delivery_week,
       expected_resolution_date: child.delivery_date,
       expected_resolution_month: child.delivery_month,
       expected_resolution_week: child.delivery_week,
+      expected_delivery_date: child.delivery_date,
+      expected_delivery_month: child.delivery_month,
+      expected_delivery_week: child.delivery_week,
+      dependency_status: child.status,
       product_id: child.product_id,
       subproduct_id: child.subproduct_id,
       team_id: child.team_id,
       child_dependency_count: (childrenByParent.get(String(child.id)) || []).length,
-    }));
+    })).filter((dep) => !(item.dependencies || []).some((existing) => String(existing.provider_roadmap_id || existing.roadmap_id) === String(dep.provider_roadmap_id)));
     item.dependencies = [...item.dependencies, ...childDependencies];
   });
   return json({
@@ -9128,7 +9440,7 @@ async function fetchRoadmapItems(env) {
 
 async function fetchRoadmapItemById(env, id) {
   const params = new URLSearchParams({
-    select: "id,title,description,owner_email,product_id,subproduct_id,parent_roadmap_id,team_id,dependencies_json,priority,status,delivery_date,delivery_month,delivery_week,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
+    select: "id,item_type,title,description,owner_email,product_id,subproduct_id,parent_roadmap_id,initiative_id,major_delivery_id,team_id,dependencies_json,priority,status,progress,risk,delivery_date,delivery_month,delivery_week,created_by_email,updated_by_email,created_at_utc,updated_at_utc",
     id: `eq.${id}`,
     limit: "1",
   });
@@ -9136,6 +9448,14 @@ async function fetchRoadmapItemById(env, id) {
   if (!response.ok) return null;
   const rows = await response.json();
   return rows[0] || null;
+}
+
+async function normalizeRoadmapHierarchy(env, value, expectedType, fieldLabel) {
+  const id = normalizeRoadmapEntityId(value);
+  if (!id) return null;
+  const row = await fetchRoadmapItemById(env, id);
+  if (!row || row.status === "canceled" || String(row.item_type || "delivery") !== expectedType) throw new Error(fieldLabel + " نامعتبر است");
+  return id;
 }
 
 async function roadmapPayloadFromBody(body, authUser, env, partial = false) {
@@ -9150,8 +9470,31 @@ async function roadmapPayloadFromBody(body, authUser, env, partial = false) {
     if (description.length > 4000) throw new Error("توضیحات بیش از حد طولانی است");
     payload.description = description;
   }
-  if (!partial || Object.prototype.hasOwnProperty.call(body, "parent_roadmap_id")) {
-    payload.parent_roadmap_id = await normalizeRoadmapParent(env, body.parent_roadmap_id);
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "item_type")) {
+    payload.item_type = normalizeRoadmapItemType(body.item_type);
+  }
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "initiative_id")) {
+    payload.initiative_id = await normalizeRoadmapHierarchy(env, body.initiative_id, "initiative", "Initiative");
+  }
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "major_delivery_id")) {
+    payload.major_delivery_id = await normalizeRoadmapHierarchy(env, body.major_delivery_id, "major", "Major Delivery");
+  }
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "team_id")) {
+    const teamId = normalizeRoadmapEntityId(body.team_id);
+    if (teamId) {
+      const teams = await fetchUserGroupRows(env);
+      if (!teams.some((team) => Number(team.id) === teamId)) throw new Error("تیم مالک نامعتبر است");
+    }
+    payload.team_id = teamId;
+  }
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "status")) {
+    payload.status = normalizeRoadmapStatus(body.status);
+  }
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "risk")) {
+    payload.risk = normalizeRoadmapPriority(body.risk);
+  }
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "progress")) {
+    payload.progress = normalizeRoadmapProgress(body.progress);
   }
   if (!partial || Object.prototype.hasOwnProperty.call(body, "delivery_month") || Object.prototype.hasOwnProperty.call(body, "delivery_week")) {
     const deliveryMonth = normalizeRoadmapDeliveryMonth(body.delivery_month);
@@ -9163,7 +9506,7 @@ async function roadmapPayloadFromBody(body, authUser, env, partial = false) {
   }
   if (!partial || Object.prototype.hasOwnProperty.call(body, "product_id") || Object.prototype.hasOwnProperty.call(body, "subproduct_id")) {
     Object.assign(payload, await normalizeRoadmapProducts(env, body.product_id, body.subproduct_id));
-    if (!payload.owner_email) throw new Error("برای محصول یا زیرمحصول انتخاب‌شده مدیر محصول ثبت نشده است");
+    if (!payload.owner_email) payload.owner_email = normalizeEmail(authUser.email);
   }
   if (!partial || Object.prototype.hasOwnProperty.call(body, "dependencies")) {
     payload.dependencies_json = await normalizeRoadmapDependencies(env, body.dependencies);
@@ -9181,19 +9524,26 @@ async function createChildRoadmapDependencies(env, parentItem, dependencies, aut
     const subproductId = Number(dep.subproduct_id || 0);
     const product = productId ? products.find((item) => Number(item.id) === productId) : null;
     const subproduct = subproductId ? products.find((item) => Number(item.id) === subproductId) : null;
-    return normalizeEmail(subproduct?.owner_email || product?.owner_email || parentItem.owner_email || "");
+    return normalizeEmail(subproduct?.owner_email || product?.owner_email || parentItem.owner_email || authUser.email);
   };
-  const rows = list.map((dep) => ({
+  const existingProviderDeps = list.filter((dep) => dep.provider_roadmap_id);
+  const newProviderDeps = list.filter((dep) => !dep.provider_roadmap_id);
+  const rows = newProviderDeps.map((dep) => ({
     title: dep.title,
     description: dep.description || "",
     owner_email: ownerEmailFor(dep),
     product_id: dep.product_id || parentItem.product_id || null,
     subproduct_id: dep.subproduct_id || parentItem.subproduct_id || null,
     parent_roadmap_id: parentItem.id,
+    initiative_id: parentItem.initiative_id || null,
+    major_delivery_id: parentItem.major_delivery_id || null,
     team_id: dep.team_id || null,
     dependencies_json: [],
     priority: parentItem.priority || "medium",
-    status: "planned",
+    item_type: "delivery",
+    status: "not_started",
+    progress: 0,
+    risk: parentItem.risk || "medium",
     delivery_date: dep.expected_resolution_date || parentItem.delivery_date,
     delivery_month: dep.expected_resolution_month || parentItem.delivery_month,
     delivery_week: dep.expected_resolution_week || parentItem.delivery_week,
@@ -9202,13 +9552,90 @@ async function createChildRoadmapDependencies(env, parentItem, dependencies, aut
     created_at_utc: now,
     updated_at_utc: now,
   }));
-  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_roadmap_items`, {
+  let savedProviders = [];
+  if (rows.length) {
+    const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_roadmap_items`, {
+      method: "POST",
+      headers: supabaseHeaders(env, "return=representation"),
+      body: JSON.stringify(rows),
+    });
+    const saved = await readSupabaseJson(response);
+    if (!response.ok) throw new Error(saved?.message || "ثبت وابستگی‌های نقشه راه انجام نشد");
+    savedProviders = Array.isArray(saved) ? saved : [];
+  }
+  const relationRows = [
+    ...existingProviderDeps.map((dep) => ({ dep, providerId: dep.provider_roadmap_id })),
+    ...newProviderDeps.map((dep, index) => ({ dep, providerId: savedProviders[index]?.id })),
+  ].filter((entry) => entry.providerId).map(({ dep, providerId }) => ({
+    provider_roadmap_id: providerId,
+    consumer_roadmap_id: parentItem.id,
+    need_by_date: dep.need_by_date || parentItem.delivery_date || null,
+    need_by_month: dep.need_by_month || parentItem.delivery_month || null,
+    need_by_week: dep.need_by_week || parentItem.delivery_week || null,
+    expected_delivery_date: dep.expected_delivery_date || dep.expected_resolution_date || null,
+    expected_delivery_month: dep.expected_delivery_month || dep.expected_resolution_month || null,
+    expected_delivery_week: dep.expected_delivery_week || dep.expected_resolution_week || null,
+    dependency_status: dependencyStatusFromSlots(dep, parentItem),
+    description: dep.description || "",
+    created_by_email: normalizeEmail(authUser.email),
+    updated_by_email: normalizeEmail(authUser.email),
+    created_at_utc: now,
+    updated_at_utc: now,
+  }));
+  if (relationRows.length) await insertRoadmapDependencyRelations(env, relationRows);
+  return savedProviders;
+}
+
+function dependencyStatusFromSlots(dep, consumerItem) {
+  if (dep.status) return normalizeRoadmapStatus(dep.status);
+  const expected = (Number(dep.expected_delivery_month || dep.expected_resolution_month || 0) - 6) * 4 + Number(dep.expected_delivery_week || dep.expected_resolution_week || 0);
+  const needBy = (Number(dep.need_by_month || consumerItem?.delivery_month || 0) - 6) * 4 + Number(dep.need_by_week || consumerItem?.delivery_week || 0);
+  if (expected > 0 && needBy > 0 && expected > needBy) return "at_risk";
+  return "on_track";
+}
+
+async function insertRoadmapDependencyRelations(env, rows) {
+  if (!rows.length) return [];
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_roadmap_dependencies?on_conflict=provider_roadmap_id,consumer_roadmap_id`, {
+    method: "POST",
+    headers: supabaseHeaders(env, "resolution=merge-duplicates,return=representation"),
+    body: JSON.stringify(rows),
+  });
+  const saved = await readSupabaseJson(response);
+  if (!response.ok) throw new Error(saved?.message || "ثبت رابطه وابستگی انجام نشد");
+  return Array.isArray(saved) ? saved : [];
+}
+
+async function createRoadmapCheckpoints(env, roadmapItemId, checkpoints, authUser) {
+  const list = Array.isArray(checkpoints) ? checkpoints : [];
+  if (!list.length || !roadmapItemId) return [];
+  const now = new Date().toISOString();
+  const rows = list.map((checkpoint) => {
+    const month = normalizeRoadmapDeliveryMonth(checkpoint.expected_month);
+    const week = normalizeRoadmapDeliveryWeek(checkpoint.expected_week);
+    const title = String(checkpoint.title || "").trim().replace(/\s+/g, " ");
+    if (!title) throw new Error("عنوان Checkpoint الزامی است");
+    if ((checkpoint.expected_month || checkpoint.expected_week) && (!month || !week)) throw new Error("ماه و هفته Checkpoint نامعتبر است");
+    return {
+      roadmap_item_id: roadmapItemId,
+      title,
+      expected_date: month && week ? fallbackRoadmapDeliveryDate(month, week) : null,
+      expected_month: month,
+      expected_week: week,
+      status: normalizeRoadmapStatus(checkpoint.status),
+      created_by_email: normalizeEmail(authUser.email),
+      updated_by_email: normalizeEmail(authUser.email),
+      created_at_utc: now,
+      updated_at_utc: now,
+    };
+  });
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_roadmap_checkpoints`, {
     method: "POST",
     headers: supabaseHeaders(env, "return=representation"),
     body: JSON.stringify(rows),
   });
   const saved = await readSupabaseJson(response);
-  if (!response.ok) throw new Error(saved?.message || "ثبت وابستگی‌های نقشه راه انجام نشد");
+  if (!response.ok) throw new Error(saved?.message || "ثبت Checkpointها انجام نشد");
   return Array.isArray(saved) ? saved : [];
 }
 
@@ -9226,6 +9653,7 @@ async function createRoadmapItem(request, env, authUser) {
     return json({ error: error.message || "داده نقشه راه نامعتبر است" }, 400);
   }
   const childDependencies = Array.isArray(payload.dependencies_json) ? payload.dependencies_json : [];
+  const checkpoints = Array.isArray(body.checkpoints) ? body.checkpoints : [];
   payload.dependencies_json = [];
   const now = new Date().toISOString();
   const row = {
@@ -9245,8 +9673,9 @@ async function createRoadmapItem(request, env, authUser) {
   const item = Array.isArray(saved) ? saved[0] : saved;
   try {
     await createChildRoadmapDependencies(env, item || row, childDependencies, authUser);
+    await createRoadmapCheckpoints(env, item?.id, checkpoints, authUser);
   } catch (error) {
-    return json({ error: error.message || "ثبت وابستگی‌های نقشه راه انجام نشد" }, 500);
+    return json({ error: error.message || "ثبت وابستگی‌ها یا Checkpointهای نقشه راه انجام نشد" }, 500);
   }
   await insertAccessAuditLog(env, {
     actorEmail: authUser.email,
