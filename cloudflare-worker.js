@@ -278,15 +278,15 @@ const HTML = `<!doctype html>
     .roadmap-matrix-controls h3 { margin:0; font-size:16px; }
     .roadmap-matrix-switches { display:flex; flex-wrap:wrap; gap:8px; }
     .roadmap-matrix-wrap { overflow:auto; border:1px solid var(--line); background:#fff; }
-    .roadmap-matrix { display:grid; width:100%; min-width:930px; }
-    .roadmap-matrix-head, .roadmap-matrix-row-title, .roadmap-matrix-cell { border-bottom:1px solid var(--line); border-left:1px solid var(--line); padding:7px; min-height:62px; text-align:right; direction:rtl; }
+    .roadmap-matrix { display:grid; width:100%; min-width:980px; }
+    .roadmap-matrix-head, .roadmap-matrix-row-title, .roadmap-matrix-cell { border-bottom:1px solid var(--line); border-left:1px solid var(--line); padding:8px; min-height:74px; text-align:right; direction:rtl; }
     .roadmap-matrix-head { position:sticky; top:0; z-index:2; min-height:40px; background:#eef1f4; font-size:12px; font-weight:800; }
-    .roadmap-matrix-row-title { position:sticky; right:0; z-index:1; background:#fff; font-weight:800; }
+    .roadmap-matrix-row-title { position:sticky; right:0; z-index:1; display:flex; align-items:flex-start; background:#fff; font-weight:800; line-height:1.6; }
     .roadmap-matrix-head:first-child { position:sticky; right:0; z-index:3; }
-    .roadmap-matrix-cell { display:grid; align-content:start; gap:6px; background:#fff; }
-    .roadmap-delivery-card { display:grid; gap:3px; padding:7px; border:1px solid var(--line); border-right:3px solid var(--card-color, #8d8d8d); border-radius:6px; background:#fff; color:var(--ink); cursor:pointer; font-size:11px; line-height:1.45; text-align:right; white-space:normal; overflow-wrap:anywhere; }
+    .roadmap-matrix-cell { display:grid; align-content:start; gap:8px; background:#fff; overflow:visible; }
+    .roadmap-delivery-card { display:grid; gap:5px; padding:8px; min-height:62px; border:1px solid var(--line); border-right:4px solid var(--card-color, #8d8d8d); border-radius:6px; background:#fff; color:var(--ink); cursor:pointer; font-size:11px; line-height:1.45; text-align:right; white-space:normal; overflow-wrap:anywhere; }
     .roadmap-delivery-card:hover { border-color:var(--accent); background:#f8fbfd; }
-    .roadmap-delivery-card strong { font-size:12px; line-height:1.4; }
+    .roadmap-delivery-card strong { display:block; font-size:12px; line-height:1.55; }
     .roadmap-card-meta { color:var(--muted); }
     .roadmap-status-badge, .roadmap-confidence-badge { display:inline-flex; align-items:center; width:max-content; min-height:20px; padding:0 7px; border-radius:999px; border:1px solid var(--line); background:#f4f4f4; color:var(--muted); font-size:10px; font-weight:800; }
     .roadmap-status-badge.status-delivered { color:#0e7a3d; background:#e6f6ec; border-color:#b7e2c5; }
@@ -297,11 +297,13 @@ const HTML = `<!doctype html>
     .roadmap-dep-dot { display:inline-flex; align-items:center; width:max-content; min-height:20px; padding:0 7px; border-radius:999px; border:1px solid var(--line); background:#f4f4f4; color:var(--muted); font-size:10px; font-weight:800; }
     .roadmap-dep-dot.yellow { color:#8a5a00; background:#fff4d6; border-color:#ffd43b; }
     .roadmap-dep-dot.red { color:#a2191f; background:#fff1f1; border-color:#ffb3b8; }
-    .roadmap-exec-section { display:grid; gap:8px; padding-top:4px; }
+    .roadmap-exec-section { display:grid; gap:10px; padding-top:4px; }
     .roadmap-exec-section h3 { margin:0; font-size:15px; }
-    .roadmap-compact-table { border:1px solid var(--line); overflow:auto; }
-    .roadmap-compact-table table { margin:0; box-shadow:none; border:0; table-layout:auto; min-width:720px; }
-    .roadmap-compact-table th, .roadmap-compact-table td { height:auto; padding:8px 10px; font-size:12px; white-space:normal; }
+    .roadmap-compact-table { display:grid; gap:8px; }
+    .roadmap-summary-list { display:grid; gap:8px; }
+    .roadmap-summary-item { display:grid; grid-template-columns:minmax(220px, 1.4fr) repeat(4, minmax(110px, .8fr)) auto; gap:10px; align-items:center; padding:10px 12px; border:1px solid var(--line); background:#fff; direction:rtl; text-align:right; }
+    .roadmap-summary-item strong { line-height:1.5; }
+    .roadmap-summary-meta { color:var(--muted); font-size:12px; line-height:1.5; }
     .roadmap-drawer-backdrop { position:fixed; inset:0; z-index:1001; display:none; background:rgba(22,22,22,.28); }
     .roadmap-drawer-backdrop.open { display:block; }
     .roadmap-drawer { position:absolute; top:0; right:0; width:min(520px, 100%); height:100%; display:flex; flex-direction:column; background:#fff; border-left:1px solid var(--line); box-shadow:-18px 0 50px rgba(0,0,0,.18); direction:rtl; }
@@ -3945,12 +3947,10 @@ const HTML = `<!doctype html>
       const depHealth = roadmapDependencyHealth(item);
       const color = stableColor((item.product_id ? "product:" + item.product_id : "team:" + item.team_id) || item.title);
       return \`<button class="roadmap-delivery-card status-\${esc(statusKey)} \${roadmapIsOverdue(item) ? "is-overdue" : ""}" type="button" data-roadmap-open="\${esc(item.id)}" style="--card-color:\${esc(color)}">
-        <span class="roadmap-status-badge">\${esc(roadmapStatusText(item))}</span>
         <strong>\${esc(item.title || "-")}</strong>
-        <span class="roadmap-card-meta">\${esc(roadmapDeliveryText(item))} · \${esc(roadmapItemTeamName(item, teams))}</span>
-        <span class="roadmap-card-meta">\${esc(roadmapItemProductName(item, products))}</span>
-        <span class="roadmap-confidence-badge">Confidence: \${esc(roadmapConfidenceText(roadmapConfidence(item)))}</span>
-        \${depHealth.key !== "green" ? \`<span class="roadmap-dep-dot \${esc(depHealth.key)}">\${esc(depHealth.label)}</span>\` : ""}
+        <span class="roadmap-card-meta">\${esc(roadmapItemTeamName(item, teams))}</span>
+        <span class="roadmap-status-badge">\${esc(roadmapStatusText(item))}</span>
+        \${depHealth.key !== "green" ? \`<span class="roadmap-dep-dot \${esc(depHealth.key)}">Dependency</span>\` : ""}
         \${roadmapIsOverdue(item) ? '<span class="roadmap-dep-dot red">Overdue</span>' : ""}
       </button>\`;
     }
@@ -3986,19 +3986,22 @@ const HTML = `<!doctype html>
         const cellItems = cells.get(column.key) || [];
         return \`<div class="roadmap-matrix-cell">\${cellItems.map((item) => roadmapCardHtml(item, products, teams)).join("") || '<span class="thread-muted">-</span>'}</div>\`;
       }).join("")}\`).join("");
-      const columnMin = granularity === "biweekly" ? 124 : 104;
-      roadmapMatrixEl.innerHTML = \`<div class="roadmap-matrix" style="grid-template-columns:minmax(150px, .9fr) repeat(\${columns.length}, minmax(\${columnMin}px, 1fr))">\${header}\${body || \`<div class="empty" style="grid-column:1 / -1">موردی مطابق فیلترها نیست</div>\`}</div>\`;
+      const columnMin = granularity === "biweekly" ? 130 : 150;
+      roadmapMatrixEl.innerHTML = \`<div class="roadmap-matrix" style="grid-template-columns:minmax(180px, .95fr) repeat(\${columns.length}, minmax(\${columnMin}px, 1fr))">\${header}\${body || \`<div class="empty" style="grid-column:1 / -1">موردی مطابق فیلترها نیست</div>\`}</div>\`;
     }
     function renderRoadmapCompactTable(targetEl, rows, emptyText) {
       if (!targetEl) return;
-      targetEl.innerHTML = \`<table><thead><tr><th>Delivery</th><th>Owner / Team</th><th>Target</th><th>Status</th><th>Risk</th><th>جزئیات</th></tr></thead><tbody>\${rows.map((item) => \`<tr>
-        <td>\${esc(item.title || "-")}</td>
-        <td>\${esc(item.owner_email || "-")}<br><span class="thread-muted">\${esc(roadmapItemTeamName(item, roadmapTeams))}</span></td>
-        <td>\${esc(roadmapDeliveryText(item))}</td>
-        <td><span class="roadmap-status-badge">\${esc(roadmapStatusText(item))}</span></td>
-        <td>\${esc(roadmapDependencyHealth(item).label)}</td>
-        <td><button class="details-button" type="button" data-roadmap-open="\${esc(item.id)}">جزئیات</button></td>
-      </tr>\`).join("") || \`<tr><td colspan="6" class="empty">\${esc(emptyText)}</td></tr>\`}</tbody></table>\`;
+      targetEl.innerHTML = rows.length ? \`<div class="roadmap-summary-list">\${rows.map((item) => {
+        const health = roadmapDependencyHealth(item);
+        return \`<article class="roadmap-summary-item">
+          <div><strong>\${esc(item.title || "-")}</strong><div class="roadmap-summary-meta">\${esc(roadmapItemProductName(item, roadmapProducts))}</div></div>
+          <div class="roadmap-summary-meta">\${esc(item.owner_email || "-")}<br>\${esc(roadmapItemTeamName(item, roadmapTeams))}</div>
+          <div>\${esc(roadmapDeliveryText(item))}</div>
+          <div><span class="roadmap-status-badge">\${esc(roadmapStatusText(item))}</span></div>
+          <div><span class="roadmap-health \${esc(health.key)}">\${esc(health.label)}</span></div>
+          <button class="details-button" type="button" data-roadmap-open="\${esc(item.id)}">جزئیات</button>
+        </article>\`;
+      }).join("")}</div>\` : \`<div class="empty">\${esc(emptyText)}</div>\`;
     }
     function renderRoadmapExecutiveSections(filteredItems) {
       const next30 = filteredItems.filter((item) => roadmapIsUpcoming(item)).slice(0, 8);
