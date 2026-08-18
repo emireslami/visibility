@@ -3696,7 +3696,12 @@ const HTML = `<!doctype html>
     }
     function roadmapDependencyPins(items, products, selectedProductId, selectedTeamId) {
       const selectedProductIds = productLineageIds(products, selectedProductId);
+      const visibleItemIds = new Set(items.map((item) => String(item.id)));
       return items.flatMap((item) => (item.dependencies || []).map((dep) => ({ item, dep })))
+        .filter(({ dep }) => {
+          const providerId = String(dep.provider_roadmap_id || dep.roadmap_id || "");
+          return !providerId || !visibleItemIds.has(providerId);
+        })
         .filter(({ dep }) => !selectedTeamId || String(dep.team_id || "") === String(selectedTeamId))
         .filter(({ dep }) => !selectedProductIds.size || selectedProductIds.has(String(dep.product_id || "")) || selectedProductIds.has(String(dep.subproduct_id || "")))
         .map(({ item, dep }) => ({
