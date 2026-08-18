@@ -265,6 +265,53 @@ const HTML = `<!doctype html>
     .roadmap-progress { display:grid; gap:4px; min-width:90px; }
     .roadmap-progress-bar { height:7px; border-radius:999px; background:#e5e7eb; overflow:hidden; }
     .roadmap-progress-bar span { display:block; height:100%; background:var(--accent); }
+    .roadmap-dashboard { display:grid; gap:16px; margin:16px 0 18px; }
+    .roadmap-kpis { display:grid; grid-template-columns:repeat(4, minmax(120px, 1fr)); gap:10px; }
+    .roadmap-kpi { min-height:74px; padding:12px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--ink); text-align:right; cursor:pointer; }
+    .roadmap-kpi strong { display:block; margin-top:6px; font-size:24px; direction:ltr; }
+    .roadmap-kpi span { color:var(--muted); font-size:12px; }
+    .roadmap-kpi.active { border-color:var(--accent); box-shadow:inset -3px 0 0 var(--accent); }
+    .roadmap-filter-bar { display:grid; grid-template-columns:repeat(4, minmax(130px, 1fr)); gap:8px; align-items:start; padding:12px; border:1px solid var(--line); background:#fbfcfd; }
+    .roadmap-filter-bar select[multiple] { min-height:74px; padding:6px; }
+    .roadmap-filter-bar input, .roadmap-filter-bar select { min-width:0; }
+    .roadmap-matrix-controls { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; }
+    .roadmap-matrix-controls h3 { margin:0; font-size:16px; }
+    .roadmap-matrix-switches { display:flex; flex-wrap:wrap; gap:8px; }
+    .roadmap-matrix-wrap { overflow:auto; border:1px solid var(--line); background:#fff; }
+    .roadmap-matrix { display:grid; width:100%; min-width:860px; }
+    .roadmap-matrix-head, .roadmap-matrix-row-title, .roadmap-matrix-cell { border-bottom:1px solid var(--line); border-left:1px solid var(--line); padding:8px; min-height:58px; text-align:right; direction:rtl; }
+    .roadmap-matrix-head { position:sticky; top:0; z-index:2; min-height:40px; background:#eef1f4; font-size:12px; font-weight:800; }
+    .roadmap-matrix-row-title { position:sticky; right:0; z-index:1; background:#fff; font-weight:800; }
+    .roadmap-matrix-head:first-child { position:sticky; right:0; z-index:3; }
+    .roadmap-matrix-cell { display:grid; align-content:start; gap:6px; background:#fff; }
+    .roadmap-delivery-card { display:grid; gap:4px; padding:8px; border:1px solid var(--line); border-right:3px solid var(--card-color, #8d8d8d); border-radius:6px; background:#fff; color:var(--ink); cursor:pointer; font-size:11px; line-height:1.45; text-align:right; }
+    .roadmap-delivery-card:hover { border-color:var(--accent); background:#f8fbfd; }
+    .roadmap-delivery-card strong { font-size:12px; line-height:1.4; }
+    .roadmap-card-meta { color:var(--muted); }
+    .roadmap-status-badge, .roadmap-confidence-badge { display:inline-flex; align-items:center; width:max-content; min-height:20px; padding:0 7px; border-radius:999px; border:1px solid var(--line); background:#f4f4f4; color:var(--muted); font-size:10px; font-weight:800; }
+    .roadmap-status-badge.status-delivered { color:#0e7a3d; background:#e6f6ec; border-color:#b7e2c5; }
+    .roadmap-status-badge.status-at_risk { color:#8a4b00; background:#fff4e5; border-color:#ffd8a8; }
+    .roadmap-status-badge.status-blocked { color:#a2191f; background:#fff1f1; border-color:#ffb3b8; }
+    .roadmap-status-badge.status-on_track { color:#0f62fe; background:#edf5ff; border-color:#bad8ff; }
+    .roadmap-status-badge.status-overdue { color:#a2191f; background:#fff1f1; border-color:#ffb3b8; }
+    .roadmap-dep-dot { display:inline-flex; align-items:center; width:max-content; min-height:20px; padding:0 7px; border-radius:999px; border:1px solid var(--line); background:#f4f4f4; color:var(--muted); font-size:10px; font-weight:800; }
+    .roadmap-dep-dot.yellow { color:#8a5a00; background:#fff4d6; border-color:#ffd43b; }
+    .roadmap-dep-dot.red { color:#a2191f; background:#fff1f1; border-color:#ffb3b8; }
+    .roadmap-exec-section { display:grid; gap:8px; padding-top:4px; }
+    .roadmap-exec-section h3 { margin:0; font-size:15px; }
+    .roadmap-compact-table { border:1px solid var(--line); overflow:auto; }
+    .roadmap-compact-table table { margin:0; box-shadow:none; border:0; table-layout:auto; min-width:720px; }
+    .roadmap-compact-table th, .roadmap-compact-table td { height:auto; padding:8px 10px; font-size:12px; white-space:normal; }
+    .roadmap-drawer-backdrop { position:fixed; inset:0; z-index:1001; display:none; background:rgba(22,22,22,.28); }
+    .roadmap-drawer-backdrop.open { display:block; }
+    .roadmap-drawer { position:absolute; top:0; right:0; width:min(520px, 100%); height:100%; display:flex; flex-direction:column; background:#fff; border-left:1px solid var(--line); box-shadow:-18px 0 50px rgba(0,0,0,.18); direction:rtl; }
+    .roadmap-drawer-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; border-bottom:1px solid var(--line); }
+    .roadmap-drawer-head h2 { margin:0; font-size:17px; }
+    .roadmap-drawer-body { padding:16px; overflow:auto; display:grid; gap:14px; }
+    .roadmap-drawer-section { display:grid; gap:8px; padding:12px; border:1px solid var(--line); border-radius:6px; background:#fbfcfd; }
+    .roadmap-drawer-section h3 { margin:0; font-size:13px; }
+    .roadmap-drawer-grid { display:grid; grid-template-columns:130px minmax(0, 1fr); gap:8px; font-size:12px; }
+    .roadmap-drawer-label { color:var(--muted); font-weight:800; }
     .roadmap-path { margin:16px 0 18px; padding:14px; border:1px solid var(--line); background:#fff; overflow:auto; }
     .roadmap-path-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
     .roadmap-path-head h3 { margin:0; font-size:16px; }
@@ -956,16 +1003,53 @@ const HTML = `<!doctype html>
           </div>
         </form>
         <div class="roadmap-message" id="roadmapMessage"></div>
-        <section class="roadmap-path" aria-label="نمای مسیر راه">
-          <div class="roadmap-path-head">
-            <h3>نمای مسیر راه</h3>
-            <span class="roadmap-path-note">شهریور تا اسفند، ۲۸ نقطه هفتگی</span>
+        <section class="roadmap-dashboard" aria-label="Executive Delivery Dashboard">
+          <div class="roadmap-kpis" id="roadmapKpis"></div>
+          <div class="roadmap-filter-bar">
+            <select id="roadmapFilterProduct" multiple aria-label="فیلتر محصول"></select>
+            <select id="roadmapFilterInitiative" multiple aria-label="فیلتر Initiative"></select>
+            <select id="roadmapFilterTeam" multiple aria-label="فیلتر تیم"></select>
+            <select id="roadmapFilterOwner" multiple aria-label="فیلتر مالک"></select>
+            <select id="roadmapFilterStatus" multiple aria-label="فیلتر وضعیت"></select>
+            <select id="roadmapFilterConfidence" multiple aria-label="فیلتر Confidence"></select>
+            <select id="roadmapFilterRange" aria-label="بازه زمانی">
+              <option value="all">شهریور تا اسفند</option>
+              <option value="next30">۳۰ روز آینده</option>
+              <option value="next60">۶۰ روز آینده</option>
+              <option value="next90">۹۰ روز آینده</option>
+              <option value="risk">Risk / Blocked</option>
+              <option value="done">Delivered</option>
+            </select>
+            <input id="roadmapSearch" type="search" placeholder="Search Delivery" autocomplete="off" />
           </div>
-          <div class="roadmap-path-filters">
-            <select id="roadmapTimelineProduct" aria-label="فیلتر محصول مسیر راه"></select>
-            <select id="roadmapTimelineTeam" aria-label="فیلتر تیم مسیر راه"></select>
+          <div class="roadmap-matrix-controls">
+            <h3>Roadmap Matrix</h3>
+            <div class="roadmap-matrix-switches">
+              <select id="roadmapMatrixRows" aria-label="محور عمودی">
+                <option value="initiative_product">Initiative / Product</option>
+                <option value="product">Product</option>
+                <option value="initiative">Initiative</option>
+                <option value="team">Team</option>
+              </select>
+              <select id="roadmapMatrixGranularity" aria-label="نمای زمانی">
+                <option value="month">Month</option>
+                <option value="biweekly">Biweekly</option>
+              </select>
+            </div>
           </div>
-          <div class="roadmap-timeline" id="roadmapTimeline"></div>
+          <div class="roadmap-matrix-wrap" id="roadmapMatrix"></div>
+          <section class="roadmap-exec-section">
+            <h3>Next 30 Days</h3>
+            <div class="roadmap-compact-table" id="roadmapNext30"></div>
+          </section>
+          <section class="roadmap-exec-section">
+            <h3>Risks & Dependencies</h3>
+            <div class="roadmap-compact-table" id="roadmapRisks"></div>
+          </section>
+          <section class="roadmap-exec-section">
+            <h3>Recently Delivered</h3>
+            <div class="roadmap-compact-table" id="roadmapDelivered"></div>
+          </section>
         </section>
         <table class="roadmap-table">
           <colgroup>
@@ -1431,6 +1515,35 @@ const HTML = `<!doctype html>
     const roadmapFullTimelineEl = document.getElementById("roadmapFullTimeline");
     const roadmapFullTimelineProductEl = document.getElementById("roadmapFullTimelineProduct");
     const roadmapFullTimelineTeamEl = document.getElementById("roadmapFullTimelineTeam");
+    const roadmapKpisEl = document.getElementById("roadmapKpis");
+    const roadmapFilterProductEl = document.getElementById("roadmapFilterProduct");
+    const roadmapFilterInitiativeEl = document.getElementById("roadmapFilterInitiative");
+    const roadmapFilterTeamEl = document.getElementById("roadmapFilterTeam");
+    const roadmapFilterOwnerEl = document.getElementById("roadmapFilterOwner");
+    const roadmapFilterStatusEl = document.getElementById("roadmapFilterStatus");
+    const roadmapFilterConfidenceEl = document.getElementById("roadmapFilterConfidence");
+    const roadmapFilterRangeEl = document.getElementById("roadmapFilterRange");
+    const roadmapSearchEl = document.getElementById("roadmapSearch");
+    const roadmapMatrixRowsEl = document.getElementById("roadmapMatrixRows");
+    const roadmapMatrixGranularityEl = document.getElementById("roadmapMatrixGranularity");
+    const roadmapMatrixEl = document.getElementById("roadmapMatrix");
+    const roadmapNext30El = document.getElementById("roadmapNext30");
+    const roadmapRisksEl = document.getElementById("roadmapRisks");
+    const roadmapDeliveredEl = document.getElementById("roadmapDelivered");
+    document.body.insertAdjacentHTML("beforeend", \`
+      <div class="roadmap-drawer-backdrop" id="roadmapDrawerBackdrop">
+        <aside class="roadmap-drawer" role="dialog" aria-modal="true" aria-labelledby="roadmapDrawerTitle">
+          <div class="roadmap-drawer-head">
+            <h2 id="roadmapDrawerTitle">Delivery</h2>
+            <button class="modal-close" id="roadmapDrawerClose" type="button" aria-label="بستن">×</button>
+          </div>
+          <div class="roadmap-drawer-body" id="roadmapDrawerBody"></div>
+        </aside>
+      </div>\`);
+    const roadmapDrawerBackdropEl = document.getElementById("roadmapDrawerBackdrop");
+    const roadmapDrawerTitleEl = document.getElementById("roadmapDrawerTitle");
+    const roadmapDrawerBodyEl = document.getElementById("roadmapDrawerBody");
+    const roadmapDrawerCloseEl = document.getElementById("roadmapDrawerClose");
     const productFormEl = document.getElementById("productForm");
     const productNameEl = document.getElementById("productName");
     const productKeyEl = document.getElementById("productKey");
@@ -3448,6 +3561,7 @@ const HTML = `<!doctype html>
     let roadmapProducts = [];
     let roadmapTeams = [];
     let roadmapItems = [];
+    let roadmapDashboardFilter = "";
     function productNameById(products, id) {
       const product = products.find((item) => String(item.id) === String(id || ""));
       return product?.name || "";
@@ -3668,6 +3782,223 @@ const HTML = `<!doctype html>
       const weekOffset = Math.min(3, Math.max(0, Math.ceil(parts.day / 7) - 1));
       return monthOffset * 4 + weekOffset;
     }
+    function roadmapDeliveryItems(items) {
+      const hasNonInitiative = items.some((item) => String(item.item_type || "delivery") !== "initiative");
+      return items.filter((item) => String(item.status || "") !== "canceled")
+        .filter((item) => !hasNonInitiative || String(item.item_type || "delivery") !== "initiative");
+    }
+    function roadmapStatusKey(item) {
+      const value = String(item?.status || "not_started");
+      if (value === "delivered") return "done";
+      if (value === "on_track" || value === "in_progress") return "in_progress";
+      if (value === "at_risk") return "at_risk";
+      if (value === "blocked") return "blocked";
+      return "planned";
+    }
+    function roadmapStatusText(item) {
+      return {
+        planned: "Planned",
+        in_progress: "In Progress",
+        at_risk: "At Risk",
+        blocked: "Blocked",
+        done: "Done",
+      }[roadmapStatusKey(item)] || roadmapStatusLabel(item?.status);
+    }
+    function roadmapConfidence(item) {
+      const risk = String(item?.risk || "medium");
+      if (risk === "low") return "high";
+      if (risk === "high" || risk === "critical") return "low";
+      return "medium";
+    }
+    function roadmapConfidenceText(value) {
+      return { high: "High", medium: "Medium", low: "Low" }[String(value || "")] || "Medium";
+    }
+    function roadmapItemSlot(item) {
+      return roadmapSlotIndex(item?.delivery_month, item?.delivery_week);
+    }
+    function roadmapCurrentSlot() {
+      const now = new Date();
+      const parts = persianMonthDay(now.toISOString().slice(0, 10));
+      if (!parts || parts.month < 6 || parts.month > 12) return 0;
+      return (parts.month - 6) * 4 + Math.min(3, Math.max(0, Math.ceil(parts.day / 7) - 1));
+    }
+    function roadmapIsUpcoming(item, slots = 4) {
+      if (roadmapStatusKey(item) === "done") return false;
+      const slot = roadmapItemSlot(item);
+      if (slot === null) return false;
+      const current = roadmapCurrentSlot();
+      return slot >= current && slot <= current + slots;
+    }
+    function roadmapIsOverdue(item) {
+      if (roadmapStatusKey(item) === "done") return false;
+      const slot = roadmapItemSlot(item);
+      if (slot === null) return false;
+      return slot < roadmapCurrentSlot();
+    }
+    function roadmapItemProductName(item, products) {
+      return productNameById(products, item.subproduct_id || item.product_id) || productNameById(products, item.product_id) || "-";
+    }
+    function roadmapItemTeamName(item, teams) {
+      return teams.find((team) => String(team.id) === String(item.team_id))?.name || "-";
+    }
+    function roadmapItemInitiativeName(item, items) {
+      if (String(item.item_type || "") === "initiative") return item.title || "Initiative";
+      const initiative = items.find((candidate) => String(candidate.id) === String(item.initiative_id));
+      if (initiative?.title) return initiative.title;
+      const major = items.find((candidate) => String(candidate.id) === String(item.major_delivery_id));
+      return major?.title || "بدون Initiative";
+    }
+    function roadmapDependencyHealth(item) {
+      const deps = Array.isArray(item?.dependencies) ? item.dependencies : [];
+      if (deps.some((dep) => dependencyHealth(dep).key === "red")) return { key: "red", label: "Blocked Dependency" };
+      if (deps.some((dep) => dependencyHealth(dep).key === "yellow")) return { key: "yellow", label: "Dependency Risk" };
+      return { key: "green", label: "Healthy" };
+    }
+    function selectedValues(select) {
+      return Array.from(select?.selectedOptions || []).map((option) => option.value).filter(Boolean);
+    }
+    function setSelectOptions(select, options, selected = []) {
+      if (!select) return;
+      const selectedSet = new Set(selected.map(String));
+      select.innerHTML = options.map((option) => \`<option value="\${esc(option.value)}" \${selectedSet.has(String(option.value)) ? "selected" : ""}>\${esc(option.label)}</option>\`).join("");
+    }
+    function roadmapPeriodColumns(granularity) {
+      if (granularity === "biweekly") {
+        return roadmapPathMonths.flatMap((month) => [
+          { key: "m" + month.index + "-h1", label: month.label + " ۱-۲" },
+          { key: "m" + month.index + "-h2", label: month.label + " ۳-۴" },
+        ]);
+      }
+      return roadmapPathMonths.map((month) => ({ key: "m" + month.index, label: month.label }));
+    }
+    function roadmapPeriodKey(item, granularity) {
+      const month = Number(item?.delivery_month);
+      const week = Number(item?.delivery_week);
+      if (!(month >= 6 && month <= 12)) return "outside";
+      if (granularity === "biweekly") return "m" + month + "-h" + (week <= 2 ? "1" : "2");
+      return "m" + month;
+    }
+    function roadmapRowKey(item, items, products, teams, mode) {
+      if (mode === "product") return roadmapItemProductName(item, products);
+      if (mode === "initiative") return roadmapItemInitiativeName(item, items);
+      if (mode === "team") return roadmapItemTeamName(item, teams);
+      return roadmapItemInitiativeName(item, items) + " / " + roadmapItemProductName(item, products);
+    }
+    function roadmapPopulateDashboardFilters(items, products, teams) {
+      const deliveryItems = roadmapDeliveryItems(items);
+      setSelectOptions(roadmapFilterProductEl, products.map((product) => ({ value: product.id, label: product.parent_id ? "زیرمحصول: " + (product.name || product.product_key || product.id) : product.name || product.product_key || product.id })), selectedValues(roadmapFilterProductEl));
+      const initiativeOptions = [...new Set(deliveryItems.map((item) => roadmapItemInitiativeName(item, items)).filter(Boolean))]
+        .map((label) => ({ value: label, label }));
+      setSelectOptions(roadmapFilterInitiativeEl, initiativeOptions, selectedValues(roadmapFilterInitiativeEl));
+      setSelectOptions(roadmapFilterTeamEl, teams.map((team) => ({ value: team.id, label: team.name || team.id })), selectedValues(roadmapFilterTeamEl));
+      const ownerOptions = [...new Set(deliveryItems.map((item) => item.owner_email).filter(Boolean))]
+        .map((email) => ({ value: email, label: email }));
+      setSelectOptions(roadmapFilterOwnerEl, ownerOptions, selectedValues(roadmapFilterOwnerEl));
+      setSelectOptions(roadmapFilterStatusEl, ["planned", "in_progress", "at_risk", "blocked", "done"].map((key) => ({ value: key, label: { planned:"Planned", in_progress:"In Progress", at_risk:"At Risk", blocked:"Blocked", done:"Done" }[key] })), selectedValues(roadmapFilterStatusEl));
+      setSelectOptions(roadmapFilterConfidenceEl, ["high", "medium", "low"].map((key) => ({ value: key, label: roadmapConfidenceText(key) })), selectedValues(roadmapFilterConfidenceEl));
+    }
+    function roadmapFilteredDashboardItems(items, products, teams) {
+      let deliveryItems = roadmapDeliveryItems(items);
+      const productIds = selectedValues(roadmapFilterProductEl);
+      const initiativeNames = selectedValues(roadmapFilterInitiativeEl);
+      const teamIds = selectedValues(roadmapFilterTeamEl);
+      const owners = selectedValues(roadmapFilterOwnerEl);
+      const statuses = selectedValues(roadmapFilterStatusEl);
+      const confidences = selectedValues(roadmapFilterConfidenceEl);
+      const range = roadmapFilterRangeEl?.value || "all";
+      const query = String(roadmapSearchEl?.value || "").trim().toLowerCase();
+      if (productIds.length) deliveryItems = deliveryItems.filter((item) => productIds.some((productId) => roadmapItemMatchesProduct(item, products, productId)));
+      if (initiativeNames.length) deliveryItems = deliveryItems.filter((item) => initiativeNames.includes(roadmapItemInitiativeName(item, items)));
+      if (teamIds.length) deliveryItems = deliveryItems.filter((item) => teamIds.includes(String(item.team_id || "")));
+      if (owners.length) deliveryItems = deliveryItems.filter((item) => owners.includes(String(item.owner_email || "")));
+      if (statuses.length) deliveryItems = deliveryItems.filter((item) => statuses.includes(roadmapStatusKey(item)));
+      if (confidences.length) deliveryItems = deliveryItems.filter((item) => confidences.includes(roadmapConfidence(item)));
+      if (range === "next30" || roadmapDashboardFilter === "upcoming") deliveryItems = deliveryItems.filter((item) => roadmapIsUpcoming(item, 4));
+      if (range === "next60") deliveryItems = deliveryItems.filter((item) => roadmapIsUpcoming(item, 8));
+      if (range === "next90") deliveryItems = deliveryItems.filter((item) => roadmapIsUpcoming(item, 12));
+      if (range === "risk" || roadmapDashboardFilter === "risk") deliveryItems = deliveryItems.filter((item) => ["at_risk", "blocked"].includes(roadmapStatusKey(item)) || roadmapDependencyHealth(item).key !== "green");
+      if (range === "done" || roadmapDashboardFilter === "delivered") deliveryItems = deliveryItems.filter((item) => roadmapStatusKey(item) === "done");
+      if (roadmapDashboardFilter === "blocked") deliveryItems = deliveryItems.filter((item) => roadmapStatusKey(item) === "blocked" || roadmapDependencyHealth(item).key === "red");
+      if (query) {
+        deliveryItems = deliveryItems.filter((item) => [item.title, item.description, item.owner_email, roadmapItemProductName(item, products), roadmapItemTeamName(item, teams), roadmapItemInitiativeName(item, items)]
+          .some((value) => String(value || "").toLowerCase().includes(query)));
+      }
+      return deliveryItems.sort((left, right) => (roadmapItemSlot(left) ?? 999) - (roadmapItemSlot(right) ?? 999));
+    }
+    function roadmapCardHtml(item, products, teams) {
+      const statusKey = roadmapStatusKey(item);
+      const depHealth = roadmapDependencyHealth(item);
+      const color = stableColor((item.product_id ? "product:" + item.product_id : "team:" + item.team_id) || item.title);
+      return \`<button class="roadmap-delivery-card status-\${esc(statusKey)} \${roadmapIsOverdue(item) ? "is-overdue" : ""}" type="button" data-roadmap-open="\${esc(item.id)}" style="--card-color:\${esc(color)}">
+        <span class="roadmap-status-badge">\${esc(roadmapStatusText(item))}</span>
+        <strong>\${esc(item.title || "-")}</strong>
+        <span class="roadmap-card-meta">\${esc(roadmapDeliveryText(item))} · \${esc(roadmapItemTeamName(item, teams))}</span>
+        <span class="roadmap-card-meta">\${esc(roadmapItemProductName(item, products))}</span>
+        <span class="roadmap-confidence-badge">Confidence: \${esc(roadmapConfidenceText(roadmapConfidence(item)))}</span>
+        \${depHealth.key !== "green" ? \`<span class="roadmap-dep-dot \${esc(depHealth.key)}">\${esc(depHealth.label)}</span>\` : ""}
+        \${roadmapIsOverdue(item) ? '<span class="roadmap-dep-dot red">Overdue</span>' : ""}
+      </button>\`;
+    }
+    function renderRoadmapKpis(allItems) {
+      if (!roadmapKpisEl) return;
+      const deliveries = roadmapDeliveryItems(allItems);
+      const upcoming = deliveries.filter((item) => roadmapIsUpcoming(item)).length;
+      const risk = deliveries.filter((item) => roadmapStatusKey(item) === "at_risk" || roadmapDependencyHealth(item).key === "yellow").length;
+      const blocked = deliveries.filter((item) => roadmapStatusKey(item) === "blocked" || roadmapDependencyHealth(item).key === "red").length;
+      const delivered = deliveries.filter((item) => roadmapStatusKey(item) === "done").length;
+      const cards = [
+        ["upcoming", "Upcoming Deliveries", upcoming],
+        ["risk", "At Risk", risk],
+        ["blocked", "Blocked", blocked],
+        ["delivered", "Delivered", delivered],
+      ];
+      roadmapKpisEl.innerHTML = cards.map(([key, label, value]) => \`<button class="roadmap-kpi \${roadmapDashboardFilter === key ? "active" : ""}" type="button" data-roadmap-kpi="\${key}"><span>\${esc(label)}</span><strong>\${numberFmt.format(value)}</strong></button>\`).join("");
+    }
+    function renderRoadmapMatrix(items, products, teams) {
+      if (!roadmapMatrixEl) return;
+      const granularity = roadmapMatrixGranularityEl?.value || "month";
+      const rowMode = roadmapMatrixRowsEl?.value || "initiative_product";
+      const columns = roadmapPeriodColumns(granularity);
+      const rows = new Map();
+      items.forEach((item) => {
+        const rowKey = roadmapRowKey(item, roadmapItems, products, teams, rowMode);
+        if (!rows.has(rowKey)) rows.set(rowKey, new Map(columns.map((column) => [column.key, []])));
+        const key = roadmapPeriodKey(item, granularity);
+        if (rows.get(rowKey).has(key)) rows.get(rowKey).get(key).push(item);
+      });
+      const header = \`<div class="roadmap-matrix-head">محور</div>\${columns.map((column) => \`<div class="roadmap-matrix-head">\${esc(column.label)}</div>\`).join("")}\`;
+      const body = [...rows.entries()].map(([rowKey, cells]) => \`<div class="roadmap-matrix-row-title">\${esc(rowKey)}</div>\${columns.map((column) => {
+        const cellItems = cells.get(column.key) || [];
+        return \`<div class="roadmap-matrix-cell">\${cellItems.map((item) => roadmapCardHtml(item, products, teams)).join("") || '<span class="thread-muted">-</span>'}</div>\`;
+      }).join("")}\`).join("");
+      roadmapMatrixEl.innerHTML = \`<div class="roadmap-matrix" style="grid-template-columns:minmax(170px, 1.05fr) repeat(\${columns.length}, minmax(160px, 1fr))">\${header}\${body || \`<div class="empty" style="grid-column:1 / -1">موردی مطابق فیلترها نیست</div>\`}</div>\`;
+    }
+    function renderRoadmapCompactTable(targetEl, rows, emptyText) {
+      if (!targetEl) return;
+      targetEl.innerHTML = \`<table><thead><tr><th>Delivery</th><th>Owner / Team</th><th>Target</th><th>Status</th><th>Risk</th><th>جزئیات</th></tr></thead><tbody>\${rows.map((item) => \`<tr>
+        <td>\${esc(item.title || "-")}</td>
+        <td>\${esc(item.owner_email || "-")}<br><span class="thread-muted">\${esc(roadmapItemTeamName(item, roadmapTeams))}</span></td>
+        <td>\${esc(roadmapDeliveryText(item))}</td>
+        <td><span class="roadmap-status-badge">\${esc(roadmapStatusText(item))}</span></td>
+        <td>\${esc(roadmapDependencyHealth(item).label)}</td>
+        <td><button class="details-button" type="button" data-roadmap-open="\${esc(item.id)}">جزئیات</button></td>
+      </tr>\`).join("") || \`<tr><td colspan="6" class="empty">\${esc(emptyText)}</td></tr>\`}</tbody></table>\`;
+    }
+    function renderRoadmapExecutiveSections(filteredItems) {
+      const next30 = filteredItems.filter((item) => roadmapIsUpcoming(item)).slice(0, 8);
+      const risks = filteredItems.filter((item) => ["at_risk", "blocked"].includes(roadmapStatusKey(item)) || roadmapDependencyHealth(item).key !== "green").slice(0, 8);
+      const delivered = filteredItems.filter((item) => roadmapStatusKey(item) === "done").slice(0, 8);
+      renderRoadmapCompactTable(roadmapNext30El, next30, "در ۳۰ روز آینده تحویلی ثبت نشده است.");
+      renderRoadmapCompactTable(roadmapRisksEl, risks, "ریسک یا وابستگی بحرانی دیده نمی‌شود.");
+      renderRoadmapCompactTable(roadmapDeliveredEl, delivered, "تحویل‌شده‌ای ثبت نشده است.");
+    }
+    function renderRoadmapExecutiveDashboard(items, products, teams) {
+      roadmapPopulateDashboardFilters(items, products, teams);
+      renderRoadmapKpis(items);
+      const filteredItems = roadmapFilteredDashboardItems(items, products, teams);
+      renderRoadmapMatrix(filteredItems, products, teams);
+      renderRoadmapExecutiveSections(filteredItems);
+    }
     const roadmapColorPalette = ["#0f62fe", "#24a148", "#ff832b", "#8a3ffc", "#da1e28", "#007d79", "#d12771", "#6f6f6f", "#b28600", "#4589ff"];
     function stableColor(key) {
       const source = String(key || "default");
@@ -3727,12 +4058,8 @@ const HTML = `<!doctype html>
         const label = [userGroupTypeLabel(team.group_type), userGroupModeLabel(team.group_mode), team.name || team.id].filter(Boolean).join(" · ");
         return \`<option value="\${esc(team.id)}" \${String(team.id) === String(selectedTeamId || "") ? "selected" : ""}>\${esc(label)}</option>\`;
       }).join("");
-      [roadmapTimelineProductEl, roadmapFullTimelineProductEl].forEach((select) => { select.innerHTML = productOptions; });
-      [roadmapTimelineTeamEl, roadmapFullTimelineTeamEl].forEach((select) => { select.innerHTML = teamOptions; });
-      roadmapTimelineProductEl.value = selectedProductId || "";
-      roadmapFullTimelineProductEl.value = selectedProductId || "";
-      roadmapTimelineTeamEl.value = selectedTeamId || "";
-      roadmapFullTimelineTeamEl.value = selectedTeamId || "";
+      [roadmapTimelineProductEl, roadmapFullTimelineProductEl].filter(Boolean).forEach((select) => { select.innerHTML = productOptions; select.value = selectedProductId || ""; });
+      [roadmapTimelineTeamEl, roadmapFullTimelineTeamEl].filter(Boolean).forEach((select) => { select.innerHTML = teamOptions; select.value = selectedTeamId || ""; });
     }
     function renderRoadmapTimeline(targetEl, items, products, teams, filters = {}) {
       const totalPoints = 28;
@@ -3764,7 +4091,7 @@ const HTML = `<!doctype html>
           pinsByIndex.get(index).push(pin);
         }
       });
-      const laneGap = 6;
+      const laneGap = 4;
       const laneLastIndex = { delivery: [], dependency: [] };
       const scheduledPins = [...pinsByIndex.entries()].sort(([left], [right]) => left - right).flatMap(([index, list]) => list.map((pin) => {
         const laneKey = pin.kind === "dependency" ? "dependency" : "delivery";
@@ -3775,7 +4102,7 @@ const HTML = `<!doctype html>
       })).sort((left, right) => left.index - right.index || left.laneIndex - right.laneIndex);
       const maxDeliveryStack = Math.max(outside.length ? 1 : 0, laneLastIndex.delivery.length);
       const maxDependencyStack = laneLastIndex.dependency.length;
-      const stackStep = 124;
+      const stackStep = 138;
       const isFullTimeline = Boolean(targetEl.closest(".roadmap-path-page"));
       const baseTopPadding = isFullTimeline ? 280 : 240;
       const baseBottomPadding = isFullTimeline ? 118 : 102;
@@ -3810,11 +4137,99 @@ const HTML = `<!doctype html>
       targetEl.innerHTML = \`<div class="roadmap-axis">\${dotHtml}\${monthHtml}\${pinHtml}\${outsideHtml}</div>\`;
     }
     function refreshRoadmapTimelines() {
-      const productId = roadmapTimelineProductEl.value || roadmapFullTimelineProductEl.value || "";
-      const teamId = roadmapTimelineTeamEl.value || roadmapFullTimelineTeamEl.value || "";
+      const productId = roadmapTimelineProductEl?.value || roadmapFullTimelineProductEl?.value || "";
+      const teamId = roadmapTimelineTeamEl?.value || roadmapFullTimelineTeamEl?.value || "";
       roadmapTimelineOptions(roadmapProducts, roadmapTeams, productId, teamId);
-      renderRoadmapTimeline(roadmapTimelineEl, roadmapItems, roadmapProducts, roadmapTeams, { productId, teamId });
-      renderRoadmapTimeline(roadmapFullTimelineEl, roadmapItems, roadmapProducts, roadmapTeams, { productId, teamId });
+      if (roadmapTimelineEl) renderRoadmapTimeline(roadmapTimelineEl, roadmapItems, roadmapProducts, roadmapTeams, { productId, teamId });
+      if (roadmapFullTimelineEl) renderRoadmapTimeline(roadmapFullTimelineEl, roadmapItems, roadmapProducts, roadmapTeams, { productId, teamId });
+    }
+    function roadmapDrawerField(label, value) {
+      return \`<div class="roadmap-drawer-label">\${esc(label)}</div><div>\${value}</div>\`;
+    }
+    function roadmapDependenciesListHtml(item) {
+      const deps = Array.isArray(item.dependencies) ? item.dependencies : [];
+      if (!deps.length) return '<span class="thread-muted">وابستگی ثبت نشده است.</span>';
+      return deps.map((dep) => {
+        const provider = roadmapItems.find((candidate) => String(candidate.id) === String(dep.provider_roadmap_id || dep.roadmap_id));
+        const health = dependencyHealth(dep);
+        return \`<div class="roadmap-drawer-section">
+          <strong>\${esc(dep.title || provider?.title || "-")}</strong>
+          <div class="roadmap-drawer-grid">
+            \${roadmapDrawerField("Provider", esc(provider?.title || dep.title || "-"))}
+            \${roadmapDrawerField("Need-by", esc(dependencyNeedByText(dep)))}
+            \${roadmapDrawerField("Expected", esc(dependencyResolutionText(dep)))}
+            \${roadmapDrawerField("Health", \`<span class="roadmap-health \${esc(health.key)}">\${esc(health.label)}</span>\`)}
+            \${roadmapDrawerField("شرح", esc(dep.description || "-"))}
+          </div>
+        </div>\`;
+      }).join("");
+    }
+    function roadmapCheckpointsListHtml(item) {
+      const checkpoints = Array.isArray(item.checkpoints) ? item.checkpoints : [];
+      if (!checkpoints.length) return '<span class="thread-muted">چک‌پوینتی ثبت نشده است.</span>';
+      return checkpoints.map((checkpoint) => \`<div class="roadmap-drawer-grid">
+        \${roadmapDrawerField("Checkpoint", esc(checkpoint.title || "-"))}
+        \${roadmapDrawerField("Expected", esc(roadmapSlotText(checkpoint.expected_month, checkpoint.expected_week) || checkpoint.expected_date || "-"))}
+        \${roadmapDrawerField("Status", esc(roadmapStatusLabel(checkpoint.status)))}
+      </div>\`).join("");
+    }
+    function roadmapDrawerHtml(item) {
+      const initiative = roadmapItems.find((candidate) => String(candidate.id) === String(item.initiative_id));
+      const major = roadmapItems.find((candidate) => String(candidate.id) === String(item.major_delivery_id));
+      const depHealth = roadmapDependencyHealth(item);
+      return \`<section class="roadmap-drawer-section">
+        <h3>Delivery Overview</h3>
+        <div class="roadmap-drawer-grid">
+          \${roadmapDrawerField("سطح", esc(roadmapTypeLabel(item.item_type)))}
+          \${roadmapDrawerField("Initiative", esc(initiative?.title || "-"))}
+          \${roadmapDrawerField("Major Delivery", esc(major?.title || "-"))}
+          \${roadmapDrawerField("Owner", esc(item.owner_email || "-"))}
+          \${roadmapDrawerField("Team", esc(roadmapItemTeamName(item, roadmapTeams)))}
+          \${roadmapDrawerField("Product", esc(roadmapItemProductName(item, roadmapProducts)))}
+          \${roadmapDrawerField("Target", esc(roadmapDeliveryText(item)))}
+          \${roadmapDrawerField("Status", \`<span class="roadmap-status-badge">\${esc(roadmapStatusText(item))}</span>\`)}
+          \${roadmapDrawerField("Progress", esc(numberFmt.format(item.progress || 0) + "٪"))}
+          \${roadmapDrawerField("Confidence", esc(roadmapConfidenceText(roadmapConfidence(item))))}
+          \${roadmapDrawerField("Dependency Health", \`<span class="roadmap-health \${esc(depHealth.key)}">\${esc(depHealth.label)}</span>\`)}
+          \${roadmapDrawerField("Last Update", esc(item.updated_at_utc ? tehranDisplay(item.updated_at_utc) : "-"))}
+        </div>
+      </section>
+      <section class="roadmap-drawer-section">
+        <h3>Deliverable / Outcome</h3>
+        <div>\${item.description ? renderMessageContent(item.description) : '<span class="thread-muted">شرح ثبت نشده است.</span>'}</div>
+      </section>
+      <section class="roadmap-drawer-section">
+        <h3>Dependencies</h3>
+        \${roadmapDependenciesListHtml(item)}
+      </section>
+      <section class="roadmap-drawer-section">
+        <h3>افزودن وابستگی</h3>
+        <div class="roadmap-inline-form" data-roadmap-dependency-form="\${esc(item.id)}">
+          <div class="roadmap-inline-dependency-list" data-roadmap-dependency-list>
+            <div class="roadmap-dependency-row">\${roadmapDependencyRowHtml({ need_by_month: item.delivery_month, need_by_week: item.delivery_week }, false)}</div>
+          </div>
+          <div class="roadmap-inline-actions">
+            <button class="secondary-button" type="button" data-roadmap-dependency-add-row="\${esc(item.id)}">+ وابستگی</button>
+            <button class="details-button" type="button" data-roadmap-dependency-save="\${esc(item.id)}">ذخیره وابستگی</button>
+            <span class="roadmap-inline-message" data-roadmap-dependency-message></span>
+          </div>
+        </div>
+      </section>
+      <section class="roadmap-drawer-section">
+        <h3>Checkpoints</h3>
+        \${roadmapCheckpointsListHtml(item)}
+      </section>
+      \${isOwnerEmail(currentUser.email) ? \`<section class="roadmap-drawer-section"><button class="revoke-button" type="button" data-roadmap-archive="\${esc(item.id)}">آرشیو</button></section>\` : ""}\`;
+    }
+    function openRoadmapDrawer(itemId) {
+      const item = roadmapItems.find((candidate) => String(candidate.id) === String(itemId));
+      if (!item) return;
+      roadmapDrawerTitleEl.textContent = item.title || "Delivery";
+      roadmapDrawerBodyEl.innerHTML = roadmapDrawerHtml(item);
+      roadmapDrawerBackdropEl.classList.add("open");
+    }
+    function closeRoadmapDrawer() {
+      roadmapDrawerBackdropEl.classList.remove("open");
     }
     function roadmapItemDetailsHtml(item) {
       const initiative = roadmapItems.find((candidate) => String(candidate.id) === String(item.initiative_id));
@@ -3901,6 +4316,7 @@ const HTML = `<!doctype html>
       roadmapProductEl.innerHTML = roadmapProductOptions(products, roadmapProductEl.value);
       syncRoadmapSubproductOptions();
       refreshRoadmapTimelines();
+      renderRoadmapExecutiveDashboard(items, products, teams);
       detailByKey.clear();
       roadmapRowsEl.innerHTML = items.map((item, index) => {
         const key = "roadmap-" + index;
@@ -4336,19 +4752,95 @@ const HTML = `<!doctype html>
       roadmapSubproductEl.value = "";
       syncRoadmapSubproductOptions();
     });
-    [roadmapTimelineProductEl, roadmapFullTimelineProductEl].forEach((select) => {
+    [roadmapTimelineProductEl, roadmapFullTimelineProductEl].filter(Boolean).forEach((select) => {
       select.addEventListener("change", () => {
-        roadmapTimelineProductEl.value = select.value;
-        roadmapFullTimelineProductEl.value = select.value;
+        if (roadmapTimelineProductEl) roadmapTimelineProductEl.value = select.value;
+        if (roadmapFullTimelineProductEl) roadmapFullTimelineProductEl.value = select.value;
         refreshRoadmapTimelines();
       });
     });
-    [roadmapTimelineTeamEl, roadmapFullTimelineTeamEl].forEach((select) => {
+    [roadmapTimelineTeamEl, roadmapFullTimelineTeamEl].filter(Boolean).forEach((select) => {
       select.addEventListener("change", () => {
-        roadmapTimelineTeamEl.value = select.value;
-        roadmapFullTimelineTeamEl.value = select.value;
+        if (roadmapTimelineTeamEl) roadmapTimelineTeamEl.value = select.value;
+        if (roadmapFullTimelineTeamEl) roadmapFullTimelineTeamEl.value = select.value;
         refreshRoadmapTimelines();
       });
+    });
+    [roadmapFilterProductEl, roadmapFilterInitiativeEl, roadmapFilterTeamEl, roadmapFilterOwnerEl, roadmapFilterStatusEl, roadmapFilterConfidenceEl, roadmapFilterRangeEl, roadmapMatrixRowsEl, roadmapMatrixGranularityEl].filter(Boolean).forEach((control) => {
+      control.addEventListener("change", () => {
+        if (control === roadmapFilterRangeEl && control.value !== "all") roadmapDashboardFilter = "";
+        renderRoadmapExecutiveDashboard(roadmapItems, roadmapProducts, roadmapTeams);
+      });
+    });
+    roadmapSearchEl?.addEventListener("input", () => renderRoadmapExecutiveDashboard(roadmapItems, roadmapProducts, roadmapTeams));
+    roadmapKpisEl?.addEventListener("click", event => {
+      const button = event.target.closest("[data-roadmap-kpi]");
+      if (!button) return;
+      roadmapDashboardFilter = roadmapDashboardFilter === button.dataset.roadmapKpi ? "" : button.dataset.roadmapKpi;
+      if (roadmapFilterRangeEl) roadmapFilterRangeEl.value = "all";
+      renderRoadmapExecutiveDashboard(roadmapItems, roadmapProducts, roadmapTeams);
+    });
+    [roadmapMatrixEl, roadmapNext30El, roadmapRisksEl, roadmapDeliveredEl].filter(Boolean).forEach((container) => {
+      container.addEventListener("click", event => {
+        const button = event.target.closest("[data-roadmap-open]");
+        if (button) openRoadmapDrawer(button.dataset.roadmapOpen);
+      });
+    });
+    roadmapDrawerCloseEl.addEventListener("click", closeRoadmapDrawer);
+    roadmapDrawerBackdropEl.addEventListener("click", async event => {
+      if (event.target === roadmapDrawerBackdropEl) closeRoadmapDrawer();
+      const archiveButton = event.target.closest("[data-roadmap-archive]");
+      if (archiveButton && !archiveButton.disabled) {
+        await archiveRoadmapFromButton(archiveButton);
+        return;
+      }
+      const dependencyAddRowButton = event.target.closest("[data-roadmap-dependency-add-row]");
+      if (dependencyAddRowButton) {
+        const itemId = dependencyAddRowButton.dataset.roadmapDependencyAddRow;
+        const item = roadmapItems.find((candidate) => String(candidate.id) === String(itemId));
+        const list = roadmapDrawerBodyEl.querySelector('[data-roadmap-dependency-form="' + itemId + '"] [data-roadmap-dependency-list]');
+        if (list) {
+          list.insertAdjacentHTML("beforeend", \`<div class="roadmap-dependency-row">\${roadmapDependencyRowHtml({ need_by_month: item?.delivery_month, need_by_week: item?.delivery_week }, true)}</div>\`);
+        }
+        return;
+      }
+      const dependencyRemoveButton = event.target.closest(".roadmap-inline-form .roadmap-dependency-remove");
+      if (dependencyRemoveButton) {
+        dependencyRemoveButton.closest(".roadmap-dependency-row")?.remove();
+        return;
+      }
+      const dependencySaveButton = event.target.closest("[data-roadmap-dependency-save]");
+      if (dependencySaveButton && !dependencySaveButton.disabled) {
+        const itemId = dependencySaveButton.dataset.roadmapDependencySave;
+        const form = roadmapDrawerBodyEl.querySelector('[data-roadmap-dependency-form="' + itemId + '"]');
+        const messageEl = form?.querySelector("[data-roadmap-dependency-message]");
+        const dependencies = form ? collectRoadmapDependenciesFrom(form) : [];
+        if (!dependencies.length) {
+          if (messageEl) messageEl.textContent = "وابستگی را تکمیل کنید.";
+          return;
+        }
+        dependencySaveButton.disabled = true;
+        if (messageEl) messageEl.textContent = "در حال ذخیره...";
+        try {
+          const res = await fetch("/api/roadmap", {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ id: itemId, dependencies }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            if (messageEl) messageEl.textContent = data.error || data.detail || "ذخیره وابستگی انجام نشد";
+            dependencySaveButton.disabled = false;
+            return;
+          }
+          if (messageEl) messageEl.textContent = "وابستگی ذخیره شد.";
+          closeRoadmapDrawer();
+          await loadRoadmap();
+        } catch (error) {
+          if (messageEl) messageEl.textContent = "ذخیره وابستگی انجام نشد";
+          dependencySaveButton.disabled = false;
+        }
+      }
     });
     roadmapDependencyAddEl.addEventListener("click", () => addRoadmapDependencyRow());
     roadmapCheckpointAddEl.addEventListener("click", () => addRoadmapCheckpointRow());
@@ -4708,7 +5200,12 @@ const HTML = `<!doctype html>
     });
     modalCloseEl.addEventListener("click", () => closeModal());
     modalBackdropEl.addEventListener("click", event => { if (event.target === modalBackdropEl) closeModal(); });
-    document.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") {
+        closeModal();
+        closeRoadmapDrawer();
+      }
+    });
     modalBodyEl.addEventListener("click", async event => {
       const archiveButton = event.target.closest("[data-roadmap-archive]");
       if (archiveButton && !archiveButton.disabled) {
