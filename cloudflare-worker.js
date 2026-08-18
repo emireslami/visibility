@@ -247,6 +247,11 @@ const HTML = `<!doctype html>
     .roadmap-dependency-row > * { min-width:0; }
     .roadmap-dependency-description { grid-column:1 / -1; min-height:96px; padding:10px; border:1px solid var(--line); resize:vertical; font:inherit; direction:rtl; text-align:right; }
     .roadmap-dependency-remove { height:32px; padding:0; color:var(--danger); border-color:#fa4d56; background:#fff; }
+    .roadmap-inline-form { display:grid; gap:10px; margin-top:10px; padding:12px; border:1px solid var(--line); background:#fbfcfd; direction:rtl; text-align:right; }
+    .roadmap-inline-form h4 { margin:0; font-size:13px; }
+    .roadmap-inline-form .roadmap-dependency-row { grid-template-columns:repeat(3, minmax(120px, 1fr)); }
+    .roadmap-inline-actions { display:flex; align-items:center; justify-content:flex-start; gap:10px; }
+    .roadmap-inline-message { min-height:20px; color:var(--muted); font-size:12px; }
     .roadmap-message { min-height:22px; color:var(--muted); font-size:12px; margin-bottom:10px; }
     .roadmap-mini-grid { grid-column:1 / -1; display:grid; grid-template-columns:repeat(3, minmax(180px, 1fr)); gap:10px; }
     .roadmap-checkpoints { grid-column:1 / -1; display:grid; gap:10px; padding:12px; border:1px solid var(--line); background:#fff; }
@@ -3578,6 +3583,35 @@ const HTML = `<!doctype html>
         </div></div>\`;
       }).join("");
     }
+    function roadmapDependencyRowHtml(value = {}, removable = true) {
+      return \`
+        <select data-dependency-provider>\${roadmapItemOptions(roadmapItems, value.provider_roadmap_id || value.roadmap_id, ["delivery", "major"], "Provider Delivery جدید")}</select>
+        <input data-dependency-title type="text" maxlength="180" placeholder="عنوان Provider جدید" value="\${esc(value.title || "")}" />
+        <select data-dependency-need-month>\${roadmapDeliveryMonthOptions(value.need_by_month)}</select>
+        <select data-dependency-need-week>\${roadmapDeliveryWeekOptions(value.need_by_week)}</select>
+        <select data-dependency-month>\${roadmapDeliveryMonthOptions(value.expected_delivery_month || value.expected_resolution_month)}</select>
+        <select data-dependency-week>\${roadmapDeliveryWeekOptions(value.expected_delivery_week || value.expected_resolution_week)}</select>
+        <select data-dependency-product>\${roadmapProductOptions(roadmapProducts, value.product_id)}</select>
+        <select data-dependency-subproduct>\${roadmapSubproductOptions(roadmapProducts, value.product_id, value.subproduct_id)}</select>
+        <select data-dependency-team>\${roadmapTeamOptions(roadmapTeams, value.team_id)}</select>
+        \${removable ? '<button class="roadmap-dependency-remove" type="button" aria-label="حذف وابستگی">×</button>' : ""}
+        <textarea class="roadmap-dependency-description" data-dependency-description maxlength="1200" placeholder="شرح جزئیات وابستگی">\${esc(value.description || "")}</textarea>
+      \`;
+    }
+    function collectRoadmapDependenciesFrom(root) {
+      return [...root.querySelectorAll(".roadmap-dependency-row")].map((row) => ({
+        provider_roadmap_id: row.querySelector("[data-dependency-provider]")?.value || null,
+        title: row.querySelector("[data-dependency-title]")?.value.trim() || "",
+        need_by_month: row.querySelector("[data-dependency-need-month]")?.value || "",
+        need_by_week: row.querySelector("[data-dependency-need-week]")?.value || "",
+        expected_delivery_month: row.querySelector("[data-dependency-month]")?.value || "",
+        expected_delivery_week: row.querySelector("[data-dependency-week]")?.value || "",
+        product_id: row.querySelector("[data-dependency-product]")?.value || null,
+        subproduct_id: row.querySelector("[data-dependency-subproduct]")?.value || null,
+        team_id: row.querySelector("[data-dependency-team]")?.value || null,
+        description: row.querySelector("[data-dependency-description]")?.value.trim() || "",
+      })).filter((dep) => dep.provider_roadmap_id || dep.title || dep.need_by_month || dep.need_by_week || dep.expected_delivery_month || dep.expected_delivery_week || dep.product_id || dep.subproduct_id || dep.team_id || dep.description);
+    }
     const roadmapPathMonths = [
       { index: 6, label: "شهریور" },
       { index: 7, label: "مهر" },
@@ -3800,6 +3834,16 @@ const HTML = `<!doctype html>
         \${detailRow("آخرین به‌روزرسانی", item.updated_at_utc ? tehranDisplay(item.updated_at_utc) : "-")}
         \${detailRow("توضیحات", item.description || "-")}
         <div class="detail-row"><div class="detail-label">وابستگی‌ها</div><div class="detail-value">\${dependencyDetailsHtml(item.dependencies, roadmapProducts, roadmapTeams)}</div></div>
+        <div class="detail-row"><div class="detail-label">افزودن وابستگی</div><div class="detail-value">
+          <div class="roadmap-inline-form" data-roadmap-dependency-form="\${esc(item.id)}">
+            <h4>Provider Delivery → blocks → این تحویل‌دادنی</h4>
+            <div class="roadmap-dependency-row">\${roadmapDependencyRowHtml({ need_by_month: item.delivery_month, need_by_week: item.delivery_week }, false)}</div>
+            <div class="roadmap-inline-actions">
+              <button class="details-button" type="button" data-roadmap-dependency-save="\${esc(item.id)}">ذخیره وابستگی</button>
+              <span class="roadmap-inline-message" data-roadmap-dependency-message></span>
+            </div>
+          </div>
+        </div></div>
         <div class="detail-row"><div class="detail-label">Checkpointها</div><div class="detail-value">\${checkpoints.length ? checkpoints.map((checkpoint) => esc(checkpoint.title || "-") + " · " + esc(roadmapSlotText(checkpoint.expected_month, checkpoint.expected_week) || checkpoint.expected_date || "-") + " · " + esc(roadmapStatusLabel(checkpoint.status))).join("<br>") : '<span class="thread-muted">چک‌پوینتی ثبت نشده است.</span>'}</div></div>
       </div>\`;
     }
@@ -3898,34 +3942,11 @@ const HTML = `<!doctype html>
     function addRoadmapDependencyRow(value = {}) {
       const row = document.createElement("div");
       row.className = "roadmap-dependency-row";
-      row.innerHTML = \`
-        <select data-dependency-provider>\${roadmapItemOptions(roadmapItems, value.provider_roadmap_id || value.roadmap_id, ["delivery", "major"], "Provider Delivery جدید")}</select>
-        <input data-dependency-title type="text" maxlength="180" placeholder="عنوان Provider جدید" value="\${esc(value.title || "")}" />
-        <select data-dependency-need-month>\${roadmapDeliveryMonthOptions(value.need_by_month)}</select>
-        <select data-dependency-need-week>\${roadmapDeliveryWeekOptions(value.need_by_week)}</select>
-        <select data-dependency-month>\${roadmapDeliveryMonthOptions(value.expected_delivery_month || value.expected_resolution_month)}</select>
-        <select data-dependency-week>\${roadmapDeliveryWeekOptions(value.expected_delivery_week || value.expected_resolution_week)}</select>
-        <select data-dependency-product>\${roadmapProductOptions(roadmapProducts, value.product_id)}</select>
-        <select data-dependency-subproduct>\${roadmapSubproductOptions(roadmapProducts, value.product_id, value.subproduct_id)}</select>
-        <select data-dependency-team>\${roadmapTeamOptions(roadmapTeams, value.team_id)}</select>
-        <button class="roadmap-dependency-remove" type="button" aria-label="حذف وابستگی">×</button>
-        <textarea class="roadmap-dependency-description" data-dependency-description maxlength="1200" placeholder="شرح جزئیات وابستگی">\${esc(value.description || "")}</textarea>
-      \`;
+      row.innerHTML = roadmapDependencyRowHtml(value, true);
       roadmapDependencyListEl.appendChild(row);
     }
     function collectRoadmapDependencies() {
-      return [...roadmapDependencyListEl.querySelectorAll(".roadmap-dependency-row")].map((row) => ({
-        provider_roadmap_id: row.querySelector("[data-dependency-provider]")?.value || null,
-        title: row.querySelector("[data-dependency-title]")?.value.trim() || "",
-        need_by_month: row.querySelector("[data-dependency-need-month]")?.value || "",
-        need_by_week: row.querySelector("[data-dependency-need-week]")?.value || "",
-        expected_delivery_month: row.querySelector("[data-dependency-month]")?.value || "",
-        expected_delivery_week: row.querySelector("[data-dependency-week]")?.value || "",
-        product_id: row.querySelector("[data-dependency-product]")?.value || null,
-        subproduct_id: row.querySelector("[data-dependency-subproduct]")?.value || null,
-        team_id: row.querySelector("[data-dependency-team]")?.value || null,
-        description: row.querySelector("[data-dependency-description]")?.value.trim() || "",
-      })).filter((dep) => dep.provider_roadmap_id || dep.title || dep.need_by_month || dep.need_by_week || dep.expected_delivery_month || dep.expected_delivery_week || dep.product_id || dep.subproduct_id || dep.team_id || dep.description);
+      return collectRoadmapDependenciesFrom(roadmapDependencyListEl);
     }
     function addRoadmapCheckpointRow(value = {}) {
       const row = document.createElement("div");
@@ -4686,6 +4707,39 @@ const HTML = `<!doctype html>
         await archiveRoadmapFromButton(archiveButton);
         return;
       }
+      const dependencySaveButton = event.target.closest("[data-roadmap-dependency-save]");
+      if (dependencySaveButton && !dependencySaveButton.disabled) {
+        const itemId = dependencySaveButton.dataset.roadmapDependencySave;
+        const form = modalBodyEl.querySelector('[data-roadmap-dependency-form="' + itemId + '"]');
+        const messageEl = form?.querySelector("[data-roadmap-dependency-message]");
+        const dependencies = form ? collectRoadmapDependenciesFrom(form) : [];
+        if (!dependencies.length) {
+          if (messageEl) messageEl.textContent = "وابستگی را تکمیل کنید.";
+          return;
+        }
+        dependencySaveButton.disabled = true;
+        if (messageEl) messageEl.textContent = "در حال ذخیره...";
+        try {
+          const res = await fetch("/api/roadmap", {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ id: itemId, dependencies }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            if (messageEl) messageEl.textContent = data.error || data.detail || "ذخیره وابستگی انجام نشد";
+            dependencySaveButton.disabled = false;
+            return;
+          }
+          if (messageEl) messageEl.textContent = "وابستگی ذخیره شد.";
+          closeModal();
+          await loadRoadmap();
+        } catch (error) {
+          if (messageEl) messageEl.textContent = "ذخیره وابستگی انجام نشد";
+          dependencySaveButton.disabled = false;
+        }
+        return;
+      }
       const passwordToggle = event.target.closest("[data-confirm-password-toggle]");
       if (passwordToggle) {
         const input = modalBodyEl.querySelector("[data-confirm-password]");
@@ -4738,6 +4792,13 @@ const HTML = `<!doctype html>
         return;
       }
       closeModal(true);
+    });
+    modalBodyEl.addEventListener("change", event => {
+      const productSelect = event.target.closest("[data-dependency-product]");
+      if (!productSelect) return;
+      const row = productSelect.closest(".roadmap-dependency-row");
+      const subproductSelect = row?.querySelector("[data-dependency-subproduct]");
+      if (subproductSelect) subproductSelect.innerHTML = roadmapSubproductOptions(roadmapProducts, productSelect.value, "");
     });
     threadRowsEl.addEventListener("click", (event) => {
       const expand = event.target.closest("[data-thread-expand]");
@@ -9704,11 +9765,16 @@ async function updateRoadmapItem(request, env, authUser) {
   } catch (error) {
     return json({ error: error.message || "داده نقشه راه نامعتبر است" }, 400);
   }
+  const dependencyAdditions = Array.isArray(payload.dependencies_json) ? payload.dependencies_json : [];
+  if (Object.prototype.hasOwnProperty.call(payload, "dependencies_json")) delete payload.dependencies_json;
+  if (dependencyAdditions.some((dep) => Number(dep.provider_roadmap_id || dep.roadmap_id || 0) === id)) {
+    return json({ error: "تحویل‌دادنی نمی‌تواند به خودش وابسته شود" }, 400);
+  }
   if (payload.parent_roadmap_id && Number(payload.parent_roadmap_id) === id) return json({ error: "تحویل‌دادنی نمی‌تواند وابسته به خودش باشد" }, 400);
   if (payload.parent_roadmap_id && await roadmapParentCreatesCycle(env, id, payload.parent_roadmap_id)) {
     return json({ error: "زنجیره وابستگی نمی‌تواند چرخه داشته باشد" }, 400);
   }
-  if (!Object.keys(payload).length) return json({ error: "چیزی برای به‌روزرسانی ارسال نشده است" }, 400);
+  if (!Object.keys(payload).length && !dependencyAdditions.length) return json({ error: "چیزی برای به‌روزرسانی ارسال نشده است" }, 400);
   payload.updated_by_email = normalizeEmail(authUser.email);
   payload.updated_at_utc = new Date().toISOString();
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/visibility_roadmap_items?id=eq.${id}`, {
@@ -9719,6 +9785,13 @@ async function updateRoadmapItem(request, env, authUser) {
   const saved = await readSupabaseJson(response);
   if (!response.ok) return json({ error: "به‌روزرسانی نقشه راه انجام نشد", detail: saved?.message || saved || response.status }, 500);
   const item = Array.isArray(saved) ? saved[0] : saved;
+  if (dependencyAdditions.length) {
+    try {
+      await createChildRoadmapDependencies(env, item || { ...existing, ...payload }, dependencyAdditions, authUser);
+    } catch (error) {
+      return json({ error: error.message || "ثبت وابستگی‌های نقشه راه انجام نشد" }, 500);
+    }
+  }
   await insertAccessAuditLog(env, {
     actorEmail: authUser.email,
     targetEmail: item?.owner_email || existing.owner_email,
