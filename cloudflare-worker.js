@@ -322,6 +322,31 @@ const HTML = `<!doctype html>
     .roadmap-create-details summary { cursor:pointer; padding:12px 14px; font-weight:800; background:#eef1f4; }
     .roadmap-create-details .roadmap-form { margin:12px; }
     .roadmap-create-details .roadmap-message { margin:0 12px 12px; }
+    .stakeholder-panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; max-width:1180px; margin:0 auto; }
+    .stakeholder-panel h2 { margin:0 0 6px; font-size:20px; }
+    .stakeholder-summary { display:grid; grid-template-columns:repeat(4, minmax(140px, 1fr)); gap:10px; margin:16px 0; }
+    .stakeholder-kpi { padding:12px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+    .stakeholder-kpi span { color:var(--muted); font-size:12px; }
+    .stakeholder-kpi strong { display:block; margin-top:6px; font-size:24px; direction:ltr; }
+    .stakeholder-timeline { display:grid; gap:14px; }
+    .stakeholder-month { border:1px solid var(--line); background:#fff; border-radius:6px; overflow:hidden; }
+    .stakeholder-month-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; background:#eef1f4; border-bottom:1px solid var(--line); }
+    .stakeholder-month-head h3 { margin:0; font-size:17px; }
+    .stakeholder-month-count { color:var(--muted); font-size:12px; }
+    .stakeholder-weeks { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:0; }
+    .stakeholder-week { min-width:0; padding:12px; border-left:1px solid var(--line); }
+    .stakeholder-week:last-child { border-left:0; }
+    .stakeholder-week h4 { margin:0 0 10px; font-size:13px; color:var(--muted); }
+    .stakeholder-items { display:grid; gap:8px; }
+    .stakeholder-item { display:grid; gap:6px; padding:10px; border:1px solid var(--line); border-right:4px solid var(--item-color, var(--accent)); border-radius:6px; background:#fbfcfd; line-height:1.45; }
+    .stakeholder-item-title { font-weight:800; overflow-wrap:anywhere; }
+    .stakeholder-item-type { width:max-content; max-width:100%; padding:2px 7px; border-radius:999px; background:#f4f4f4; color:var(--muted); font-size:10px; font-weight:800; white-space:nowrap; }
+    .stakeholder-item.dependency { --item-color:#da1e28; }
+    .stakeholder-item.enablement { --item-color:#24a148; }
+    .stakeholder-item.product { --item-color:#0f62fe; }
+    .stakeholder-item.platform { --item-color:#8a3ffc; }
+    .stakeholder-item.reporting { --item-color:#b28600; }
+    .stakeholder-empty-week { color:var(--muted); font-size:12px; }
     .roadmap-path { margin:16px 0 18px; padding:14px; border:1px solid var(--line); background:#fff; overflow:auto; }
     .roadmap-path-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
     .roadmap-path-head h3 { margin:0; font-size:16px; }
@@ -527,8 +552,8 @@ const HTML = `<!doctype html>
     .modal-close { border-radius:0; }
     .detail-row { border-radius:0; border-color:var(--line); background:#fff; }
     .detail-label { color:#525252; }
-    .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel, .roadmap-panel, .user-groups-panel, .products-panel { border-radius:0; border-color:var(--line); box-shadow:0 1px 0 rgba(22,22,22,.04); }
-    .chart-head h2, .access-panel h2, .profile-panel h2, .bots-panel h2, .broadcast-panel h2, .roadmap-panel h2, .user-groups-panel h2, .products-panel h2 { font-size:20px; font-weight:800; }
+    .chart-panel, .analytics-panel, .access-panel, .profile-panel, .bots-panel, .broadcast-panel, .roadmap-panel, .stakeholder-panel, .user-groups-panel, .products-panel { border-radius:0; border-color:var(--line); box-shadow:0 1px 0 rgba(22,22,22,.04); }
+    .chart-head h2, .access-panel h2, .profile-panel h2, .bots-panel h2, .broadcast-panel h2, .roadmap-panel h2, .stakeholder-panel h2, .user-groups-panel h2, .products-panel h2 { font-size:20px; font-weight:800; }
     .broadcast-message-input, .broadcast-option { border-radius:0; border-color:#dfe1e6; }
     .bar-stack { border-radius:0; border-color:#c6c6c6; }
     .bar-segment { transition:filter .12s ease; }
@@ -574,6 +599,11 @@ const HTML = `<!doctype html>
       .thread-filters button { grid-column:1 / -1; }
       .multi-panel { width:min(var(--dropdown-w, 100%), calc(100vw - 28px)); max-height:45vh; z-index:1200; }
       .analytics-summary { grid-template-columns:repeat(2, minmax(120px, 1fr)); }
+      .stakeholder-panel { padding:14px; }
+      .stakeholder-summary { grid-template-columns:repeat(2, minmax(120px, 1fr)); }
+      .stakeholder-weeks { grid-template-columns:1fr; }
+      .stakeholder-week { border-left:0; border-bottom:1px solid var(--line); }
+      .stakeholder-week:last-child { border-bottom:0; }
       .messages-table, .groups-table, .senders-table, .bots-table, .roadmap-table, .access-log-table, .broadcast-log-table, .access-users-table, .analytics-table { display:block; border:0; background:transparent; box-shadow:none; }
       .messages-table colgroup, .groups-table colgroup, .senders-table colgroup, .bots-table colgroup, .roadmap-table colgroup, .access-log-table colgroup, .broadcast-log-table colgroup, .access-users-table colgroup, .analytics-table colgroup,
       .messages-table thead, .groups-table thead, .senders-table thead, .bots-table thead, .roadmap-table thead, .access-log-table thead, .broadcast-log-table thead, .access-users-table thead, .analytics-table thead { display:none; }
@@ -689,6 +719,7 @@ const HTML = `<!doctype html>
           <div class="nav-section-items">
             <button class="nav-button" id="roadmapNav" type="button">نقشه راه</button>
             <button class="nav-button" id="roadmapPathNav" type="button">نمای مسیر</button>
+            <button class="nav-button" id="corporateBankingTimelineNav" type="button">Corporate Banking</button>
             <button class="nav-button" id="productsNav" type="button">محصول‌ها</button>
           </div>
         </div>
@@ -1139,6 +1170,162 @@ const HTML = `<!doctype html>
         </section>
       </section>
     </section>
+    <section class="page" id="corporateBankingTimelinePage" hidden>
+      <section class="stakeholder-panel">
+        <h2>Corporate Banking — Stakeholder Delivery Timeline</h2>
+        <p class="thread-muted">نمای تحویل ذی‌نفعان Corporate Banking بر اساس ماه و هفته؛ مناسب مرور مدیریتی، محصولی و هماهنگی وابستگی‌ها.</p>
+        <div class="stakeholder-summary" aria-label="خلاصه تایم‌لاین">
+          <div class="stakeholder-kpi"><span>ماه‌ها</span><strong>۵</strong></div>
+          <div class="stakeholder-kpi"><span>هفته‌های فعال</span><strong>۱۵</strong></div>
+          <div class="stakeholder-kpi"><span>وابستگی‌ها</span><strong>۱۰</strong></div>
+          <div class="stakeholder-kpi"><span>فعال‌سازی بانک</span><strong>۶</strong></div>
+        </div>
+        <div class="stakeholder-timeline">
+          <section class="stakeholder-month">
+            <div class="stakeholder-month-head"><h3>Shahrivar</h3><span class="stakeholder-month-count">۱۲ مورد</span></div>
+            <div class="stakeholder-weeks">
+              <div class="stakeholder-week">
+                <h4>W1</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item dependency"><span class="stakeholder-item-type">Dependency</span><span class="stakeholder-item-title">Core dependency — Refah</span></article>
+                </div>
+              </div>
+              <div class="stakeholder-week">
+                <h4>W2</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item product"><span class="stakeholder-item-type">Product</span><span class="stakeholder-item-title">Transfer breakdown</span></article>
+                  <article class="stakeholder-item platform"><span class="stakeholder-item-type">Reliability</span><span class="stakeholder-item-title">Revert reliability</span></article>
+                  <article class="stakeholder-item platform"><span class="stakeholder-item-type">Policy</span><span class="stakeholder-item-title">Signing policies fulfillment</span></article>
+                  <article class="stakeholder-item enablement"><span class="stakeholder-item-type">Bank enabled</span><span class="stakeholder-item-title">Refah enabled</span></article>
+                  <article class="stakeholder-item dependency"><span class="stakeholder-item-type">Dependency</span><span class="stakeholder-item-title">Core dependency — Postbank</span></article>
+                </div>
+              </div>
+              <div class="stakeholder-week">
+                <h4>W3</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item product"><span class="stakeholder-item-type">Product</span><span class="stakeholder-item-title">Scheduled transfers and account health</span></article>
+                  <article class="stakeholder-item enablement"><span class="stakeholder-item-type">Bank enabled</span><span class="stakeholder-item-title">Postbank enabled</span></article>
+                </div>
+              </div>
+              <div class="stakeholder-week">
+                <h4>W4</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item product"><span class="stakeholder-item-type">Product</span><span class="stakeholder-item-title">Account management</span></article>
+                  <article class="stakeholder-item dependency"><span class="stakeholder-item-type">Dependency</span><span class="stakeholder-item-title">Core dependency — Pasargad Modern</span></article>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="stakeholder-month">
+            <div class="stakeholder-month-head"><h3>Mehr</h3><span class="stakeholder-month-count">۸ مورد</span></div>
+            <div class="stakeholder-weeks">
+              <div class="stakeholder-week">
+                <h4>W1</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item enablement"><span class="stakeholder-item-type">Bank enabled</span><span class="stakeholder-item-title">Pasargad Modern enabled</span></article>
+                  <article class="stakeholder-item dependency"><span class="stakeholder-item-type">Dependency</span><span class="stakeholder-item-title">Core dependency — Group Paya Bank 1</span></article>
+                </div>
+              </div>
+              <div class="stakeholder-week">
+                <h4>W2</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item product"><span class="stakeholder-item-type">Mobile</span><span class="stakeholder-item-title">Mobile feature - transfer, ticketing, strategy</span></article>
+                  <article class="stakeholder-item product"><span class="stakeholder-item-type">Decision</span><span class="stakeholder-item-title">Direct Debit readiness decision</span></article>
+                  <article class="stakeholder-item enablement"><span class="stakeholder-item-type">Bank enabled</span><span class="stakeholder-item-title">Group Paya Bank 1 enabled</span></article>
+                  <article class="stakeholder-item dependency"><span class="stakeholder-item-type">Dependency</span><span class="stakeholder-item-title">Platform and Gooyal dependency — Access and Workflow</span></article>
+                </div>
+              </div>
+              <div class="stakeholder-week">
+                <h4>W3</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item platform"><span class="stakeholder-item-type">Connector</span><span class="stakeholder-item-title">First ERP connector</span></article>
+                </div>
+              </div>
+              <div class="stakeholder-week">
+                <h4>W4</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item reporting"><span class="stakeholder-item-type">Reporting</span><span class="stakeholder-item-title">Dashboard reporting and operational status</span></article>
+                  <article class="stakeholder-item platform"><span class="stakeholder-item-type">Platform</span><span class="stakeholder-item-title">Automated account activation</span></article>
+                  <article class="stakeholder-item dependency"><span class="stakeholder-item-type">Dependency</span><span class="stakeholder-item-title">Core dependency — Group Paya Bank 2</span></article>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="stakeholder-month">
+            <div class="stakeholder-month-head"><h3>Aban</h3><span class="stakeholder-month-count">۹ مورد</span></div>
+            <div class="stakeholder-weeks">
+              <div class="stakeholder-week">
+                <h4>W1</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item reporting"><span class="stakeholder-item-type">Reporting</span><span class="stakeholder-item-title">Customizable reporting</span></article>
+                  <article class="stakeholder-item product"><span class="stakeholder-item-type">Access</span><span class="stakeholder-item-title">Access management and approvals</span></article>
+                  <article class="stakeholder-item enablement"><span class="stakeholder-item-type">Bank enabled</span><span class="stakeholder-item-title">Group Paya Bank 2 enabled</span></article>
+                  <article class="stakeholder-item dependency"><span class="stakeholder-item-type">Dependency</span><span class="stakeholder-item-title">Core dependency — Sina</span></article>
+                  <article class="stakeholder-item product"><span class="stakeholder-item-type">Signing</span><span class="stakeholder-item-title">Digital signing - biometric</span></article>
+                  <article class="stakeholder-item dependency"><span class="stakeholder-item-type">Dependency</span><span class="stakeholder-item-title">Core TSP API dependency — Moadian</span></article>
+                  <article class="stakeholder-item dependency"><span class="stakeholder-item-type">Dependency</span><span class="stakeholder-item-title">Checkout dependency — Direct Debit separation</span></article>
+                </div>
+              </div>
+              <div class="stakeholder-week">
+                <h4>W2</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item product"><span class="stakeholder-item-type">PWA</span><span class="stakeholder-item-title">Production-ready PWA</span></article>
+                  <article class="stakeholder-item enablement"><span class="stakeholder-item-type">Bank enabled</span><span class="stakeholder-item-title">Sina enabled</span></article>
+                </div>
+              </div>
+              <div class="stakeholder-week">
+                <h4>W3</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item platform"><span class="stakeholder-item-type">Orchestration</span><span class="stakeholder-item-title">Moadian orchestration and status</span></article>
+                  <article class="stakeholder-item platform"><span class="stakeholder-item-type">Direct Debit</span><span class="stakeholder-item-title">Direct Debit bank-side separated</span></article>
+                </div>
+              </div>
+              <div class="stakeholder-week"><h4>W4</h4><span class="stakeholder-empty-week">موردی ثبت نشده است</span></div>
+            </div>
+          </section>
+          <section class="stakeholder-month">
+            <div class="stakeholder-month-head"><h3>Azar</h3><span class="stakeholder-month-count">۲ مورد</span></div>
+            <div class="stakeholder-weeks">
+              <div class="stakeholder-week">
+                <h4>W1</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item dependency"><span class="stakeholder-item-type">Dependency</span><span class="stakeholder-item-title">Platform dependency — Cash-out monitoring</span></article>
+                </div>
+              </div>
+              <div class="stakeholder-week"><h4>W2</h4><span class="stakeholder-empty-week">موردی ثبت نشده است</span></div>
+              <div class="stakeholder-week">
+                <h4>W3</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item platform"><span class="stakeholder-item-type">Platform</span><span class="stakeholder-item-title">Central cash-out engine</span></article>
+                </div>
+              </div>
+              <div class="stakeholder-week"><h4>W4</h4><span class="stakeholder-empty-week">موردی ثبت نشده است</span></div>
+            </div>
+          </section>
+          <section class="stakeholder-month">
+            <div class="stakeholder-month-head"><h3>Dey</h3><span class="stakeholder-month-count">۳ مورد</span></div>
+            <div class="stakeholder-weeks">
+              <div class="stakeholder-week">
+                <h4>W1</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item product"><span class="stakeholder-item-type">Workflow</span><span class="stakeholder-item-title">Workflow management launch</span></article>
+                  <article class="stakeholder-item platform"><span class="stakeholder-item-type">Monitoring</span><span class="stakeholder-item-title">Unified cash-out monitoring</span></article>
+                  <article class="stakeholder-item dependency"><span class="stakeholder-item-type">Dependency</span><span class="stakeholder-item-title">Core and Platform dependency — Tax service</span></article>
+                </div>
+              </div>
+              <div class="stakeholder-week"><h4>W2</h4><span class="stakeholder-empty-week">موردی ثبت نشده است</span></div>
+              <div class="stakeholder-week"><h4>W3</h4><span class="stakeholder-empty-week">موردی ثبت نشده است</span></div>
+              <div class="stakeholder-week">
+                <h4>W4</h4>
+                <div class="stakeholder-items">
+                  <article class="stakeholder-item product"><span class="stakeholder-item-type">Tax</span><span class="stakeholder-item-title">Integrated Tax-as-a-Service</span></article>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </section>
     <section class="page" id="userGroupsPage" hidden>
       <section class="user-groups-panel">
         <h2>گروه‌بندی کاربران</h2>
@@ -1403,6 +1590,7 @@ const HTML = `<!doctype html>
     const messagesNavEl = document.getElementById("messagesNav");
     const roadmapNavEl = document.getElementById("roadmapNav");
     const roadmapPathNavEl = document.getElementById("roadmapPathNav");
+    const corporateBankingTimelineNavEl = document.getElementById("corporateBankingTimelineNav");
     const productsNavEl = document.getElementById("productsNav");
     const userGroupsNavEl = document.getElementById("userGroupsNav");
     const groupsNavEl = document.getElementById("groupsNav");
@@ -1422,6 +1610,7 @@ const HTML = `<!doctype html>
     const threadsPageEl = document.getElementById("threadsPage");
     const roadmapPageEl = document.getElementById("roadmapPage");
     const roadmapPathPageEl = document.getElementById("roadmapPathPage");
+    const corporateBankingTimelinePageEl = document.getElementById("corporateBankingTimelinePage");
     const productsPageEl = document.getElementById("productsPage");
     const userGroupsPageEl = document.getElementById("userGroupsPage");
     const broadcastPageEl = document.getElementById("broadcastPage");
@@ -1658,6 +1847,7 @@ const HTML = `<!doctype html>
       return String(value || "").trim().replace(/^@+/, "");
     }
     function pagePermission(page) {
+      if (page === "corporate-banking-timeline") return "roadmap";
       if (page === "roadmap-path") return "roadmap";
       return page === "user-groups" ? "user_groups" : page;
     }
@@ -1988,7 +2178,7 @@ const HTML = `<!doctype html>
       else if (isGroups) loadAccessGroupView();
       else loadAccessUsers();
     }
-    const routablePages = ["dashboard", "analytics", "threads", "messages", "roadmap", "roadmap-path", "products", "user-groups", "groups", "senders", "broadcast", "bots", "access", "profile"];
+    const routablePages = ["dashboard", "analytics", "threads", "messages", "roadmap", "roadmap-path", "corporate-banking-timeline", "products", "user-groups", "groups", "senders", "broadcast", "bots", "access", "profile"];
     const pageTitles = {
       dashboard: "داشبورد",
       analytics: "تحلیل",
@@ -1996,6 +2186,7 @@ const HTML = `<!doctype html>
       messages: "پیام‌ها",
       roadmap: "نقشه راه",
       "roadmap-path": "نمای مسیر",
+      "corporate-banking-timeline": "Corporate Banking Timeline",
       products: "محصول‌ها",
       "user-groups": "گروه‌بندی کاربران",
       groups: "گروه‌ها",
@@ -2014,7 +2205,7 @@ const HTML = `<!doctype html>
       return routablePages.includes(page) ? page : "messages";
     }
     function firstAccessiblePage() {
-      return ["dashboard", "analytics", "threads", "messages", "roadmap", "roadmap-path", "products", "user-groups", "groups", "senders", "broadcast", "bots", "access"].find(canOpen);
+      return ["dashboard", "analytics", "threads", "messages", "roadmap", "roadmap-path", "corporate-banking-timeline", "products", "user-groups", "groups", "senders", "broadcast", "bots", "access"].find(canOpen);
     }
     function syncNavGroupVisibility() {
       [communicationsNavGroupEl, developmentNavGroupEl, managementNavGroupEl].forEach((group) => {
@@ -2023,12 +2214,12 @@ const HTML = `<!doctype html>
     }
     function syncNavGroupActive(page) {
       communicationsNavGroupEl.classList.toggle("active", ["dashboard", "analytics", "threads", "messages", "groups", "senders", "broadcast", "bots"].includes(page));
-      developmentNavGroupEl.classList.toggle("active", page === "roadmap" || page === "roadmap-path" || page === "products");
+      developmentNavGroupEl.classList.toggle("active", page === "roadmap" || page === "roadmap-path" || page === "corporate-banking-timeline" || page === "products");
       managementNavGroupEl.classList.toggle("active", page === "user-groups" || page === "access");
     }
     function setupAccessShell() {
       accessNewPermissionsEl.innerHTML = permissionGridHtml([], "new");
-      const navByPage = { dashboard:dashboardNavEl, analytics:analyticsNavEl, threads:threadsNavEl, messages:messagesNavEl, roadmap:roadmapNavEl, "roadmap-path":roadmapPathNavEl, products:productsNavEl, "user-groups":userGroupsNavEl, groups:groupsNavEl, senders:sendersNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
+      const navByPage = { dashboard:dashboardNavEl, analytics:analyticsNavEl, threads:threadsNavEl, messages:messagesNavEl, roadmap:roadmapNavEl, "roadmap-path":roadmapPathNavEl, "corporate-banking-timeline":corporateBankingTimelineNavEl, products:productsNavEl, "user-groups":userGroupsNavEl, groups:groupsNavEl, senders:sendersNavEl, broadcast:broadcastNavEl, bots:botsNavEl, access:accessNavEl };
       Object.entries(navByPage).forEach(([page, element]) => { element.hidden = !canOpen(page); });
       syncNavGroupVisibility();
       const firstPage = firstAccessiblePage();
@@ -4674,6 +4865,7 @@ const HTML = `<!doctype html>
       const isThreads = page === "threads";
       const isRoadmap = page === "roadmap";
       const isRoadmapPath = page === "roadmap-path";
+      const isCorporateBankingTimeline = page === "corporate-banking-timeline";
       const isProducts = page === "products";
       const isUserGroups = page === "user-groups";
       const isBroadcast = page === "broadcast";
@@ -4682,12 +4874,13 @@ const HTML = `<!doctype html>
       const isProfile = page === "profile";
       dashboardPageEl.hidden = !isDashboard;
       analyticsPageEl.hidden = !isAnalytics;
-      messagesPageEl.hidden = isDashboard || isAnalytics || isGroups || isSenders || isThreads || isRoadmap || isRoadmapPath || isProducts || isUserGroups || isBroadcast || isBots || isAccess || isProfile;
+      messagesPageEl.hidden = isDashboard || isAnalytics || isGroups || isSenders || isThreads || isRoadmap || isRoadmapPath || isCorporateBankingTimeline || isProducts || isUserGroups || isBroadcast || isBots || isAccess || isProfile;
       groupsPageEl.hidden = !isGroups;
       sendersPageEl.hidden = !isSenders;
       threadsPageEl.hidden = !isThreads;
       roadmapPageEl.hidden = !isRoadmap;
       roadmapPathPageEl.hidden = !isRoadmapPath;
+      corporateBankingTimelinePageEl.hidden = !isCorporateBankingTimeline;
       productsPageEl.hidden = !isProducts;
       userGroupsPageEl.hidden = !isUserGroups;
       broadcastPageEl.hidden = !isBroadcast;
@@ -4696,12 +4889,13 @@ const HTML = `<!doctype html>
       profilePageEl.hidden = !isProfile;
       dashboardNavEl.classList.toggle("active", isDashboard);
       analyticsNavEl.classList.toggle("active", isAnalytics);
-      messagesNavEl.classList.toggle("active", !isDashboard && !isAnalytics && !isGroups && !isSenders && !isThreads && !isRoadmap && !isRoadmapPath && !isProducts && !isUserGroups && !isBroadcast && !isBots && !isAccess && !isProfile);
+      messagesNavEl.classList.toggle("active", !isDashboard && !isAnalytics && !isGroups && !isSenders && !isThreads && !isRoadmap && !isRoadmapPath && !isCorporateBankingTimeline && !isProducts && !isUserGroups && !isBroadcast && !isBots && !isAccess && !isProfile);
       groupsNavEl.classList.toggle("active", isGroups);
       sendersNavEl.classList.toggle("active", isSenders);
       threadsNavEl.classList.toggle("active", isThreads);
       roadmapNavEl.classList.toggle("active", isRoadmap);
       roadmapPathNavEl.classList.toggle("active", isRoadmapPath);
+      corporateBankingTimelineNavEl.classList.toggle("active", isCorporateBankingTimeline);
       productsNavEl.classList.toggle("active", isProducts);
       userGroupsNavEl.classList.toggle("active", isUserGroups);
       broadcastNavEl.classList.toggle("active", isBroadcast);
@@ -5420,6 +5614,7 @@ const HTML = `<!doctype html>
     messagesNavEl.addEventListener("click", () => showPage("messages"));
     roadmapNavEl.addEventListener("click", () => showPage("roadmap"));
     roadmapPathNavEl.addEventListener("click", () => showPage("roadmap-path"));
+    corporateBankingTimelineNavEl.addEventListener("click", () => showPage("corporate-banking-timeline"));
     productsNavEl.addEventListener("click", () => showPage("products"));
     userGroupsNavEl.addEventListener("click", () => showPage("user-groups"));
     groupsNavEl.addEventListener("click", () => showPage("groups"));
