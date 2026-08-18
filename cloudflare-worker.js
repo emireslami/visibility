@@ -42,10 +42,10 @@ const HTML = `<!doctype html>
     .uuid-filter, .hashtag-filter { width:100%; min-width:0; text-align:left; direction:ltr; }
     .hashtag-link { color:#087f8c; font-weight:800; text-decoration:none; cursor:pointer; }
     .hashtag-link:hover { text-decoration:underline; }
-    .structured-message { display:grid; gap:8px; white-space:normal; }
+    .structured-message { display:grid; gap:10px; width:100%; margin:6px 0; white-space:normal; }
     .structured-text { white-space:pre-wrap; overflow-wrap:anywhere; direction:rtl; text-align:right; }
-    .structured-code { margin:0; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#f6f8fa; color:#172026; direction:ltr; text-align:left; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size:12px; line-height:1.65; white-space:pre; overflow:auto; max-width:100%; }
-    .structured-code-label { display:inline-flex; width:max-content; min-height:20px; align-items:center; padding:0 7px; border:1px solid var(--line); border-radius:999px; background:#eef3f4; color:var(--muted); font-size:10px; font-weight:800; direction:ltr; }
+    .structured-code { display:block; width:100%; box-sizing:border-box; margin:0; padding:18px 20px; border:1px solid #d8dee4; border-radius:10px; background:#f8f9fb; color:#172026; direction:ltr; text-align:left; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size:14px; line-height:1.8; tab-size:2; white-space:pre; overflow:auto; max-width:100%; }
+    .structured-code-label { display:inline-flex; width:max-content; min-height:26px; align-items:center; padding:0 10px; border:1px solid var(--line); border-radius:999px; background:#eef3f4; color:var(--muted); font-size:12px; font-weight:900; direction:ltr; }
     .structured-preview-badge { flex:0 0 auto; display:inline-flex; align-items:center; height:22px; padding:0 7px; border-radius:999px; background:#eef3f4; color:var(--muted); border:1px solid var(--line); font-size:10px; font-weight:800; }
     .multi-control { position:relative; }
     .multi-button { width:100%; display:grid; grid-template-columns:minmax(0, 1fr) 18px; align-items:center; gap:8px; background:#fff; color:var(--ink); border-color:var(--line); text-align:right; direction:rtl; padding-inline:10px 12px; }
@@ -2244,6 +2244,14 @@ const HTML = `<!doctype html>
       const label = String(value || "").trim().replace(/[^a-z0-9_+#.-]/gi, "").slice(0, 18);
       return label || "code";
     }
+    function codeBlockHtml(code, language = "code") {
+      const normalizedLanguage = String(language || "").toLowerCase();
+      const detectedJson = tryPrettyJson(code);
+      const prettyJson = normalizedLanguage === "json" || (!normalizedLanguage && detectedJson) ? detectedJson : "";
+      const rendered = prettyJson || String(code ?? "").replace(/^\n|\n$/g, "");
+      const label = prettyJson ? "JSON" : codeLanguageLabel(language);
+      return \`<span class="structured-code-label">\${esc(label)}</span><pre class="structured-code"><code>\${esc(rendered)}</code></pre>\`;
+    }
     function looksLikeCode(value) {
       const text = String(value ?? "").trim();
       if (!text.includes("\\n")) return false;
@@ -2262,7 +2270,7 @@ const HTML = `<!doctype html>
         matched = true;
         const before = source.slice(cursor, offset);
         if (before.trim()) html += \`<div class="structured-text">\${linkify(before.trim())}</div>\`;
-        html += \`<span class="structured-code-label">\${esc(codeLanguageLabel(lang))}</span><pre class="structured-code"><code>\${esc(code.replace(/^\\n|\\n$/g, ""))}</code></pre>\`;
+        html += codeBlockHtml(code, lang);
         cursor = offset + match.length;
         return match;
       });
@@ -2278,12 +2286,54 @@ const HTML = `<!doctype html>
       if (fenced) return fenced;
       const prettyJson = tryPrettyJson(text);
       if (prettyJson) {
-        return \`<div class="structured-message"><span class="structured-code-label">JSON</span><pre class="structured-code"><code>\${esc(prettyJson)}</code></pre></div>\`;
+        return \`<div class="structured-message">\${codeBlockHtml(prettyJson, "json")}</div>\`;
       }
       if (looksLikeCode(text)) {
-        return \`<div class="structured-message"><span class="structured-code-label">code</span><pre class="structured-code"><code>\${esc(text.trim())}</code></pre></div>\`;
+        return \`<div class="structured-message">\${codeBlockHtml(text.trim(), "code")}</div>\`;
       }
       return linkify(text);
+    }
+    function normalizedMessageEntities(row) {
+      let entities = row?.body ? row?.entities_json : (row?.caption_entities_json || row?.entities_json);
+      if (!entities) return [];
+      if (typeof entities === "string") {
+        try { entities = JSON.parse(entities); } catch { return []; }
+      }
+      if (!Array.isArray(entities)) return [];
+      return entities
+        .filter((entity) => ["pre", "code"].includes(String(entity?.type || "").toLowerCase()))
+        .map((entity) => ({
+          type: String(entity?.type || "").toLowerCase(),
+          offset: Number(entity?.offset),
+          length: Number(entity?.length),
+          language: entity?.language || "",
+        }))
+        .filter((entity) => Number.isFinite(entity.offset) && Number.isFinite(entity.length) && entity.length > 0)
+        .sort((a, b) => a.offset - b.offset);
+    }
+    function renderMessageContentForRow(row) {
+      const text = messageContent(row);
+      if (!text) return "";
+      const entities = normalizedMessageEntities(row);
+      if (!entities.length) return renderMessageContent(text);
+      let cursor = 0;
+      let html = "";
+      let matched = false;
+      entities.forEach((entity) => {
+        if (entity.offset < cursor || entity.offset >= text.length) return;
+        const end = Math.min(text.length, entity.offset + entity.length);
+        const before = text.slice(cursor, entity.offset);
+        if (before.trim()) html += \`<div class="structured-text">\${linkify(before.trim())}</div>\`;
+        const code = text.slice(entity.offset, end);
+        const language = entity.language || (tryPrettyJson(code) ? "json" : entity.type || "code");
+        html += codeBlockHtml(code, language);
+        cursor = end;
+        matched = true;
+      });
+      if (!matched) return renderMessageContent(text);
+      const after = text.slice(cursor);
+      if (after.trim()) html += \`<div class="structured-text">\${linkify(after.trim())}</div>\`;
+      return \`<div class="structured-message">\${html}</div>\`;
     }
     function structuredPreviewBadge(value) {
       const text = String(value ?? "");
@@ -2308,6 +2358,13 @@ const HTML = `<!doctype html>
       const text = String(value ?? "");
       if (!text) return "";
       fullTextByKey.set(key, renderMessageContent(text));
+      const button = \`<button class="more" type="button" data-full-key="\${esc(key)}" aria-label="مشاهده بیشتر" title="مشاهده بیشتر">+</button>\`;
+      return \`\${structuredPreviewBadge(text)}<span class="clip">\${linkify(shortText(text, limit))}</span>\${button}\`;
+    }
+    function messageTextCell(row, key, limit = 90) {
+      const text = messageContent(row);
+      if (!text) return "";
+      fullTextByKey.set(key, renderMessageContentForRow(row));
       const button = \`<button class="more" type="button" data-full-key="\${esc(key)}" aria-label="مشاهده بیشتر" title="مشاهده بیشتر">+</button>\`;
       return \`\${structuredPreviewBadge(text)}<span class="clip">\${linkify(shortText(text, limit))}</span>\${button}\`;
     }
@@ -2500,7 +2557,7 @@ const HTML = `<!doctype html>
     }
     function compactMessage(row) {
       const text = messageContent(row);
-      return text ? renderMessageContent(text) : '<span class="thread-muted">بدون متن</span>';
+      return text ? renderMessageContentForRow(row) : '<span class="thread-muted">بدون متن</span>';
     }
     function editedBadge(row) {
       return row.edited_at_utc ? '<span class="badge">ویرایش‌شده</span>' : '';
@@ -3121,7 +3178,7 @@ const HTML = `<!doctype html>
             <td class="full-cell" data-label="نام فرستنده">\${esc(row.sender_first_name)}</td>
             <td class="full-cell" data-label="نام خانوادگی">\${esc(row.sender_last_name)}</td>
             <td class="full-cell" data-label="یوزرنیم">\${esc(row.sender_username)}</td>
-            <td class="body message-cell" data-label="پیام"><div class="message-inner">\${editedBadge(row)}\${mediaBadge(row)}\${textCell(row.body || row.caption || "[" + row.message_type + "]", "message-" + index, 115)}</div></td>
+            <td class="body message-cell" data-label="پیام"><div class="message-inner">\${editedBadge(row)}\${mediaBadge(row)}\${messageTextCell(row, "message-" + index, 115)}</div></td>
             <td class="full-cell" data-label="زمان ارسال">\${esc([row.sent_jalali_date, row.sent_time].filter(Boolean).join(" "))}</td>
             <td class="full-cell" data-label="زمان ثبت">\${esc(row.registered_jalali_datetime)}</td>
             <td data-label="جزئیات"><button class="details-button" type="button" data-detail-key="detail-\${index}">جزئیات</button></td>
