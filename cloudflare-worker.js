@@ -192,6 +192,10 @@ const HTML = `<!doctype html>
     .chart-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:18px; }
     .chart-head h2 { margin:0; font-size:18px; }
     .chart-head p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+    .chart-week-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-start; direction:rtl; }
+    .chart-week-controls button { height:32px; padding:0 10px; }
+    .chart-week-controls button:disabled { opacity:.45; cursor:not-allowed; }
+    .chart-week-label { min-width:190px; color:var(--ink); font-size:12px; font-weight:800; text-align:center; }
     .chart-wrap { min-height:380px; overflow-x:auto; overflow-y:hidden; padding:8px 0 2px; }
     .stacked-chart { min-width:720px; height:350px; display:flex; align-items:end; gap:14px; direction:ltr; border-bottom:1px solid var(--line); padding:28px 4px 0; }
     .day-bar { flex:1 0 58px; min-width:58px; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:6px; }
@@ -757,7 +761,12 @@ const HTML = `<!doctype html>
         <div class="chart-head">
           <div>
             <h2>داشبورد</h2>
-            <p>تعداد کل پیام‌ها بر اساس روز، با تفکیک رنگی گروه‌ها</p>
+            <p>تعداد کل پیام‌ها در بازه هفتگی، با تفکیک رنگی گروه‌ها</p>
+          </div>
+          <div class="chart-week-controls" aria-label="کنترل هفته نمودار">
+            <button class="secondary-button" id="dashboardPrevWeek" type="button">هفته قبل</button>
+            <span class="chart-week-label" id="dashboardWeekLabel">-</span>
+            <button class="secondary-button" id="dashboardNextWeek" type="button">هفته بعد</button>
           </div>
         </div>
         <div class="chart-wrap" id="dailyChart"></div>
@@ -767,7 +776,7 @@ const HTML = `<!doctype html>
         <div class="chart-head">
           <div>
             <h2>کاربران پیام‌دهنده</h2>
-            <p>تعداد پیام‌ها بر اساس روز، با تفکیک رنگی کاربران</p>
+            <p>تعداد پیام‌ها در همان بازه هفتگی، با تفکیک رنگی کاربران</p>
           </div>
         </div>
         <div class="chart-wrap" id="userDailyChart"></div>
@@ -1583,6 +1592,9 @@ const HTML = `<!doctype html>
     const chartLegendEl = document.getElementById("chartLegend");
     const userDailyChartEl = document.getElementById("userDailyChart");
     const userChartLegendEl = document.getElementById("userChartLegend");
+    const dashboardPrevWeekEl = document.getElementById("dashboardPrevWeek");
+    const dashboardNextWeekEl = document.getElementById("dashboardNextWeek");
+    const dashboardWeekLabelEl = document.getElementById("dashboardWeekLabel");
     const statusEl = document.getElementById("status");
     const pageTitleEl = document.getElementById("pageTitle");
     const dashboardNavEl = document.getElementById("dashboardNav");
@@ -1785,6 +1797,9 @@ const HTML = `<!doctype html>
     const detailByKey = new Map();
     const expandedThreadKeys = new Set();
     let dashboardChartData = { days: [], groups: [], userDays: [], users: [] };
+    let dashboardWeekStart = null;
+    let dashboardEarliestWeekStart = null;
+    let dashboardLatestWeekStart = null;
     const selectedGroupChartItems = new Set();
     const selectedUserChartItems = new Set();
     let analyticsData = { overall: {}, groups: [], labels: [] };
@@ -3287,9 +3302,87 @@ const HTML = `<!doctype html>
     function renderUserDailyChart(days, users) {
       renderStackedDailyChart(userDailyChartEl, userChartLegendEl, days, users, "users", "users", selectedUserChartItems);
     }
+    function parseDashboardIsoDate(value) {
+      const match = String(value || "").match(/^\d{4}-\d{2}-\d{2}$/);
+      return match ? new Date(value + "T12:00:00Z") : null;
+    }
+    function dashboardIsoDate(date) {
+      return date.toISOString().slice(0, 10);
+    }
+    function addDashboardDays(date, days) {
+      const next = new Date(date.getTime());
+      next.setUTCDate(next.getUTCDate() + days);
+      return next;
+    }
+    function dashboardWeekStartDate(value) {
+      const date = parseDashboardIsoDate(value);
+      if (!date) return null;
+      const daysSinceSaturday = (date.getUTCDay() + 1) % 7;
+      return dashboardIsoDate(addDashboardDays(date, -daysSinceSaturday));
+    }
+    function dashboardJalaliLabel(value) {
+      const date = parseDashboardIsoDate(value);
+      if (!date) return value || "";
+      try {
+        return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { month: "long", day: "numeric" }).format(date);
+      } catch (error) {
+        return value;
+      }
+    }
+    function dashboardWeekLabel(startIso) {
+      const start = parseDashboardIsoDate(startIso);
+      if (!start) return "-";
+      const endIso = dashboardIsoDate(addDashboardDays(start, 6));
+      return dashboardJalaliLabel(startIso) + " تا " + dashboardJalaliLabel(endIso);
+    }
+    function dashboardWeekDays(days, valueKey) {
+      if (!dashboardWeekStart) return days || [];
+      const start = parseDashboardIsoDate(dashboardWeekStart);
+      if (!start) return days || [];
+      const byDate = new Map((days || []).map((day) => [day.date, day]));
+      return Array.from({ length: 7 }, (_, index) => {
+        const date = dashboardIsoDate(addDashboardDays(start, index));
+        return byDate.get(date) || { date, jalali_date: dashboardJalaliLabel(date), total: 0, [valueKey]: {} };
+      });
+    }
+    function syncDashboardWeekBounds() {
+      const allDates = [...(dashboardChartData.days || []), ...(dashboardChartData.userDays || [])]
+        .map((day) => day.date)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+      if (!allDates.length) {
+        dashboardWeekStart = null;
+        dashboardEarliestWeekStart = null;
+        dashboardLatestWeekStart = null;
+        return;
+      }
+      dashboardEarliestWeekStart = dashboardWeekStartDate(allDates[0]);
+      dashboardLatestWeekStart = dashboardWeekStartDate(allDates[allDates.length - 1]);
+      if (!dashboardWeekStart || dashboardWeekStart < dashboardEarliestWeekStart || dashboardWeekStart > dashboardLatestWeekStart) {
+        dashboardWeekStart = dashboardLatestWeekStart;
+      }
+    }
+    function updateDashboardWeekControls() {
+      const hasWeek = Boolean(dashboardWeekStart);
+      dashboardWeekLabelEl.textContent = hasWeek ? dashboardWeekLabel(dashboardWeekStart) : "-";
+      dashboardPrevWeekEl.disabled = !hasWeek || dashboardWeekStart <= dashboardEarliestWeekStart;
+      dashboardNextWeekEl.disabled = !hasWeek || dashboardWeekStart >= dashboardLatestWeekStart;
+    }
+    function shiftDashboardWeek(direction) {
+      const start = parseDashboardIsoDate(dashboardWeekStart);
+      if (!start) return;
+      const nextWeek = dashboardIsoDate(addDashboardDays(start, direction * 7));
+      if (dashboardEarliestWeekStart && nextWeek < dashboardEarliestWeekStart) return;
+      if (dashboardLatestWeekStart && nextWeek > dashboardLatestWeekStart) return;
+      dashboardWeekStart = nextWeek;
+      renderDashboardCharts();
+    }
     function renderDashboardCharts() {
-      renderDailyChart(dashboardChartData.days || [], dashboardChartData.groups || []);
-      renderUserDailyChart(dashboardChartData.userDays || [], dashboardChartData.users || []);
+      const days = dashboardWeekDays(dashboardChartData.days || [], "groups");
+      const userDays = dashboardWeekDays(dashboardChartData.userDays || [], "users");
+      renderDailyChart(days, dashboardChartData.groups || []);
+      renderUserDailyChart(userDays, dashboardChartData.users || []);
+      updateDashboardWeekControls();
     }
     function toggleChartItem(kind, item) {
       const selectedSet = kind === "users" ? selectedUserChartItems : selectedGroupChartItems;
@@ -3322,10 +3415,11 @@ const HTML = `<!doctype html>
           userDays: data.user_days || [],
           users: data.users || [],
         };
+        syncDashboardWeekBounds();
         selectedGroupChartItems.forEach((item) => { if (!dashboardChartData.groups.includes(item)) selectedGroupChartItems.delete(item); });
         selectedUserChartItems.forEach((item) => { if (!dashboardChartData.users.includes(item)) selectedUserChartItems.delete(item); });
         renderDashboardCharts();
-        setStatus(token, data.total_messages + " پیام در " + data.days.length + " روز");
+        setStatus(token, data.total_messages + " پیام، نمایش " + dashboardWeekLabel(dashboardWeekStart));
       } catch (error) {
         setStatus(token, "خطا در دریافت نمودار");
       }
@@ -5411,6 +5505,8 @@ const HTML = `<!doctype html>
         toggleChartItem(itemButton.dataset.chartKind, itemButton.dataset.chartItem);
       });
     });
+    dashboardPrevWeekEl.addEventListener("click", () => shiftDashboardWeek(-1));
+    dashboardNextWeekEl.addEventListener("click", () => shiftDashboardWeek(1));
     modalCloseEl.addEventListener("click", () => closeModal());
     modalBackdropEl.addEventListener("click", event => { if (event.target === modalBackdropEl) closeModal(); });
     document.addEventListener("keydown", event => {
@@ -11109,7 +11205,7 @@ async function fetchDashboard(request, env, authUser) {
   const params = new URLSearchParams();
   params.set("select", "platform,chat_id,sent_at_utc,chat_title,sender_id,sender_username,sender_first_name,sender_last_name");
   params.set("sent_at_utc", "not.is.null");
-  params.set("order", "sent_at_utc.asc");
+  params.set("order", "sent_at_utc.desc");
   params.set("limit", "10000");
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/telegram_messages?${params}`, {
     headers: supabaseHeaders(env),
